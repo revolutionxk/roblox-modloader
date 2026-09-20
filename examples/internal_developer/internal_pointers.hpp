@@ -15,7 +15,8 @@ namespace internal_developer
 
 		[[nodiscard]] bool complete() const noexcept
 		{
-			return is_internal != nullptr && channel_flag != nullptr && internal_flag != nullptr;
+			return is_internal != nullptr && channel_flag != nullptr && internal_flag != nullptr &&
+			       channel_flag != internal_flag;
 		}
 	};
 
