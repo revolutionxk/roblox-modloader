@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 
@@ -32,9 +32,22 @@ internal static class ModLoader
                 .ToList();
 
             var context = new ModAssemblyContext(path, sharedAssemblies);
-            var assembly = context.LoadFromAssemblyPath(path);
 
-            var modType = assembly.GetTypes()
+            Assembly assembly;
+            try
+            {
+                assembly = context.LoadFromAssemblyPath(path);
+            }
+            catch (BadImageFormatException)
+            {
+                // A mod folder also carries its native dependencies; they are not assemblies and
+                // the loader has no way of telling before trying.
+                RuntimeLog.Warn($"Skipping {path}: not a managed assembly.");
+                context.Unload();
+                return;
+            }
+
+            var modType = GetLoadableTypes(assembly, path)
                 .FirstOrDefault(t =>
                     t.GetCustomAttribute<ModAttribute>() is not null && t.IsAssignableTo(typeof(IMod)) &&
                     !t.IsAbstract);
@@ -87,6 +100,19 @@ internal static class ModLoader
         {
             RuntimeLog.Error($"Failed to load mod at {path}: {e}");
             throw;
+        }
+    }
+
+    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly, string path)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException e)
+        {
+            RuntimeLog.Warn($"Some types in {path} could not be loaded: {e.Message}");
+            return e.Types.Where(t => t is not null).Select(t => t!);
         }
     }
 

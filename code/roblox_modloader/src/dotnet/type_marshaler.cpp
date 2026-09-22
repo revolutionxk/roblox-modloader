@@ -13,6 +13,8 @@
 #include <array>
 #include <cstring>
 #include <memory>
+#include <mutex>
+#include <unordered_set>
 #include <new>
 #include <utility>
 #include <vector>
@@ -129,6 +131,23 @@ namespace rml::dotnet
 					reinterpret_cast<void (*)(void*)>(const_cast<void*>(ops[2]))(value.storage());
 			}
 			delete tuple;
+		}
+
+		// A yield function that returns an unsupported type is called once per keystroke by an
+		// editor mod; the first report is the useful one, the rest are noise. Types are registry
+		// singletons, so the address identifies one without allocating on the suppressed path.
+		void warn_unsupported_once(const RBX::Reflection::Type& type)
+		{
+			static std::mutex mutex;
+			static std::unordered_set<const RBX::Reflection::Type*> reported;
+
+			{
+				const std::scoped_lock lock(mutex);
+				if (!reported.insert(&type).second)
+					return;
+			}
+
+			RML_WARN("Unsupported variant type '{}'", type.name.c_str());
 		}
 	} // namespace
 
@@ -268,7 +287,7 @@ namespace rml::dotnet
 			const auto* shared = variant.try_cast<TupleSharedPtr>();
 			return marshal_tuple(shared ? shared->get() : nullptr);
 		}
-		default: RML_WARN("Unsupported variant type '{}'", type.name.c_str()); return null_value();
+		default: warn_unsupported_once(type); return null_value();
 		}
 	}
 

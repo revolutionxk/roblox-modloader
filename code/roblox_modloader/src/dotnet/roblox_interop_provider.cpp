@@ -21,6 +21,8 @@
 #include <RobloxModLoader/roblox/reflection/object.hpp>
 #include <RobloxModLoader/roblox/reflection/property_descriptor.hpp>
 #include <cassert>
+#include <format>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -87,6 +89,21 @@ namespace rml::dotnet
 
 	void invoke_reflection_function(RBX::Reflection::DescribedBase* instance, const RBX::Reflection::FunctionDescriptor& descriptor, const InteropVariant* args, const uint32_t arg_count, InteropVariant& out)
 	{
+		// find_function() resolves a name against one shared member table and hands the hit back as
+		// a FunctionDescriptor whatever it really is; a YieldFunctionDescriptor is 0x78 bytes, so
+		// kind (+0x78) and invoke_func_ptr (+0x80) would read past the object. Prove the descriptor
+		// is a member of its owner's function container before reading anything past MemberDescriptor.
+		if (descriptor.owner.find_function_descriptor(descriptor.name.c_str()) != &descriptor)
+			throw std::runtime_error(std::format("'{}' is not a function of '{}'; it is not callable as a plain function",
+			    descriptor.name.c_str(), descriptor.owner.name.c_str()));
+
+		// A member that is a function is still not necessarily a bound one: a custom invoker keeps
+		// no native member pointer, and calling that slot jumps to address zero and takes Studio
+		// down with it.
+		if (descriptor.get_kind() != RBX::Reflection::FunctionDescriptor::Default
+		    || !static_cast<const RBX::Reflection::BoundFunctionDescriptor&>(descriptor).invoke_func_ptr)
+			throw std::runtime_error(std::format("'{}' has no native function pointer; it is not callable as a plain function",
+			    descriptor.name.c_str()));
 
 		DotNetArguments arguments{args, arg_count, &descriptor.get_signature()};
 
