@@ -17,8 +17,11 @@ namespace rml
 		constexpr cstxpr_str roblox_batch_name{"roblox"};
 
 		run_batch<roblox_batch_name>(m_roblox_batch, m_hash, roblox_region);
+	}
 
-		m_main_window = platform::acquire_main_window();
+	void* Pointers::main_window() const
+	{
+		return platform::acquire_main_window();
 	}
 
 	Pointers::~Pointers()

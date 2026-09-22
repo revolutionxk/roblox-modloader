@@ -37,14 +37,4 @@ namespace rml::platform
 	{
 		return 0x140000000;
 	}
-
-	void* acquire_main_window()
-	{
-		void* window = GetForegroundWindow();
-
-		if (!window)
-			throw std::runtime_error("Failed to find Roblox Studio window");
-
-		return window;
-	}
 }

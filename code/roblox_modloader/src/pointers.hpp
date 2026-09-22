@@ -30,7 +30,10 @@ namespace rml
 		~Pointers();
 
 	public:
-		void* m_main_window{};
+		// Resolved lazily on first use and revalidated on every access: Studio's main window does
+		// not exist while the loader initialises, and it can be destroyed and recreated later.
+		// Returns nullptr when the window cannot be identified; callers must handle that.
+		[[nodiscard]] void* main_window() const;
 
 	public:
 		RobloxPointers m_roblox_pointers{};
