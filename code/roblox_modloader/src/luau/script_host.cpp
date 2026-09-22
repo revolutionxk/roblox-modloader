@@ -223,8 +223,16 @@ namespace rml::luau
 		return false;
 	}
 
-	static WorkResult start_thread(ScriptHost& host, vm::Thread thread, const int nargs, const bool wrapped, const bool want_result, const std::string& label, std::string owner)
+	// Takes the elevation over from the caller: the guard has to outlive the thread ref
+	// (its restore touches the lua_State) and, when the chunk yields, the elevation
+	// travels with the parked thread so the engine's resume still runs elevated.
+	static WorkResult start_thread(ScriptHost& host, vm::Thread parked_thread, vm::ScopedIdentity parked_identity, const int nargs, const bool wrapped, const bool want_result, const std::string& label, std::string owner)
 	{
+		// Declared in this order so the elevation is handed back before the anchor that
+		// keeps the coroutine out of the GC's reach goes away, on every path.
+		vm::Thread thread = std::move(parked_thread);
+		vm::ScopedIdentity identity = std::move(parked_identity);
+
 		auto* co = thread.get();
 
 		const auto outcome = vm::resume(co, nargs);
@@ -244,7 +252,7 @@ namespace rml::luau
 				RML_DEBUG("{} yielded under task state {}", label, static_cast<int>(state));
 			}
 
-			host.park(std::move(thread), std::move(owner), label);
+			host.park(std::move(thread), std::move(identity), std::move(owner), label);
 			return Value{};
 		}
 
@@ -291,7 +299,12 @@ namespace rml::luau
 
 		auto* co = thread->get();
 
-		vm::set_identity(co, RBX::Security::Permissions::RobloxEngine, RBX::Security::FULL_CAPABILITIES, false);
+		// Studio gates settings() and friends on the identity context, not on the extra
+		// space, and a fresh coroutine arrives with the engine's default identity. Elevate
+		// the context for as long as this chunk runs, a yield included, and hand
+		// it back afterwards: contexts are pooled, so a permanent write would follow the
+		// object into the next thread.
+		vm::ScopedIdentity identity{co, RBX::Security::Permissions::RobloxEngine, RBX::Security::FULL_CAPABILITIES};
 
 		const auto label = std::format("script '{}'", chunk.chunk_name);
 		const auto wrapped = push_xpcall(co);
@@ -310,6 +323,7 @@ namespace rml::luau
 
 		return start_thread(host,
 		    std::move(*thread),
+		    std::move(identity),
 		    wrapped ? 2 : 0,
 		    wrapped,
 		    chunk.want_result,
@@ -339,7 +353,9 @@ namespace rml::luau
 
 		auto* co = thread->get();
 
-		vm::set_identity(co, RBX::Security::Permissions::RobloxEngine, RBX::Security::FULL_CAPABILITIES, false);
+		// Same story as run_chunk: a callback invoked from .NET runs on a fresh coroutine
+		// that arrives with the engine's default identity.
+		vm::ScopedIdentity identity{co, RBX::Security::Permissions::RobloxEngine, RBX::Security::FULL_CAPABILITIES};
 
 		const auto label = std::string{"a script callback"};
 		const auto wrapped = push_xpcall(co);
@@ -364,7 +380,7 @@ namespace rml::luau
 
 		const auto argc = static_cast<int>(call.args.size());
 
-		return start_thread(host, std::move(*thread), (wrapped ? 2 : 0) + argc, wrapped, true, label, {});
+		return start_thread(host, std::move(*thread), std::move(identity), (wrapped ? 2 : 0) + argc, wrapped, true, label, {});
 	}
 
 	static WorkResult index_ref(ScriptHost& host, const IndexRef& index)
@@ -439,14 +455,18 @@ namespace rml::luau
 		settle(std::move(result));
 	}
 
-	void ScriptHost::park(vm::Thread thread, std::string owner, std::string label)
+	// The elevation travels with the thread: the engine resumes a parked coroutine long
+	// after run_chunk returned, and it has to resume with the identity it yielded under.
+	// Dropping the guard here (invalid thread) restores immediately, which is what an
+	// unresumable thread wants.
+	void ScriptHost::park(vm::Thread thread, vm::ScopedIdentity identity, std::string owner, std::string label)
 	{
 		if (!thread.valid())
 		{
 			return;
 		}
 
-		m_parked.push_back(ParkedThread{.thread = std::move(thread), .owner = std::move(owner), .label = std::move(label)});
+		m_parked.push_back(ParkedThread{.thread = std::move(thread), .identity = std::move(identity), .owner = std::move(owner), .label = std::move(label)});
 	}
 
 	void ScriptHost::prune_parked() noexcept
@@ -651,6 +671,9 @@ namespace rml::luau
 
 		for (auto& parked : m_parked)
 		{
+			// Un-elevate the pooled context while the thread is still anchored: releasing
+			// the anchor first would leave the restore reading a collectable state.
+			parked.identity.restore();
 			parked.thread.release();
 		}
 		m_parked.clear();

@@ -6,6 +6,7 @@
 #include "RobloxModLoader/luau/modules/bytecode_cache.hpp"
 #include "RobloxModLoader/luau/script/script_asset.hpp"
 #include "RobloxModLoader/luau/vm/lua_thread.hpp"
+#include "RobloxModLoader/luau/vm/thread_identity.hpp"
 #include <functional>
 #include <unordered_map>
 
@@ -53,7 +54,7 @@ namespace rml::luau
 
 		std::expected<ScriptEnv*, vm::VmError> loader_env() { return env_for(nullptr); }
 
-		void park(vm::Thread thread, std::string owner, std::string label);
+		void park(vm::Thread thread, vm::ScopedIdentity identity, std::string owner, std::string label);
 
 		[[nodiscard]] RefId retain(vm::Ref ref, std::string owner = {});
 		[[nodiscard]] vm::Ref* lookup(RefId id) noexcept;
@@ -75,6 +76,9 @@ namespace rml::luau
 		struct ParkedThread
 		{
 			vm::Thread thread;
+			// Destroyed before the thread anchor above, so the elevation is handed back
+			// while the coroutine is still anchored.
+			vm::ScopedIdentity identity;
 			std::string owner;
 			std::string label;
 		};
