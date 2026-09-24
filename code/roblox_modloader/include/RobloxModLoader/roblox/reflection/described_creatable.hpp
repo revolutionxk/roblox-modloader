@@ -103,9 +103,10 @@ namespace rml::reflection
 			::new (memory) Derived;
 		}
 
+		// Qualified: a virtual call lands in the registry's deleting destructor, which calls back here.
 		static void destroy(void* object)
 		{
-			static_cast<Derived*>(object)->~Derived();
+			static_cast<Derived*>(object)->Derived::~Derived();
 		}
 
 		static inline const RBX::Reflection::ClassDescriptor* s_descriptor{};
