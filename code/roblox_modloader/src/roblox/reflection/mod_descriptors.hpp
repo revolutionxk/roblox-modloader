@@ -33,7 +33,7 @@ namespace rml::reflection
 	{
 		const char* engine_name;
 		const char* descriptor_class;
-		const char* mangled;
+		const char* cpp_name;
 		std::uint8_t type_id;
 		bool is_number;
 		bool is_float;

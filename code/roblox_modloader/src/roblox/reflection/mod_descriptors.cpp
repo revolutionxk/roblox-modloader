@@ -1,14 +1,15 @@
 #include "mod_descriptors.hpp"
 
-#include "RobloxModLoader/memory/i_rtti_provider.hpp"
+#include "RobloxModLoader/memory/rtti_index.hpp"
 #include "RobloxModLoader/memory/pattern.hpp"
 #include "RobloxModLoader/memory/range.hpp"
 #include "RobloxModLoader/memory/string_anchor.hpp"
+#include "RobloxModLoader/util/string.hpp"
 #include "pointers.hpp"
 
 #include <cstring>
 #include <mutex>
-#include <regex>
+#include <ranges>
 #include <unordered_map>
 
 RML_LOG_SCOPE("ModDescriptors");
@@ -67,16 +68,16 @@ namespace rml::reflection
 	const PropertyTypeInfo& property_type_info(const PropertyType type)
 	{
 		static constexpr PropertyTypeInfo infos[] = {
-		    {"bool", "RBX::Reflection::TypedPropertyDescriptor<bool>", "b", RBX::Reflection::TypeId::Bool, true, false},
-		    {"int", "RBX::Reflection::TypedPropertyDescriptor<int>", "i", RBX::Reflection::TypeId::Int, true, false},
-		    {"float", "RBX::Reflection::TypedPropertyDescriptor<float>", "f", RBX::Reflection::TypeId::Float, true, true},
-		    {"double", "RBX::Reflection::TypedPropertyDescriptor<double>", "d", RBX::Reflection::TypeId::Double, true, true},
-		    {"string", "RBX::Reflection::TypedPropertyDescriptor<std::string>", "NSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE", RBX::Reflection::TypeId::String, false, false},
+		    {"bool", "RBX::Reflection::TypedPropertyDescriptor<bool>", "bool", RBX::Reflection::TypeId::Bool, true, false},
+		    {"int", "RBX::Reflection::TypedPropertyDescriptor<int>", "int", RBX::Reflection::TypeId::Int, true, false},
+		    {"float", "RBX::Reflection::TypedPropertyDescriptor<float>", "float", RBX::Reflection::TypeId::Float, true, true},
+		    {"double", "RBX::Reflection::TypedPropertyDescriptor<double>", "double", RBX::Reflection::TypeId::Double, true, true},
+		    {"string", "RBX::Reflection::TypedPropertyDescriptor<std::string>", "std::string", RBX::Reflection::TypeId::String, false, false},
 		};
 		return infos[static_cast<std::size_t>(type)];
 	}
 
-	static constexpr PropertyTypeInfo k_void_type_info{"null", nullptr, "v", 0, false, false};
+	static constexpr PropertyTypeInfo k_void_type_info{"null", nullptr, "void", 0, false, false};
 
 	const void* variant_ops(const PropertyType type)
 	{
@@ -142,54 +143,23 @@ namespace rml::reflection
 
 	static void* event_desc_vtable(const std::vector<EventArgument>& arguments)
 	{
-		std::string mangled_arguments;
-		std::size_t strings = 0;
-		for (const auto& argument : arguments)
-		{
-			if (argument.type == PropertyType::String && strings++)
-				return nullptr;
-			mangled_arguments += property_type_info(argument.type).mangled;
-		}
-		if (arguments.empty())
-			mangled_arguments = "v";
+		auto* const index = memory::rtti();
+		if (!index)
+			return nullptr;
 
-		static std::mutex mutex;
-		static std::unordered_map<std::string, void*> cache;
-		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(mangled_arguments); it != cache.end())
-			return it->second;
-
-		void* vtable = nullptr;
-		if (g_rtti_provider)
-		{
-			const std::regex shape("^N3RBX10Reflection9EventDescINS_[0-9]+[A-Za-z0-9_]+?EFv" + mangled_arguments + "EN3rbx6signalIS[0-9A-Z]*_EEMS2_S[0-9A-Z]*_EE$");
-			const auto found = g_rtti_provider->find_class_vtable_matching("N3RBX10Reflection9EventDescINS_", [&](const std::string_view name) {
-				return std::regex_match(name.begin(), name.end(), shape);
-			});
-			if (found)
-				vtable = *found;
-		}
-		cache[mangled_arguments] = vtable;
-		return vtable;
+		const auto names = arguments | std::views::transform([](const EventArgument& argument) { return std::string_view(property_type_info(argument.type).cpp_name); });
+		const auto found = index->find_matching(std::format("RBX::Reflection::EventDesc<*,void({}),*", utils::join(names, ",")));
+		return found ? *found : nullptr;
 	}
 
 	static void* typed_property_vtable(const PropertyType type)
 	{
-		static std::mutex mutex;
-		static std::unordered_map<PropertyType, void*> cache;
+		auto* const index = memory::rtti();
+		if (!index)
+			return nullptr;
 
-		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(type); it != cache.end())
-			return it->second;
-
-		void* vtable = nullptr;
-		if (g_rtti_provider)
-		{
-			if (const auto found = g_rtti_provider->find_class_vtable(property_type_info(type).descriptor_class))
-				vtable = *found;
-		}
-		cache[type] = vtable;
-		return vtable;
+		const auto found = index->find(property_type_info(type).descriptor_class);
+		return found ? *found : nullptr;
 	}
 
 	std::expected<ModMember, std::string> make_property(void* owner_storage, const std::string& name, const std::string& category, const PropertyType type, void* accessor)

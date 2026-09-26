@@ -3,7 +3,7 @@
 #include "mod_descriptors.hpp"
 
 #include "RobloxModLoader/memory/foreign_call.hpp"
-#include "RobloxModLoader/memory/i_rtti_provider.hpp"
+#include "RobloxModLoader/memory/rtti_index.hpp"
 #include "RobloxModLoader/memory/module.hpp"
 #include "RobloxModLoader/platform/memory/host_image.hpp"
 #include "RobloxModLoader/roblox/reflection/described_creatable.hpp"
@@ -138,10 +138,11 @@ namespace rml::reflection
 			if (!container_totals_match<RBX::Reflection::PropertyDescriptor>(folder) || !container_totals_match<RBX::Reflection::FunctionDescriptor>(folder))
 				return std::unexpected("member container views do not add up to total; MemberDescriptorContainerV2 layout drifted");
 
-			if (!g_rtti_provider)
-				return std::unexpected("no RTTI provider");
+			auto* const index = memory::rtti();
+			if (!index)
+				return std::unexpected("no RTTI index");
 
-			const auto vtable = g_rtti_provider->find_class_vtable("RBX::Instance");
+			const auto vtable = index->find("RBX::Instance");
 			if (!vtable)
 				return std::unexpected("RBX::Instance vtable not found");
 
@@ -201,10 +202,11 @@ namespace rml::reflection
 		if (!base)
 			return std::unexpected(std::format("base class '{}' not found", spec.base));
 
-		if (!g_rtti_provider)
-			return std::unexpected("no RTTI provider; engine vtables are unreachable");
+		auto* const index = memory::rtti();
+		if (!index)
+			return std::unexpected("no RTTI index; engine vtables are unreachable");
 
-		const auto engine_vtable = g_rtti_provider->find_class_vtable("RBX::" + spec.base);
+		const auto engine_vtable = index->find("RBX::" + spec.base);
 		if (!engine_vtable)
 			return std::unexpected(std::format("no engine vtable for RBX::{}", spec.base));
 

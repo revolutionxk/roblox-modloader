@@ -1,8 +1,9 @@
 #include "job_registry.hpp"
 
 #include "RobloxModLoader/internal/common.hpp"
-#include "RobloxModLoader/memory/i_rtti_provider.hpp"
+#include "RobloxModLoader/memory/rtti_index.hpp"
 
+#include <algorithm>
 #include <array>
 
 RML_LOG_SCOPE("JobRegistry");
@@ -247,15 +248,20 @@ namespace rml
 		m_vtable_to_kind.reserve(known_job_classes.size());
 		m_kind_to_vtable.reserve(known_job_classes.size());
 
-		if (!g_rtti_provider)
+		auto* const index = memory::rtti();
+		if (!index)
 		{
-			RML_WARN("Job vtable mapping skipped: no RTTI provider available");
+			RML_WARN("Job vtable mapping skipped: no RTTI index available");
 			return;
 		}
 
+		std::array<std::string_view, known_job_classes.size()> names{};
+		std::ranges::transform(known_job_classes, names.begin(), [](const auto& entry) { return entry.first; });
+		index->prefetch(names);
+
 		for (const auto& [class_name, job_kind] : known_job_classes)
 		{
-			const auto vtable = g_rtti_provider->find_class_vtable(class_name);
+			const auto vtable = index->find(class_name);
 			if (!vtable)
 			{
 				RML_WARN("RTTI for '{}' not found, skipping vtable mapping", class_name);
