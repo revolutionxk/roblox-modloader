@@ -1,6 +1,7 @@
 #include "graphics_registry.hpp"
 
 #include "RobloxModLoader/hooking/vtable_index.hpp"
+#include "RobloxModLoader/memory/vtable.hpp"
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/memory/i_rtti_provider.hpp"
 #include "RobloxModLoader/memory/module.hpp"
@@ -227,7 +228,7 @@ namespace rml::graphics
 			}
 
 			const memory::module image(platform::studio_image_name());
-			auto** vtable = *reinterpret_cast<void***>(device);
+			auto** vtable = memory::vtable_of(device);
 			const auto slots = vtable_index_of(&RBX::Graphics::Device::create_texture_with_hardware_buffer_impl, RBX::Graphics::Texture::Type::Type_2D, RBX::Graphics::Texture::Format::RGBA8, 0u, 0u, 0u, 0u, 0u, 0u, RBX::Graphics::Texture::Usage::Static, std::string{}, nullptr) + 1;
 			for (std::size_t slot = 0; slot < slots; ++slot)
 			{

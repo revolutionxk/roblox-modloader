@@ -18,11 +18,6 @@ namespace script_editor_bg
 {
 	EditorOverlay* g_active = nullptr;
 
-	void** vtable_of(void* object)
-	{
-		return *static_cast<void***>(object);
-	}
-
 	bool is_script_editor(const rml::qt::QObject* widget)
 	{
 		const std::string_view name = widget->class_name();
@@ -120,7 +115,7 @@ namespace script_editor_bg
 		if (paint_slot() == static_cast<std::size_t>(-1))
 			return;
 
-		void** const vtable = vtable_of(editor_handle);
+		void** const vtable = rml::memory::vtable_of(editor_handle);
 		if (m_originals.contains(vtable))
 			return;
 
@@ -159,7 +154,7 @@ namespace script_editor_bg
 
 		paint_fn original = nullptr;
 		if (overlay)
-			if (const auto it = overlay->m_originals.find(vtable_of(self)); it != overlay->m_originals.end())
+			if (const auto it = overlay->m_originals.find(rml::memory::vtable_of(self)); it != overlay->m_originals.end())
 				original = it->second;
 
 		if (overlay)

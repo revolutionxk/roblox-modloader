@@ -7,6 +7,18 @@
 
 namespace rml::memory
 {
+	struct MemberFunctionPointer
+	{
+		std::uintptr_t function;
+		std::intptr_t adjustment;
+	};
+
+	template<class T = void*>
+	[[nodiscard]] inline T* vtable_of(const void* object) noexcept
+	{
+		return *static_cast<T* const*>(object);
+	}
+
 	template<typename Pmf>
 	[[nodiscard]] std::size_t virtual_index(Pmf pmf)
 	{
@@ -27,23 +39,17 @@ namespace rml::memory
 		default: return static_cast<std::size_t>(-1);
 		}
 #else
-		struct ItaniumMemberPointer
-		{
-			std::uintptr_t pointer;
-			std::intptr_t adjustment;
-		};
-
-		static_assert(sizeof(Pmf) >= sizeof(ItaniumMemberPointer),
+		static_assert(sizeof(Pmf) >= sizeof(MemberFunctionPointer),
 		    "member pointer is smaller than the Itanium representation it is decoded as");
 
-		ItaniumMemberPointer member{};
+		MemberFunctionPointer member{};
 		std::memcpy(&member, &pmf, sizeof(member));
 
 		constexpr std::intptr_t virtual_flag = 1;
 		if ((member.adjustment & virtual_flag) == 0)
 			return static_cast<std::size_t>(-1);
 
-		return member.pointer / sizeof(void*);
+		return member.function / sizeof(void*);
 #endif
 	}
 }
