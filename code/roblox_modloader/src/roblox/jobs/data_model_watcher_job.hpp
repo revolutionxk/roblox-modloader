@@ -1,11 +1,11 @@
 #pragma once
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "RobloxModLoader/roblox/job_base.hpp"
 #include "RobloxModLoader/roblox/task_scheduler.hpp"
 
 namespace RBX {
     class DataModel;
     class ScriptContext;
-    enum class DataModelType;
 }
 
 namespace rml::jobs {

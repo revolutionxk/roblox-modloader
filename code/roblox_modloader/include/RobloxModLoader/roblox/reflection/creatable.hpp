@@ -28,6 +28,12 @@ namespace RBX
 	RML_ASSERT_SIZE(ForceConstructionInCreatable, 16);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
+	struct CreatedInstance
+	{
+		std::uintptr_t instance;
+		std::uintptr_t control_block;
+	};
+
 	class ICreator
 	{
 	public:

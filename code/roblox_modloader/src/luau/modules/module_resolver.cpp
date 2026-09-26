@@ -1,5 +1,6 @@
 #include "RobloxModLoader/luau/modules/module_resolver.hpp"
 
+#include "RobloxModLoader/luau/script/script_asset.hpp"
 #include "RobloxModLoader/util/filesystem.hpp"
 #include "RobloxModLoader/util/string.hpp"
 
@@ -19,9 +20,6 @@ namespace rml::luau
 			return env.mod_scripts();
 		}
 	}
-
-	static constexpr std::array kSourceExtensions{std::string_view{".luau"}, std::string_view{".lua"}};
-	static constexpr std::array kInitNames{std::string_view{"init.luau"}, std::string_view{"init.lua"}};
 
 	static std::string join_attempts(const std::vector<std::string>& attempted)
 	{
@@ -144,7 +142,7 @@ namespace rml::luau
 	{
 		std::vector<std::filesystem::path> candidates;
 
-		if (!segments.empty() && segments.back() != "init")
+		if (!segments.empty() && segments.back() != kInitStem)
 		{
 			for (const auto extension : kSourceExtensions)
 			{
@@ -342,7 +340,7 @@ namespace rml::luau
 				}
 			}
 
-			if (text == "init")
+			if (text == kInitStem)
 			{
 				text.clear();
 			}

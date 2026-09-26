@@ -127,7 +127,7 @@ namespace rml::luau::vm
 			return false;
 		}
 
-		RML_INFO("Set thread identity to {} with capabilities 0x{:X}", static_cast<int>(identity), capabilities);
+		RML_INFO("Set thread identity to {} with capabilities 0x{:X}", std::to_underlying(identity), capabilities);
 		return true;
 	}
 

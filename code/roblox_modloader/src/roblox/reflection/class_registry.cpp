@@ -19,7 +19,6 @@ RML_LOG_SCOPE("ClassRegistry");
 namespace rml::reflection
 {
 	static constexpr std::size_t k_class_descriptor_storage = 1024;
-	static constexpr std::uint32_t k_protection_none = 0;
 	static constexpr std::uint16_t k_functionality_persistent_local = 0x1 | 0x8 | 0x10;
 	static constexpr std::size_t k_descriptor_field_offset = 0x18;
 	static constexpr std::int32_t k_force_construction_tag = 6138;
@@ -29,12 +28,6 @@ namespace rml::reflection
 		std::uint64_t descriptor_attributes[2]{};
 		std::uint16_t functionality{k_functionality_persistent_local};
 		std::uint8_t padding[6]{};
-	};
-
-	struct CreatedInstance
-	{
-		std::uintptr_t instance;
-		std::uintptr_t control_block;
 	};
 
 	struct ConstructArgs
@@ -407,8 +400,8 @@ namespace rml::reflection
 		const auto& p = g_pointers->m_roblox_pointers;
 		ConstructArgs args{&m_entry, {context, k_force_construction_tag}};
 
-		CreatedInstance created{};
-		memory::call_returning<CreatedInstance>(reinterpret_cast<void*>(p.create_instance_impl), created, m_entry.descriptor->stable_id, m_entry.layout.size,
+		RBX::CreatedInstance created{};
+		memory::call_returning<RBX::CreatedInstance>(reinterpret_cast<void*>(p.create_instance_impl), created, m_entry.descriptor->stable_id, m_entry.layout.size,
 		    m_entry.layout.align, memory_category_of(m_entry.descriptor), &construct_mod_instance, static_cast<const void*>(&args));
 
 		std::shared_ptr<void> result;

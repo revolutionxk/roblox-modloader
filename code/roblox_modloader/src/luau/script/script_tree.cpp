@@ -142,11 +142,6 @@ namespace rml::luau
 		return std::ranges::any_of(m_nodes, [node](const auto& held) { return held.get() == node; });
 	}
 
-	static bool is_init_file(const std::filesystem::path& path)
-	{
-		return path.stem() == "init";
-	}
-
 	class TreeBuilder final
 	{
 	public:

@@ -87,7 +87,7 @@ namespace rml::jobs
 
 		const auto data_model_type = new_data_model->type;
 
-		LOG_INFO("New DataModel type: {}, notifying mods and scripts", static_cast<int>(data_model_type));
+		LOG_INFO("New DataModel type: {}, notifying mods and scripts", std::to_underlying(data_model_type));
 
 		events::DataModelChangedEvent ev(reinterpret_cast<u64>(old_data_model), reinterpret_cast<u64>(new_data_model), static_cast<int>(data_model_type));
 		events::event_manager().emit(ev);
@@ -104,7 +104,7 @@ namespace rml::jobs
 				}
 				else
 				{
-					LOG_WARN("No global Lua state for DataModel type {}; scripts will not run", static_cast<int>(data_model_type));
+					LOG_WARN("No global Lua state for DataModel type {}; scripts will not run", std::to_underlying(data_model_type));
 				}
 			}
 		}
@@ -187,7 +187,7 @@ namespace rml::jobs
 				continue;
 			}
 
-			LOG_INFO("Detected stale DataModel type: {}, cleaning up", static_cast<int>(data_model_type));
+			LOG_INFO("Detected stale DataModel type: {}, cleaning up", std::to_underlying(data_model_type));
 
 			stale_types.push_back(data_model_type);
 			m_data_models.erase(data_model_type);

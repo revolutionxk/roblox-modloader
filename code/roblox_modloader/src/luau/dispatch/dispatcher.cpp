@@ -8,8 +8,6 @@ RML_LOG_SCOPE("Dispatcher");
 
 namespace rml::luau
 {
-	static constexpr auto kLuauRefTag = static_cast<dotnet::InteropValueTag>(10);
-
 	static dotnet::InteropVariant to_variant(const Value& value)
 	{
 		return std::visit(
@@ -33,7 +31,7 @@ namespace rml::luau
 			    else if constexpr (std::is_same_v<T, LuauRefHandle>)
 			    {
 				    dotnet::InteropVariant out{};
-				    out.tag = kLuauRefTag;
+				    out.tag = dotnet::InteropValueTag::LuauRef;
 				    out.as_uint64 = held.id;
 				    return out;
 			    }

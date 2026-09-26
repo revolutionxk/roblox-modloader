@@ -116,7 +116,7 @@ namespace rml::luau
 
 		if (const auto pending = m_dispatcher.pending_count(); pending > 0)
 		{
-			RML_INFO("Pumping {} queued item(s) for DataModel type {}", pending, static_cast<int>(m_type));
+			RML_INFO("Pumping {} queued item(s) for DataModel type {}", pending, std::to_underlying(m_type));
 		}
 
 		m_dispatcher.pump(*this, budget);
@@ -619,7 +619,7 @@ namespace rml::luau
 			++posted;
 		}
 
-		RML_INFO("Reloaded mod '{}' on DataModel type {}: {} module(s) dropped, {} script(s) queued", mod_name, static_cast<int>(m_type), dropped, posted);
+		RML_INFO("Reloaded mod '{}' on DataModel type {}: {} module(s) dropped, {} script(s) queued", mod_name, std::to_underlying(m_type), dropped, posted);
 
 		return {};
 	}

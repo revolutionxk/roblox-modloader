@@ -11,6 +11,7 @@
 
 namespace rml::reflection
 {
+	inline constexpr std::uint32_t k_protection_none = 0;
 	inline constexpr std::size_t k_member_storage = 512;
 	inline constexpr std::size_t k_property_accessor_offset = 144;
 	inline constexpr std::size_t k_event_signature_offset = 0x48;

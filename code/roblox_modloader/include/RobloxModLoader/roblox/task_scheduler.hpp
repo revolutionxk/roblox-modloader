@@ -1,4 +1,5 @@
 #pragma once
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "job.hpp"
 #include "task_scheduler.job.hpp"
 #include "i_task_scheduler.hpp"
@@ -12,7 +13,6 @@ namespace rml {
 
 namespace RBX {
     class ScriptContext;
-    enum class DataModelType;
     class DataModel;
 
     class TaskScheduler final : public rml::ITaskScheduler {

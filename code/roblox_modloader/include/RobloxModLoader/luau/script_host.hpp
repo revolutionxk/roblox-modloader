@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "RobloxModLoader/luau/dispatch/dispatcher.hpp"
 #include "RobloxModLoader/luau/env/binding.hpp"
 #include "RobloxModLoader/luau/env/closure_registry.hpp"
@@ -8,11 +9,6 @@
 #include "RobloxModLoader/luau/vm/lua_thread.hpp"
 #include <functional>
 #include <unordered_map>
-
-namespace RBX
-{
-	enum class DataModelType : std::int32_t;
-}
 
 namespace rml::luau
 {

@@ -6,6 +6,7 @@
 
 #include "RobloxModLoader/logger/logger.hpp"
 #include "RobloxModLoader/roblox/data_model.hpp"
+#include "RobloxModLoader/roblox/reflection/creatable.hpp"
 #include "RobloxModLoader/roblox/reflection/function_descriptor.hpp"
 #include "RobloxModLoader/roblox/task_scheduler.hpp"
 #include "RobloxModLoader/util/memory.hpp"
@@ -387,14 +388,8 @@ namespace rml::dotnet
 			{
 				const auto atom = g_pointers->m_roblox_pointers.get_string_atom(class_name);
 
-				struct CreatedInstance
-				{
-					uintptr_t instance;
-					uintptr_t control_block;
-				};
-
-				CreatedInstance created{};
-				memory::call_returning<CreatedInstance>(
+				RBX::CreatedInstance created{};
+				memory::call_returning<RBX::CreatedInstance>(
 				    reinterpret_cast<void*>(g_pointers->m_roblox_pointers.object_create_by_name),
 				    created,
 				    uintptr_t{0},
