@@ -543,6 +543,12 @@ namespace rml::dotnet
 		case MarshalKind::Blittable:
 			out = blittable_value(reinterpret_cast<const void*>(return_slot_address), plan.byte_size);
 			return;
+		case MarshalKind::Bool:
+			out = bool_value(static_cast<std::uint8_t>(raw_return) != 0);
+			return;
+		case MarshalKind::Number:
+			out = int64_value(type->type_id == RBX::Reflection::TypeId::Int ? static_cast<std::int32_t>(raw_return) : static_cast<std::int64_t>(raw_return));
+			return;
 		default: break;
 		}
 
