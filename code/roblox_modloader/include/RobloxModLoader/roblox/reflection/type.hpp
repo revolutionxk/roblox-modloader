@@ -2,6 +2,7 @@
 
 #include "descriptor.hpp"
 #include "member.hpp"
+#include "RobloxModLoader/rml_export.hpp"
 
 #include <cstddef>
 #include <span>
@@ -30,6 +31,36 @@ namespace RBX::Reflection
 
 		Type() = delete;
 
+		RML_EXPORT static std::span<const Type* const> get_all_types();
+
+		template<class T>
+		static const Type& get_singleton();
+
+		template<class T>
+		static const Type& singleton()
+		{
+			return get_singleton<T>();
+		}
+
+		template<class T>
+		static const Type* try_singleton() noexcept
+		{
+			try
+			{
+				return &get_singleton<T>();
+			}
+			catch (...)
+			{
+				return nullptr;
+			}
+		}
+
+		template<class T>
+		bool is_type() const
+		{
+			return this == try_singleton<T>();
+		}
+
 		bool operator==(const Type& other) const noexcept
 		{
 			return this == &other;
@@ -39,6 +70,19 @@ namespace RBX::Reflection
 			return this != &other;
 		}
 	};
+
+	template<>
+	RML_EXPORT const Type& Type::get_singleton<void>();
+	template<>
+	RML_EXPORT const Type& Type::get_singleton<bool>();
+	template<>
+	RML_EXPORT const Type& Type::get_singleton<int>();
+	template<>
+	RML_EXPORT const Type& Type::get_singleton<float>();
+	template<>
+	RML_EXPORT const Type& Type::get_singleton<double>();
+	template<>
+	RML_EXPORT const Type& Type::get_singleton<std::string>();
 
 	template<typename T>
 	class TType : public Type

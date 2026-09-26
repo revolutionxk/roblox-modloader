@@ -32,6 +32,13 @@ namespace rml
 				},
 			},
 			{
+				"TYPE_REGISTRY",
+				"FF 83 00 D1 FD 7B 01 A9 FD 43 00 91 ? ? ? ? ? ? ? ? 08 C1 BF 38 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? E0 07 00 F9 E1 23 00 91 E0 03 08 AA ? ? ? ? FD 7B 41 A9 FF 83 00 91 C0 03 5F D6",
+				[](const memory::handle ptr) {
+					g_pointers->m_roblox_pointers.type_registry = ptr.add(0x1C).adrp().as<const std::vector<const RBX::Reflection::Type*>*>();
+				},
+			},
+			{
 				"CREATABLE_GET_CREATOR",
 				"FF C3 00 D1 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F3 03 00 AA ? ? ? ? F3 07 00 F9 ? ? ? ? ? ? ? ? E1 23 00 91",
 				[](const memory::handle ptr) {

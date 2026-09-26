@@ -1,9 +1,7 @@
 #include "mod_descriptors.hpp"
 
 #include "RobloxModLoader/memory/rtti_index.hpp"
-#include "RobloxModLoader/memory/pattern.hpp"
-#include "RobloxModLoader/memory/range.hpp"
-#include "RobloxModLoader/memory/string_anchor.hpp"
+#include "RobloxModLoader/roblox/reflection/type.hpp"
 #include "RobloxModLoader/util/string.hpp"
 #include "pointers.hpp"
 
@@ -68,16 +66,14 @@ namespace rml::reflection
 	const PropertyTypeInfo& property_type_info(const PropertyType type)
 	{
 		static constexpr PropertyTypeInfo infos[] = {
-		    {"bool", "RBX::Reflection::TypedPropertyDescriptor<bool>", "bool", RBX::Reflection::TypeId::Bool, true, false},
-		    {"int", "RBX::Reflection::TypedPropertyDescriptor<int>", "int", RBX::Reflection::TypeId::Int, true, false},
-		    {"float", "RBX::Reflection::TypedPropertyDescriptor<float>", "float", RBX::Reflection::TypeId::Float, true, true},
-		    {"double", "RBX::Reflection::TypedPropertyDescriptor<double>", "double", RBX::Reflection::TypeId::Double, true, true},
-		    {"string", "RBX::Reflection::TypedPropertyDescriptor<std::string>", "std::string", RBX::Reflection::TypeId::String, false, false},
+		    {"RBX::Reflection::TypedPropertyDescriptor<bool>", "bool", RBX::Reflection::TypeId::Bool, true, false},
+		    {"RBX::Reflection::TypedPropertyDescriptor<int>", "int", RBX::Reflection::TypeId::Int, true, false},
+		    {"RBX::Reflection::TypedPropertyDescriptor<float>", "float", RBX::Reflection::TypeId::Float, true, true},
+		    {"RBX::Reflection::TypedPropertyDescriptor<double>", "double", RBX::Reflection::TypeId::Double, true, true},
+		    {"RBX::Reflection::TypedPropertyDescriptor<std::string>", "std::string", RBX::Reflection::TypeId::String, false, false},
 		};
 		return infos[static_cast<std::size_t>(type)];
 	}
-
-	static constexpr PropertyTypeInfo k_void_type_info{"null", nullptr, "void", 0, false, false};
 
 	const void* variant_ops(const PropertyType type)
 	{
@@ -92,53 +88,23 @@ namespace rml::reflection
 		return nullptr;
 	}
 
-#if defined(RML_WINDOWS)
-	static const RBX::Reflection::Type* find_type_singleton(const PropertyTypeInfo& info)
-	{
-		return nullptr;
-	}
-#else
-	static const RBX::Reflection::Type* find_type_singleton(const PropertyTypeInfo& info)
-	{
-		const auto mov_w = [](const unsigned reg, const unsigned value) { return std::format("{:02X} {:02X} 80 52", ((value << 5) | reg) & 0xFF, (value << 5) >> 8); };
-		const memory::pattern shape(
-		    "F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 ? ? ? ? ? ? ? ? 08 C1 BF 38 ? ? ? ? ? ? ? ? ? ? ? ? FD 7B 41 A9 F4 4F C2 A8 C0 03 5F D6 "
-		    "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? "
-		    + mov_w(2, info.type_id) + " " + mov_w(3, info.is_number) + " " + mov_w(4, info.is_float) + " 05 00 80 52 06 00 80 52");
-
-		for (const auto& function : memory::functions_referencing_string(info.engine_name))
-		{
-			const memory::range body(memory::handle(function.start), function.size);
-			const auto hit = body.scan(shape);
-			if (!hit || hit->as<void*>() != function.start)
-				continue;
-
-			RML_DEBUG("Type::getSingleton<{}> at 0x{:X}", info.engine_name, reinterpret_cast<std::uintptr_t>(function.start));
-			return reinterpret_cast<const RBX::Reflection::Type* (*)()>(function.start)();
-		}
-
-		return nullptr;
-	}
-#endif
-
 	const RBX::Reflection::Type* type_singleton(const PropertyType type)
 	{
-		static std::mutex mutex;
-		static std::unordered_map<PropertyType, const RBX::Reflection::Type*> cache;
-
-		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(type); it != cache.end())
-			return it->second;
-
-		const auto singleton = find_type_singleton(property_type_info(type));
-		cache[type] = singleton;
-		return singleton;
+		using RBX::Reflection::Type;
+		switch (type)
+		{
+		case PropertyType::Bool: return Type::try_singleton<bool>();
+		case PropertyType::Int: return Type::try_singleton<int>();
+		case PropertyType::Float: return Type::try_singleton<float>();
+		case PropertyType::Double: return Type::try_singleton<double>();
+		case PropertyType::String: return Type::try_singleton<std::string>();
+		}
+		return nullptr;
 	}
 
 	const RBX::Reflection::Type* void_type_singleton()
 	{
-		static const auto singleton = find_type_singleton(k_void_type_info);
-		return singleton;
+		return RBX::Reflection::Type::try_singleton<void>();
 	}
 
 	static void* event_desc_vtable(const std::vector<EventArgument>& arguments)
@@ -171,7 +137,7 @@ namespace rml::reflection
 		const auto& info = property_type_info(type);
 		const auto engine_type = type_singleton(type);
 		if (!engine_type)
-			return std::unexpected(std::format("Type::getSingleton<{}> was not found; property '{}' skipped", info.engine_name, name));
+			return std::unexpected(std::format("Type::singleton<{}> was not found; property '{}' skipped", info.cpp_name, name));
 
 		const auto vtable = typed_property_vtable(type);
 		if (!vtable)
@@ -226,7 +192,7 @@ namespace rml::reflection
 
 		const auto void_type = void_type_singleton();
 		if (!void_type)
-			return std::unexpected("Type::getSingleton<void> was not found");
+			return std::unexpected("Type::singleton<void> was not found");
 
 		std::vector<RBX::Reflection::SignatureDescriptor::Argument> items;
 		items.reserve(arguments.size());
@@ -234,7 +200,7 @@ namespace rml::reflection
 		{
 			const auto type = type_singleton(arguments[i].type);
 			if (!type)
-				return std::unexpected(std::format("Type::getSingleton<{}> was not found; event '{}' skipped", property_type_info(arguments[i].type).engine_name, name));
+				return std::unexpected(std::format("Type::singleton<{}> was not found; event '{}' skipped", property_type_info(arguments[i].type).cpp_name, name));
 
 			const auto argument_name = arguments[i].name.empty() ? std::format("arg{}", i + 1) : arguments[i].name;
 			items.push_back({p.name_declare(argument_name.c_str()), type, nullptr, nullptr, RBX::Reflection::Variant{}});

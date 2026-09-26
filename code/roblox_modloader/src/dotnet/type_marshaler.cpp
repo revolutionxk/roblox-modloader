@@ -9,6 +9,7 @@
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "RobloxModLoader/util/memory.hpp"
 #include "pointers.hpp"
+#include "roblox/reflection/type_index.hpp"
 
 #include <array>
 #include <cstring>
@@ -129,24 +130,6 @@ namespace rml::dotnet
 		delete tuple;
 	}
 
-	const RBX::Reflection::Type* TypeMarshaler::find_type_by_id(const int type_id) noexcept
-	{
-		if (!g_pointers || !g_pointers->m_roblox_pointers.type_registry)
-			return nullptr;
-
-		const auto registry = g_pointers->m_roblox_pointers.type_registry;
-
-		if (!registry || registry->size() > 100000)
-			return nullptr;
-
-		for (const auto* type : *registry)
-		{
-			if (type && type->type_id == type_id)
-				return type;
-		}
-		return nullptr;
-	}
-
 	bool TypeMarshaler::build_tuple_variant(const InteropVariant* args, const uint32_t count, const RBX::Reflection::Type* tuple_type, RBX::Reflection::Variant& out)
 	{
 		if (!tuple_type)
@@ -157,7 +140,7 @@ namespace rml::dotnet
 
 		for (uint32_t i = 0; i < count; ++i)
 		{
-			const auto* type = find_type_by_id(tag_to_type_id(args[i].tag));
+			const auto* type = reflection::TypeIndex::find_by_id(tag_to_type_id(args[i].tag));
 			if (!type)
 				continue;
 

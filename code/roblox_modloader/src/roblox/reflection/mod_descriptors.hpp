@@ -31,7 +31,6 @@ namespace rml::reflection
 
 	struct PropertyTypeInfo
 	{
-		const char* engine_name;
 		const char* descriptor_class;
 		const char* cpp_name;
 		std::uint8_t type_id;

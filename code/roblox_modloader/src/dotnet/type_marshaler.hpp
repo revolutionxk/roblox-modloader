@@ -54,7 +54,6 @@ namespace rml::dotnet
 
 		static void encode_return_value(const RBX::Reflection::Type* type, uint64_t raw_return, uintptr_t return_slot_address, InteropVariant& out) noexcept;
 
-		[[nodiscard]] static const RBX::Reflection::Type* find_type_by_id(int type_id) noexcept;
 
 		[[nodiscard]] static bool build_tuple_variant(const InteropVariant* args, uint32_t count, const RBX::Reflection::Type* tuple_type, RBX::Reflection::Variant& out);
 	};
