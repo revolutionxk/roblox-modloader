@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RobloxModLoader/util/compile_time_helpers.hpp"
+#include "RobloxModLoader/util/compile_time.hpp"
 #include "handle.hpp"
 
 #include <array>
@@ -21,8 +21,8 @@ namespace rml::memory
 
 	struct anchor_path
 	{
-		cstxpr_capped_str<128> m_text;
-		cstxpr_capped_str<64> m_origin;
+		utils::capped_string<128> m_text;
+		utils::capped_string<64> m_origin;
 		std::array<anchor_step, 2> m_steps{};
 		std::array<std::uint8_t, 2> m_indices{};
 		std::uint8_t m_step_count{};

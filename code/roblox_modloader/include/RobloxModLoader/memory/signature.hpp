@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RobloxModLoader/util/compile_time_helpers.hpp"
+#include "RobloxModLoader/util/compile_time.hpp"
 #include "anchor.hpp"
 
 #include <cstddef>
@@ -9,8 +9,8 @@ namespace rml::memory
 {
 	struct signature
 	{
-		cstxpr_capped_str<64> m_name;
-		cstxpr_capped_str<768> m_ida;
+		utils::capped_string<64> m_name;
+		utils::capped_string<768> m_ida;
 		void (*m_on_signature_found)(memory::handle ptr){};
 		anchor_path m_anchor;
 

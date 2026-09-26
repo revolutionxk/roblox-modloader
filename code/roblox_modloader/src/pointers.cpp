@@ -14,7 +14,7 @@ namespace rml
 		const auto roblox_region = memory::module(platform::studio_image_name());
 		const auto [m_roblox_batch, m_hash] = get_roblox_batch();
 
-		constexpr cstxpr_str roblox_batch_name{"roblox"};
+		constexpr utils::fixed_string roblox_batch_name{"roblox"};
 
 		run_batch<roblox_batch_name>(m_roblox_batch, m_hash, roblox_region);
 
