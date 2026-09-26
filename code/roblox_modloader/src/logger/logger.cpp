@@ -10,6 +10,7 @@
 #include "spdlog/sinks/base_sink.h"
 #include "spdlog/sinks/daily_file_sink.h"
 #include "RobloxModLoader/logger/platform_console.hpp"
+#include "RobloxModLoader/util/hash.hpp"
 #include "filesystem/directory.hpp"
 
 #include <atomic>
@@ -86,9 +87,7 @@ namespace
 	std::string source_color(const spdlog::string_view_t name)
 	{
 		static constexpr int palette[] = {39, 75, 114, 150, 179, 215, 210, 207, 141, 116, 108, 180, 81, 222};
-		std::uint32_t hash = 2166136261u;
-		for (size_t i = 0; i < name.size(); ++i)
-			hash = (hash ^ static_cast<unsigned char>(name.data()[i])) * 16777619u;
+		const auto hash = rml::utils::fnv1a_32(std::string_view(name.data(), name.size()));
 		const int code = palette[hash % std::size(palette)];
 		return spdlog::fmt_lib::format("\x1b[1;38;5;{}m", code);
 	}

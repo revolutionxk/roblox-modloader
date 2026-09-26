@@ -163,7 +163,7 @@ namespace rml::memory
 
 		static std::uint32_t name_hash(const signature& entry) noexcept
 		{
-			return signature_hasher::fnv1a_32(entry.m_name.c_str());
+			return utils::fnv1a_32(entry.m_name.view());
 		}
 
 		static std::optional<CacheData> load() noexcept
