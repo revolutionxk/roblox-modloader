@@ -9,9 +9,9 @@
 #include "RobloxModLoader/roblox/graphics/adorn_render.hpp"
 #include "RobloxModLoader/roblox/graphics/device.hpp"
 #include "RobloxModLoader/roblox/graphics/shader_manager.hpp"
+#include "RobloxModLoader/util/string.hpp"
 
 #include <algorithm>
-#include <cctype>
 
 RML_LOG_SCOPE("Graphics");
 
@@ -20,17 +20,6 @@ namespace rml::graphics
 	static constexpr unsigned k_max_callback_failures = 2;
 	static constexpr std::size_t k_min_detour_target_size = 32;
 	static constexpr std::uint64_t k_adorn_stale_frames = 8;
-
-	static bool printable(const std::string& text)
-	{
-		return !text.empty() && text.size() < 64
-		    && std::all_of(
-		        text.begin(),
-		        text.end(),
-		        [](const unsigned char c) {
-			        return std::isprint(c);
-		        });
-	}
 
 	GraphicsRegistry& GraphicsRegistry::instance()
 	{
@@ -256,7 +245,7 @@ namespace rml::graphics
 
 			const auto language = device->get_shading_language();
 			const auto level = device->get_feature_level();
-			if (!printable(language) || !printable(level))
+			if (!utils::is_printable(language, 64) || !utils::is_printable(level, 64))
 			{
 				RML_ERROR("graphics surface disabled: Device strings are not printable");
 				return false;

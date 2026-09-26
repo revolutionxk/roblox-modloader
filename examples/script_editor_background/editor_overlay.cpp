@@ -8,6 +8,7 @@
 #include <RobloxModLoader/qt/qrect.hpp>
 #include <RobloxModLoader/qt/qstring.hpp>
 #include <RobloxModLoader/qt/qwidget.hpp>
+#include <RobloxModLoader/util/string.hpp>
 #include <algorithm>
 #include <cmath>
 #include <string_view>
@@ -173,10 +174,7 @@ namespace script_editor_bg
 		if (!path.has_extension())
 			return false;
 
-		std::string ext = path.extension().string();
-		std::ranges::transform(ext, ext.begin(), [](const unsigned char c) {
-			return static_cast<char>(std::tolower(c));
-		});
+		const auto ext = rml::utils::to_lower(path.extension().string());
 		return ext == ".gif" || ext == ".webp" || ext == ".apng" || ext == ".mng";
 	}
 

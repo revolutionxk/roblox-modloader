@@ -4,6 +4,7 @@
 #include "RobloxModLoader/luau/vm/chunk.hpp"
 #include "RobloxModLoader/luau/vm/stack_guard.hpp"
 #include "RobloxModLoader/luau/vm/thread_identity.hpp"
+#include "RobloxModLoader/util/string.hpp"
 
 RML_LOG_SCOPE("Modules");
 
@@ -123,16 +124,9 @@ namespace rml::luau
 
 	std::string ModuleRegistry::describe_cycle(const ResolvedModule& repeated) const
 	{
-		std::string rendered{"module cycle: "};
-
-		for (const auto& entry : m_loading)
-		{
-			rendered += entry.logical;
-			rendered += " -> ";
-		}
-
-		rendered += repeated.logical;
-		return rendered;
+		auto chain = m_loading | std::views::transform(&ResolvedModule::logical) | std::ranges::to<std::vector<std::string>>();
+		chain.push_back(repeated.logical);
+		return "module cycle: " + utils::join(chain, " -> ");
 	}
 
 	void ModuleRegistry::invalidate(const ModuleId& id)

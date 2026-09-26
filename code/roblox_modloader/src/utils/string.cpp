@@ -1,10 +1,10 @@
-#include "string.hpp"
+#include "RobloxModLoader/util/string.hpp"
 
 #include "RobloxModLoader/internal/common.hpp"
 
 namespace rml::utils
 {
-	std::wstring string::to_wide(const std::string_view utf8)
+	std::wstring to_wide(const std::string_view utf8)
 	{
 		if (utf8.empty())
 			return {};
