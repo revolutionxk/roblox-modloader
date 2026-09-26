@@ -5,16 +5,9 @@
 #include "RobloxModLoader/memory/batch.hpp"
 #include "RobloxModLoader/memory/handle.hpp"
 #include "RobloxModLoader/memory/string_anchor.hpp"
+#include "RobloxModLoader/platform/memory/host_image.hpp"
 #include "filesystem/directory.hpp"
 
-#if defined(RML_WINDOWS)
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
-	#include <Windows.h>
-#elif defined(RML_MACOS)
-	#include <mach-o/loader.h>
-#endif
 
 #include <algorithm>
 #include <array>
@@ -40,7 +33,7 @@ namespace rml::memory
 		static bool run(std::span<const signature> entries, range region, std::uint32_t sigset_hash)
 		{
 			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
-			const ExeIdentity id = read_exe_identity(region);
+			const platform::ImageIdentity id = platform::studio_image_identity();
 
 			if (const auto cached = load(); cached && id.image_size != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
 			{
@@ -75,7 +68,7 @@ namespace rml::memory
 
 		static std::optional<handle> find(const signature& entry, range region, std::uint32_t sigset_hash)
 		{
-			const ExeIdentity id = read_exe_identity(region);
+			const platform::ImageIdentity id = platform::studio_image_identity();
 			const auto cached = load();
 			if (!cached || id.image_size == 0 || cached->sigset_hash != sigset_hash || cached->id != id)
 				return std::nullopt;
@@ -106,55 +99,12 @@ namespace rml::memory
 		static constexpr std::uint32_t FORMAT = 2;
 		static constexpr std::uint32_t MAX_ENTRIES = 100000;
 
-		struct ExeIdentity
-		{
-			std::array<std::uint8_t, 16> stamp{};
-			std::uint32_t image_size{};
-
-			bool operator==(const ExeIdentity&) const = default;
-		};
-
 		struct CacheData
 		{
-			ExeIdentity id{};
+			platform::ImageIdentity id{};
 			std::uint32_t sigset_hash{};
 			std::unordered_map<std::uint32_t, std::uint32_t> rvas;
 		};
-
-		static ExeIdentity read_exe_identity(const range region) noexcept
-		{
-			ExeIdentity id{};
-			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
-			if (!base) return id;
-
-#if defined(RML_WINDOWS)
-			const auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
-			if (dos->e_magic != IMAGE_DOS_SIGNATURE) return id;
-
-			const auto nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
-			if (nt->Signature != IMAGE_NT_SIGNATURE) return id;
-
-			std::memcpy(id.stamp.data(), &nt->FileHeader.TimeDateStamp, sizeof(nt->FileHeader.TimeDateStamp));
-			id.image_size = nt->OptionalHeader.SizeOfImage;
-#elif defined(RML_MACOS)
-			const auto header = reinterpret_cast<const mach_header_64*>(base);
-			if (header->magic != MH_MAGIC_64)
-				return id;
-
-			const auto* command = reinterpret_cast<const load_command*>(header + 1);
-			for (std::uint32_t i = 0; i < header->ncmds; ++i)
-			{
-				if (command->cmd == LC_UUID)
-				{
-					std::memcpy(id.stamp.data(), reinterpret_cast<const uuid_command*>(command)->uuid, id.stamp.size());
-					id.image_size = static_cast<std::uint32_t>(region.size());
-					break;
-				}
-				command = reinterpret_cast<const load_command*>(reinterpret_cast<const std::byte*>(command) + command->cmdsize);
-			}
-#endif
-			return id;
-		}
 
 		static std::filesystem::path cache_path()
 		{
@@ -244,7 +194,7 @@ namespace rml::memory
 			}
 		}
 
-		static bool apply(std::span<const signature> entries, const std::uintptr_t base, const ExeIdentity& id,
+		static bool apply(std::span<const signature> entries, const std::uintptr_t base, const platform::ImageIdentity& id,
 		                  const CacheData& cached)
 		{
 			for (const auto& entry : entries)
