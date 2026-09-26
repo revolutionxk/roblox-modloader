@@ -12,6 +12,7 @@
 #include <RobloxModLoader/qt/qslider.hpp>
 #include <RobloxModLoader/qt/qstring.hpp>
 #include <RobloxModLoader/qt/qt_integration.hpp>
+#include <RobloxModLoader/util/shell.hpp>
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -24,12 +25,6 @@
 
 #if defined(RML_WINDOWS)
 	#include <windows.h>
-#endif
-
-#if defined(RML_WINDOWS)
-	#include <shellapi.h>
-
-	#pragma comment(lib, "shell32.lib")
 #endif
 
 using namespace script_editor_bg;
@@ -153,17 +148,6 @@ private:
 			m_overlay->hook_open_editors();
 	}
 
-
-	static void open_in_default_editor(const std::filesystem::path& path)
-	{
-#if defined(RML_WINDOWS)
-		ShellExecuteW(nullptr, L"open", path.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-#elif defined(RML_MACOS)
-		std::system(("open \"" + path.string() + "\"").c_str());
-#else
-		std::system(("xdg-open \"" + path.string() + "\"").c_str());
-#endif
-	}
 
 	void open_panel()
 	{
@@ -311,7 +295,7 @@ private:
 		{
 			open_button->setGeometry(20, 292, 165, 30);
 			open_button->on_clicked([this] {
-				open_in_default_editor(m_store->path());
+				rml::utils::shell::open(m_store->path());
 			});
 		}
 

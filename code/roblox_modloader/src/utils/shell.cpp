@@ -1,4 +1,4 @@
-#include "shell.hpp"
+#include "RobloxModLoader/util/shell.hpp"
 
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/util/string.hpp"
@@ -17,6 +17,8 @@ namespace rml::utils
 	{
 #if defined(RML_WINDOWS)
 		ShellExecuteW(nullptr, L"open", path.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#elif defined(RML_MACOS)
+		std::system(("open \"" + path.string() + "\" >/dev/null 2>&1 &").c_str());
 #else
 		std::system(("xdg-open \"" + path.string() + "\" >/dev/null 2>&1 &").c_str());
 #endif

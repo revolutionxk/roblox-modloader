@@ -13,7 +13,7 @@
 #include "logo.hpp"
 #include "config/config_manager.hpp"
 #include "filesystem/directory.hpp"
-#include "utils/shell.hpp"
+#include "RobloxModLoader/util/shell.hpp"
 
 #if RML_ENABLE_LUAU
 	#include "RobloxModLoader/luau/script_runtime.hpp"
