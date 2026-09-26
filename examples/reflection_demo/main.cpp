@@ -1,3 +1,4 @@
+#include <RobloxModLoader/internal/roblox_pointers.hpp>
 #include <RobloxModLoader/logger/logger.hpp>
 #include <RobloxModLoader/mod/init_context.hpp>
 #include <RobloxModLoader/mod/mod_base.hpp>
@@ -10,9 +11,10 @@
 static std::shared_ptr<spdlog::logger> g_log;
 static int g_workspace_counter;
 
+// The loader exports no bare lua_* symbols on Windows; mods reach the Lua API through its pointers.
 static int workspace_ping(RBX::Instance*, lua_State* L)
 {
-	lua_pushstring(L, "pong");
+	get_roblox_pointers()->lua_pushstring(L, "pong");
 	return 1;
 }
 
@@ -39,7 +41,7 @@ public:
 		speed = 0.f;
 		label = "reset";
 		fire(&ModThing::speed_reset, previous);
-		lua_pushnumber(L, previous);
+		get_roblox_pointers()->lua_pushnumber(L, previous);
 		return 1;
 	}
 
