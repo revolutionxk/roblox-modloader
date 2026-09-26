@@ -5,6 +5,7 @@
 
 #include "RobloxModLoader/memory/module_utils.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <dbghelp.h>
 #include <filesystem>
@@ -217,13 +218,8 @@ namespace rml::exception_filter
 	{
 		const DWORD code = exception_pointers->ExceptionRecord->ExceptionCode;
 		constexpr DWORD NON_FATAL_CODES[] = {0xE06D7363, 0xE0434352, 0x04242420, EXCEPTION_BREAKPOINT, EXCEPTION_SINGLE_STEP, DBG_PRINTEXCEPTION_C, DBG_PRINTEXCEPTION_WIDE_C, 0x406D1388, 0x000006BA, 0xC0000135, 0xC0000138, 0xC0000139};
-		for (const DWORD non_fatal : NON_FATAL_CODES)
-		{
-			if (code == non_fatal)
-			{
-				return EXCEPTION_CONTINUE_SEARCH;
-			}
-		}
+		if (std::ranges::contains(NON_FATAL_CODES, code))
+			return EXCEPTION_CONTINUE_SEARCH;
 
 		thread_local bool in_veh = false;
 		if (in_veh)

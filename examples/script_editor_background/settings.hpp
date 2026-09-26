@@ -3,6 +3,7 @@
 #include <RobloxModLoader/config/mod_settings.hpp>
 #include <algorithm>
 #include <array>
+#include <iterator>
 #include <string>
 #include <string_view>
 
@@ -93,22 +94,23 @@ namespace script_editor_bg
 		return ScaleMode::Fill;
 	}
 
+	template<class T, std::size_t N>
+	[[nodiscard]] constexpr T next_in(const std::array<T, N>& order, const T current)
+	{
+		const auto it = std::ranges::find(order, current);
+		return it == order.end() || std::next(it) == order.end() ? order.front() : *std::next(it);
+	}
+
 	[[nodiscard]] inline ScaleMode next_scale_mode(const ScaleMode mode)
 	{
 		constexpr std::array order{ScaleMode::Fill, ScaleMode::Fit, ScaleMode::Stretch, ScaleMode::Center, ScaleMode::Tile};
-		for (std::size_t i = 0; i < order.size(); ++i)
-			if (order[i] == mode)
-				return order[(i + 1) % order.size()];
-		return ScaleMode::Fill;
+		return next_in(order, mode);
 	}
 
 	[[nodiscard]] inline Alignment next_alignment(const Alignment alignment)
 	{
 		constexpr std::array order{Alignment::Center, Alignment::TopLeft, Alignment::Top, Alignment::TopRight, Alignment::Left, Alignment::Right, Alignment::BottomLeft, Alignment::Bottom, Alignment::BottomRight};
-		for (std::size_t i = 0; i < order.size(); ++i)
-			if (order[i] == alignment)
-				return order[(i + 1) % order.size()];
-		return Alignment::Center;
+		return next_in(order, alignment);
 	}
 
 	[[nodiscard]] inline std::string_view to_string(const Alignment alignment)

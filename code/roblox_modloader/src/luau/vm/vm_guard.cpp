@@ -2,11 +2,7 @@
 
 #include "RobloxModLoader/luau/vm/stack.hpp"
 
-#if defined(_MSC_VER)
-	#define RML_UNREACHABLE() __assume(0)
-#else
-	#define RML_UNREACHABLE() __builtin_unreachable()
-#endif
+#include <utility>
 
 namespace rml::luau::vm
 {
@@ -19,6 +15,6 @@ namespace rml::luau::vm
 
 		lua_error(L);
 
-		RML_UNREACHABLE();
+		std::unreachable();
 	}
 }

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <cstring>
 #include <format>
@@ -45,19 +46,26 @@ namespace rml::assets::mesh
 		return index < 0 ? static_cast<int>(count) + index : index - 1;
 	}
 
+	static int to_int(const std::string_view text)
+	{
+		int value = 0;
+		std::from_chars(text.data(), text.data() + text.size(), value);
+		return value;
+	}
+
 	static bool parse_corner(const std::string& token, int& position, int& texcoord, int& normal)
 	{
 		position = texcoord = normal = 0;
 		const auto first = token.find('/');
-		position = std::atoi(token.substr(0, first).c_str());
+		position = to_int(std::string_view(token).substr(0, first));
 		if (first == std::string::npos)
 			return position != 0;
 		const auto second = token.find('/', first + 1);
 		const auto tex = token.substr(first + 1, second == std::string::npos ? std::string::npos : second - first - 1);
 		if (!tex.empty())
-			texcoord = std::atoi(tex.c_str());
+			texcoord = to_int(tex);
 		if (second != std::string::npos)
-			normal = std::atoi(token.substr(second + 1).c_str());
+			normal = to_int(std::string_view(token).substr(second + 1));
 		return position != 0;
 	}
 
