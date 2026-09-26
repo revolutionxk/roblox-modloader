@@ -9,6 +9,7 @@
 
 #include <cstdarg>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace RBX::Security
@@ -30,6 +31,7 @@ namespace RBX::Graphics
 
 namespace RBX
 {
+	class Instance;
 	class Name;
 }
 
@@ -63,7 +65,7 @@ namespace functions
 	using lua_newthread = lua_State*(RML_ENGINE_CALL*)(lua_State * L);
 	using luaD_throw = void(RML_ENGINE_CALL*)(lua_State* L, int errcode);
 	using get_global_state = lua_State*(RML_ENGINE_CALL*)(void* script_context, const RBX::Security::Identity* identity, const uint64_t* script);
-	using object_create_by_name = uintptr_t (*)(uintptr_t* out, uintptr_t engine_context, uintptr_t name, uint32_t creator_role);
+	using object_create_by_name = std::shared_ptr<RBX::Instance> (*)(RBX::EngineContext* context, const RBX::Name& name, RBX::CreatorRole role);
 	using instance_bridge_push = void(RML_ENGINE_CALL*)(lua_State* L, uintptr_t instance);
 	using task_defer = int(RML_ENGINE_CALL*)(lua_State* L);
 	using build_menu_bar_from_dom = void*(RML_ENGINE_CALL*)(void* out_menu_bar, void* dom, void* context);
@@ -75,7 +77,7 @@ namespace functions
 	using class_descriptor_all_classes = std::vector<RBX::Reflection::ClassDescriptor*>* (*)();
 	using creatable_get_creator = const RBX::ICreator* (*)(const RBX::Name* name);
 	using instance_ctor = void (*)(void* self, const RBX::ForceConstructionInCreatable* force, const char* name);
-	using create_instance_impl = void* (*)(std::uint32_t stable_id, std::size_t size, std::size_t align, std::uint32_t memory_category, void* (*construct)(void* memory, const void* args), const void* args);
+	using create_instance_impl = std::shared_ptr<RBX::Instance> (*)(std::uint32_t stable_id, std::size_t size, std::size_t align, std::uint32_t memory_category, void* (*construct)(void* memory, const void* args), const void* args);
 	using property_descriptor_ctor = void (*)(void* self, void* class_descriptor, const void* type, const char* name, const char* category, const void* attributes, std::uint32_t protection_get, std::uint32_t protection_set, bool a9);
 	using function_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, std::uint32_t protection, std::uint64_t attributes_lo, std::uint64_t attributes_hi);
 	using event_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, std::uint32_t protection, const void* attributes);

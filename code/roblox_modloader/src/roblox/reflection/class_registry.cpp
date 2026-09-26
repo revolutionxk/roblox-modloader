@@ -400,14 +400,8 @@ namespace rml::reflection
 		const auto& p = g_pointers->m_roblox_pointers;
 		ConstructArgs args{&m_entry, {context, k_force_construction_tag}};
 
-		RBX::CreatedInstance created{};
-		memory::call_returning<RBX::CreatedInstance>(reinterpret_cast<void*>(p.create_instance_impl), created, m_entry.descriptor->stable_id, m_entry.layout.size,
-		    m_entry.layout.align, memory_category_of(m_entry.descriptor), &construct_mod_instance, static_cast<const void*>(&args));
-
-		std::shared_ptr<void> result;
-		static_assert(sizeof(result) == sizeof(created));
-		std::memcpy(&result, &created, sizeof(created));
-		return result;
+		return p.create_instance_impl(m_entry.descriptor->stable_id, m_entry.layout.size, m_entry.layout.align, memory_category_of(m_entry.descriptor),
+		    &construct_mod_instance, &args);
 	}
 
 	bool ModInstanceCreator::is_serializable() const

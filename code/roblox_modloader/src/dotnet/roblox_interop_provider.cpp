@@ -22,7 +22,9 @@
 #include <RobloxModLoader/roblox/reflection/object.hpp>
 #include <RobloxModLoader/roblox/reflection/property_descriptor.hpp>
 #include <cassert>
+#include <mutex>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 
 #if RML_ENABLE_LUAU
@@ -136,6 +138,28 @@ namespace rml::dotnet
 	}
 
 #if RML_ENABLE_LUAU
+	class RetainedInstances
+	{
+	public:
+		RBX::Instance* retain(std::shared_ptr<RBX::Instance> instance)
+		{
+			auto* raw = instance.get();
+			std::scoped_lock lock(m_mutex);
+			m_instances.insert_or_assign(raw, std::move(instance));
+			return raw;
+		}
+
+	private:
+		std::mutex m_mutex;
+		std::unordered_map<const RBX::Instance*, std::shared_ptr<RBX::Instance>> m_instances;
+	};
+
+	static RetainedInstances& retained_instances()
+	{
+		static RetainedInstances instances;
+		return instances;
+	}
+
 	static luau::Value to_luau_value(const InteropVariant& value)
 	{
 		switch (value.tag)
@@ -388,22 +412,15 @@ namespace rml::dotnet
 			{
 				const auto atom = g_pointers->m_roblox_pointers.get_string_atom(class_name);
 
-				RBX::CreatedInstance created{};
-				memory::call_returning<RBX::CreatedInstance>(
-				    reinterpret_cast<void*>(g_pointers->m_roblox_pointers.object_create_by_name),
-				    created,
-				    uintptr_t{0},
-				    static_cast<uintptr_t>(atom),
-				    static_cast<uint32_t>(creator_role));
-
-				const auto out = created.instance;
-				if (!out)
+				const auto* name = reinterpret_cast<const RBX::Name*>(atom);
+				auto instance = g_pointers->m_roblox_pointers.object_create_by_name(nullptr, *name, static_cast<RBX::CreatorRole>(creator_role));
+				if (!instance)
 				{
 					RML_ERROR("creator_create_by_name('{}') failed: null instance", class_name);
 					return 0;
 				}
 
-				return out;
+				return reinterpret_cast<uintptr_t>(retained_instances().retain(std::move(instance)));
 			}
 			catch (const std::exception& e)
 			{
