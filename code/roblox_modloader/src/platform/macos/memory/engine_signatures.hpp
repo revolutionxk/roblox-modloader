@@ -5,18 +5,25 @@
 
 namespace rml
 {
-	constexpr auto Pointers::get_roblox_batch()
+	constexpr auto Pointers::get_early_batch()
 	{
 		// clang-format off
-		constexpr auto batch_and_hash = memory::make_batch<
-
+		return memory::make_batch<
 			{
 				"RBX_GLOBAL_INIT",
 				memory::referencing("[FLog::Error] Unable to initialize libsodium."),
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.global_init = ptr.as<functions::global_init>();
 				},
-			},
+			}
+		>();
+		// clang-format on
+	}
+
+	constexpr auto Pointers::get_roblox_batch()
+	{
+		// clang-format off
+		constexpr auto batch_and_hash = memory::make_batch<
 			{
 				"CLASS_DESCRIPTOR_CTOR",
 				"FF C3 01 D1 FC 6F 01 A9 FA 67 02 A9 F8 5F 03 A9 F6 57 04 A9 F4 4F 05 A9 FD 7B 06 A9 FD 83 01 91 F8 03 07 AA F6 03 06 AA",

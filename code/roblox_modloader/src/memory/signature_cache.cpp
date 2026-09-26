@@ -6,6 +6,7 @@
 #include "RobloxModLoader/memory/handle.hpp"
 #include "RobloxModLoader/memory/string_anchor.hpp"
 #include "RobloxModLoader/platform/memory/host_image.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 #include "filesystem/directory.hpp"
 
 
@@ -30,12 +31,13 @@ namespace rml::memory
 	class SignatureCache
 	{
 	public:
-		static bool run(std::span<const signature> entries, range region, std::uint32_t sigset_hash)
+		static bool run(std::span<const signature> entries, range region, std::uint32_t sigset_hash, const std::string_view cache_name)
 		{
 			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
 			const platform::ImageIdentity id = platform::studio_image_identity();
 
-			if (const auto cached = load(); cached && id.image_size != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
+			const auto path = cache_path(cache_name);
+			if (const auto cached = load(path); cached && id.image_size != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
 			{
 				if (apply(entries, base, id, *cached))
 				{
@@ -55,7 +57,7 @@ namespace rml::memory
 
 			if (found_all && id.image_size != 0)
 			{
-				save(CacheData{id, sigset_hash, std::move(rvas)});
+				save(path, CacheData{id, sigset_hash, std::move(rvas)});
 				LOG_INFO("Wrote signature cache ({} signatures)", entries.size());
 			}
 			else if (!found_all)
@@ -64,34 +66,6 @@ namespace rml::memory
 			}
 
 			return found_all;
-		}
-
-		static std::optional<handle> find(const signature& entry, range region, std::uint32_t sigset_hash)
-		{
-			const platform::ImageIdentity id = platform::studio_image_identity();
-			const auto cached = load();
-			if (!cached || id.image_size == 0 || cached->sigset_hash != sigset_hash || cached->id != id)
-				return std::nullopt;
-
-			const auto it = cached->rvas.find(name_hash(entry));
-			if (it == cached->rvas.end() || it->second >= id.image_size)
-				return std::nullopt;
-
-			return handle(region.begin().as<std::uintptr_t>() + it->second);
-		}
-
-		static std::optional<handle> scan_one(const signature& entry, range region)
-		{
-			if (!entry.anchored())
-				return region.scan(entry.m_ida.c_str());
-
-			const auto target = locate(entry.m_anchor);
-			if (!target)
-			{
-				LOG_INFO("Failed to find '{}': {}", entry.m_name.c_str(), target.error());
-				return std::nullopt;
-			}
-			return handle(*target);
 		}
 
 	private:
@@ -106,9 +80,9 @@ namespace rml::memory
 			std::unordered_map<std::uint32_t, std::uint32_t> rvas;
 		};
 
-		static std::filesystem::path cache_path()
+		static std::filesystem::path cache_path(const std::string_view cache_name)
 		{
-			return filesystem::directory::get_mod_loader_directory() / "cache" / "signatures.bin";
+			return filesystem::directory::get_mod_loader_directory() / "cache" / std::format("signatures_{}.bin", cache_name);
 		}
 
 		static std::uint32_t name_hash(const signature& entry) noexcept
@@ -116,11 +90,11 @@ namespace rml::memory
 			return utils::fnv1a_32(entry.m_name.view());
 		}
 
-		static std::optional<CacheData> load() noexcept
+		static std::optional<CacheData> load(const std::filesystem::path& path) noexcept
 		{
 			try
 			{
-				std::ifstream file(cache_path(), std::ios::binary);
+				std::ifstream file(path, std::ios::binary);
 				if (!file) return std::nullopt;
 
 				const auto read = [&](auto& value) {
@@ -157,23 +131,13 @@ namespace rml::memory
 			}
 		}
 
-		static void save(const CacheData& data) noexcept
+		static void save(const std::filesystem::path& path, const CacheData& data) noexcept
 		{
 			try
 			{
-				const auto path = cache_path();
-				std::error_code ec;
-				std::filesystem::create_directories(path.parent_path(), ec);
-
-				std::ofstream file(path, std::ios::binary | std::ios::trunc);
-				if (!file)
-				{
-					LOG_WARN("Could not open signature cache for writing: {}", path.string());
-					return;
-				}
-
-				const auto write = [&](auto value) {
-					file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+				std::string bytes;
+				const auto write = [&bytes](const auto& value) {
+					bytes.append(reinterpret_cast<const char*>(&value), sizeof(value));
 				};
 
 				write(MAGIC);
@@ -187,6 +151,9 @@ namespace rml::memory
 					write(nh);
 					write(rva);
 				}
+
+				if (!utils::write_file_atomic(path, bytes))
+					LOG_WARN("Could not write signature cache: {}", path.string());
 			}
 			catch (const std::exception& e)
 			{
@@ -334,18 +301,8 @@ namespace rml::memory
 		}
 	};
 
-	bool run_batch_cached(const std::span<const signature> entries, range region, const std::uint32_t sigset_hash)
+	bool run_batch_cached(const std::span<const signature> entries, range region, const std::uint32_t sigset_hash, const std::string_view cache_name)
 	{
-		return SignatureCache::run(entries, region, sigset_hash);
-	}
-
-	std::optional<handle> find_cached_signature(const signature& entry, range region, const std::uint32_t sigset_hash)
-	{
-		return SignatureCache::find(entry, region, sigset_hash);
-	}
-
-	std::optional<handle> scan_signature(const signature& entry, range region)
-	{
-		return SignatureCache::scan_one(entry, region);
+		return SignatureCache::run(entries, region, sigset_hash, cache_name);
 	}
 }

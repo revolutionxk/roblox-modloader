@@ -11,12 +11,14 @@ namespace rml
 	{
 		g_pointers = this;
 
-		const auto roblox_region = memory::module(platform::studio_image_name());
-		const auto [m_roblox_batch, m_hash] = get_roblox_batch();
+		const auto [batch, hash] = get_early_batch();
+		run_batch<"early">(batch, hash, memory::module(platform::studio_image_name()));
+	}
 
-		constexpr utils::fixed_string roblox_batch_name{"roblox"};
-
-		run_batch<roblox_batch_name>(m_roblox_batch, m_hash, roblox_region);
+	void Pointers::resolve_engine()
+	{
+		const auto [batch, hash] = get_roblox_batch();
+		run_batch<"roblox">(batch, hash, memory::module(platform::studio_image_name()));
 
 		m_main_window = platform::acquire_main_window();
 	}
