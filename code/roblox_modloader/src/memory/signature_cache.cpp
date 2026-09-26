@@ -5,16 +5,10 @@
 #include "RobloxModLoader/memory/batch.hpp"
 #include "RobloxModLoader/memory/handle.hpp"
 #include "RobloxModLoader/memory/string_anchor.hpp"
+#include "RobloxModLoader/platform/memory/host_image.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 #include "filesystem/directory.hpp"
 
-#if defined(RML_WINDOWS)
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
-	#include <Windows.h>
-#elif defined(RML_MACOS)
-	#include <mach-o/loader.h>
-#endif
 
 #include <algorithm>
 #include <array>
@@ -37,12 +31,13 @@ namespace rml::memory
 	class SignatureCache
 	{
 	public:
-		static bool run(std::span<const signature> entries, range region, std::uint32_t sigset_hash)
+		static bool run(std::span<const signature> entries, range region, std::uint32_t sigset_hash, const std::string_view cache_name)
 		{
 			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
-			const ExeIdentity id = read_exe_identity(region);
+			const platform::ImageIdentity id = platform::studio_image_identity();
 
-			if (const auto cached = load(); cached && id.image_size != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
+			const auto path = cache_path(cache_name);
+			if (const auto cached = load(path); cached && id.image_size != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
 			{
 				if (apply(entries, base, id, *cached))
 				{
@@ -62,7 +57,7 @@ namespace rml::memory
 
 			if (found_all && id.image_size != 0)
 			{
-				save(CacheData{id, sigset_hash, std::move(rvas)});
+				save(path, CacheData{id, sigset_hash, std::move(rvas)});
 				LOG_INFO("Wrote signature cache ({} signatures)", entries.size());
 			}
 			else if (!found_all)
@@ -73,92 +68,21 @@ namespace rml::memory
 			return found_all;
 		}
 
-		static std::optional<handle> find(const signature& entry, range region, std::uint32_t sigset_hash)
-		{
-			const ExeIdentity id = read_exe_identity(region);
-			const auto cached = load();
-			if (!cached || id.image_size == 0 || cached->sigset_hash != sigset_hash || cached->id != id)
-				return std::nullopt;
-
-			const auto it = cached->rvas.find(name_hash(entry));
-			if (it == cached->rvas.end() || it->second >= id.image_size)
-				return std::nullopt;
-
-			return handle(region.begin().as<std::uintptr_t>() + it->second);
-		}
-
-		static std::optional<handle> scan_one(const signature& entry, range region)
-		{
-			if (!entry.anchored())
-				return region.scan(entry.m_ida.c_str());
-
-			const auto target = locate(entry.m_anchor);
-			if (!target)
-			{
-				LOG_INFO("Failed to find '{}': {}", entry.m_name.c_str(), target.error());
-				return std::nullopt;
-			}
-			return handle(*target);
-		}
-
 	private:
 		static constexpr std::uint32_t MAGIC = 0x434C4D52; // "RMLC"
 		static constexpr std::uint32_t FORMAT = 2;
 		static constexpr std::uint32_t MAX_ENTRIES = 100000;
 
-		struct ExeIdentity
-		{
-			std::array<std::uint8_t, 16> stamp{};
-			std::uint32_t image_size{};
-
-			bool operator==(const ExeIdentity&) const = default;
-		};
-
 		struct CacheData
 		{
-			ExeIdentity id{};
+			platform::ImageIdentity id{};
 			std::uint32_t sigset_hash{};
 			std::unordered_map<std::uint32_t, std::uint32_t> rvas;
 		};
 
-		static ExeIdentity read_exe_identity(const range region) noexcept
+		static std::filesystem::path cache_path(const std::string_view cache_name)
 		{
-			ExeIdentity id{};
-			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
-			if (!base) return id;
-
-#if defined(RML_WINDOWS)
-			const auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
-			if (dos->e_magic != IMAGE_DOS_SIGNATURE) return id;
-
-			const auto nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
-			if (nt->Signature != IMAGE_NT_SIGNATURE) return id;
-
-			std::memcpy(id.stamp.data(), &nt->FileHeader.TimeDateStamp, sizeof(nt->FileHeader.TimeDateStamp));
-			id.image_size = nt->OptionalHeader.SizeOfImage;
-#elif defined(RML_MACOS)
-			const auto header = reinterpret_cast<const mach_header_64*>(base);
-			if (header->magic != MH_MAGIC_64)
-				return id;
-
-			const auto* command = reinterpret_cast<const load_command*>(header + 1);
-			for (std::uint32_t i = 0; i < header->ncmds; ++i)
-			{
-				if (command->cmd == LC_UUID)
-				{
-					std::memcpy(id.stamp.data(), reinterpret_cast<const uuid_command*>(command)->uuid, id.stamp.size());
-					id.image_size = static_cast<std::uint32_t>(region.size());
-					break;
-				}
-				command = reinterpret_cast<const load_command*>(reinterpret_cast<const std::byte*>(command) + command->cmdsize);
-			}
-#endif
-			return id;
-		}
-
-		static std::filesystem::path cache_path()
-		{
-			return filesystem::directory::get_mod_loader_directory() / "cache" / "signatures.bin";
+			return filesystem::directory::get_mod_loader_directory() / "cache" / std::format("signatures_{}.bin", cache_name);
 		}
 
 		static std::uint32_t name_hash(const signature& entry) noexcept
@@ -166,11 +90,11 @@ namespace rml::memory
 			return utils::fnv1a_32(entry.m_name.view());
 		}
 
-		static std::optional<CacheData> load() noexcept
+		static std::optional<CacheData> load(const std::filesystem::path& path) noexcept
 		{
 			try
 			{
-				std::ifstream file(cache_path(), std::ios::binary);
+				std::ifstream file(path, std::ios::binary);
 				if (!file) return std::nullopt;
 
 				const auto read = [&](auto& value) {
@@ -207,23 +131,13 @@ namespace rml::memory
 			}
 		}
 
-		static void save(const CacheData& data) noexcept
+		static void save(const std::filesystem::path& path, const CacheData& data) noexcept
 		{
 			try
 			{
-				const auto path = cache_path();
-				std::error_code ec;
-				std::filesystem::create_directories(path.parent_path(), ec);
-
-				std::ofstream file(path, std::ios::binary | std::ios::trunc);
-				if (!file)
-				{
-					LOG_WARN("Could not open signature cache for writing: {}", path.string());
-					return;
-				}
-
-				const auto write = [&](auto value) {
-					file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+				std::string bytes;
+				const auto write = [&bytes](const auto& value) {
+					bytes.append(reinterpret_cast<const char*>(&value), sizeof(value));
 				};
 
 				write(MAGIC);
@@ -237,6 +151,9 @@ namespace rml::memory
 					write(nh);
 					write(rva);
 				}
+
+				if (!utils::write_file_atomic(path, bytes))
+					LOG_WARN("Could not write signature cache: {}", path.string());
 			}
 			catch (const std::exception& e)
 			{
@@ -244,7 +161,7 @@ namespace rml::memory
 			}
 		}
 
-		static bool apply(std::span<const signature> entries, const std::uintptr_t base, const ExeIdentity& id,
+		static bool apply(std::span<const signature> entries, const std::uintptr_t base, const platform::ImageIdentity& id,
 		                  const CacheData& cached)
 		{
 			for (const auto& entry : entries)
@@ -384,18 +301,8 @@ namespace rml::memory
 		}
 	};
 
-	bool run_batch_cached(const std::span<const signature> entries, range region, const std::uint32_t sigset_hash)
+	bool run_batch_cached(const std::span<const signature> entries, range region, const std::uint32_t sigset_hash, const std::string_view cache_name)
 	{
-		return SignatureCache::run(entries, region, sigset_hash);
-	}
-
-	std::optional<handle> find_cached_signature(const signature& entry, range region, const std::uint32_t sigset_hash)
-	{
-		return SignatureCache::find(entry, region, sigset_hash);
-	}
-
-	std::optional<handle> scan_signature(const signature& entry, range region)
-	{
-		return SignatureCache::scan_one(entry, region);
+		return SignatureCache::run(entries, region, sigset_hash, cache_name);
 	}
 }

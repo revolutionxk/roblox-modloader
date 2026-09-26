@@ -1,14 +1,13 @@
 #include "mod_descriptors.hpp"
 
-#include "RobloxModLoader/memory/i_rtti_provider.hpp"
-#include "RobloxModLoader/memory/pattern.hpp"
-#include "RobloxModLoader/memory/range.hpp"
-#include "RobloxModLoader/memory/string_anchor.hpp"
+#include "RobloxModLoader/memory/rtti_index.hpp"
+#include "RobloxModLoader/roblox/reflection/type.hpp"
+#include "RobloxModLoader/util/string.hpp"
 #include "pointers.hpp"
 
 #include <cstring>
 #include <mutex>
-#include <regex>
+#include <ranges>
 #include <unordered_map>
 
 RML_LOG_SCOPE("ModDescriptors");
@@ -67,16 +66,14 @@ namespace rml::reflection
 	const PropertyTypeInfo& property_type_info(const PropertyType type)
 	{
 		static constexpr PropertyTypeInfo infos[] = {
-		    {"bool", "RBX::Reflection::TypedPropertyDescriptor<bool>", "b", RBX::Reflection::TypeId::Bool, true, false},
-		    {"int", "RBX::Reflection::TypedPropertyDescriptor<int>", "i", RBX::Reflection::TypeId::Int, true, false},
-		    {"float", "RBX::Reflection::TypedPropertyDescriptor<float>", "f", RBX::Reflection::TypeId::Float, true, true},
-		    {"double", "RBX::Reflection::TypedPropertyDescriptor<double>", "d", RBX::Reflection::TypeId::Double, true, true},
-		    {"string", "RBX::Reflection::TypedPropertyDescriptor<std::string>", "NSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE", RBX::Reflection::TypeId::String, false, false},
+		    {"RBX::Reflection::TypedPropertyDescriptor<bool>", "bool", RBX::Reflection::TypeId::Bool, true, false},
+		    {"RBX::Reflection::TypedPropertyDescriptor<int>", "int", RBX::Reflection::TypeId::Int, true, false},
+		    {"RBX::Reflection::TypedPropertyDescriptor<float>", "float", RBX::Reflection::TypeId::Float, true, true},
+		    {"RBX::Reflection::TypedPropertyDescriptor<double>", "double", RBX::Reflection::TypeId::Double, true, true},
+		    {"RBX::Reflection::TypedPropertyDescriptor<std::string>", "std::string", RBX::Reflection::TypeId::String, false, false},
 		};
 		return infos[static_cast<std::size_t>(type)];
 	}
-
-	static constexpr PropertyTypeInfo k_void_type_info{"null", nullptr, "v", 0, false, false};
 
 	const void* variant_ops(const PropertyType type)
 	{
@@ -91,105 +88,44 @@ namespace rml::reflection
 		return nullptr;
 	}
 
-#if defined(RML_WINDOWS)
-	static const RBX::Reflection::Type* find_type_singleton(const PropertyTypeInfo& info)
-	{
-		return nullptr;
-	}
-#else
-	static const RBX::Reflection::Type* find_type_singleton(const PropertyTypeInfo& info)
-	{
-		const auto mov_w = [](const unsigned reg, const unsigned value) { return std::format("{:02X} {:02X} 80 52", ((value << 5) | reg) & 0xFF, (value << 5) >> 8); };
-		const memory::pattern shape(
-		    "F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 ? ? ? ? ? ? ? ? 08 C1 BF 38 ? ? ? ? ? ? ? ? ? ? ? ? FD 7B 41 A9 F4 4F C2 A8 C0 03 5F D6 "
-		    "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? "
-		    + mov_w(2, info.type_id) + " " + mov_w(3, info.is_number) + " " + mov_w(4, info.is_float) + " 05 00 80 52 06 00 80 52");
-
-		for (const auto& function : memory::functions_referencing_string(info.engine_name))
-		{
-			const memory::range body(memory::handle(function.start), function.size);
-			const auto hit = body.scan(shape);
-			if (!hit || hit->as<void*>() != function.start)
-				continue;
-
-			RML_DEBUG("Type::getSingleton<{}> at 0x{:X}", info.engine_name, reinterpret_cast<std::uintptr_t>(function.start));
-			return reinterpret_cast<const RBX::Reflection::Type* (*)()>(function.start)();
-		}
-
-		return nullptr;
-	}
-#endif
-
 	const RBX::Reflection::Type* type_singleton(const PropertyType type)
 	{
-		static std::mutex mutex;
-		static std::unordered_map<PropertyType, const RBX::Reflection::Type*> cache;
-
-		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(type); it != cache.end())
-			return it->second;
-
-		const auto singleton = find_type_singleton(property_type_info(type));
-		cache[type] = singleton;
-		return singleton;
+		using RBX::Reflection::Type;
+		switch (type)
+		{
+		case PropertyType::Bool: return Type::try_singleton<bool>();
+		case PropertyType::Int: return Type::try_singleton<int>();
+		case PropertyType::Float: return Type::try_singleton<float>();
+		case PropertyType::Double: return Type::try_singleton<double>();
+		case PropertyType::String: return Type::try_singleton<std::string>();
+		}
+		return nullptr;
 	}
 
 	const RBX::Reflection::Type* void_type_singleton()
 	{
-		static const auto singleton = find_type_singleton(k_void_type_info);
-		return singleton;
+		return RBX::Reflection::Type::try_singleton<void>();
 	}
 
 	static void* event_desc_vtable(const std::vector<EventArgument>& arguments)
 	{
-		std::string mangled_arguments;
-		std::size_t strings = 0;
-		for (const auto& argument : arguments)
-		{
-			if (argument.type == PropertyType::String && strings++)
-				return nullptr;
-			mangled_arguments += property_type_info(argument.type).mangled;
-		}
-		if (arguments.empty())
-			mangled_arguments = "v";
+		auto* const index = memory::rtti();
+		if (!index)
+			return nullptr;
 
-		static std::mutex mutex;
-		static std::unordered_map<std::string, void*> cache;
-		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(mangled_arguments); it != cache.end())
-			return it->second;
-
-		void* vtable = nullptr;
-		if (g_rtti_provider)
-		{
-			const std::regex shape("^N3RBX10Reflection9EventDescINS_[0-9]+[A-Za-z0-9_]+?EFv" + mangled_arguments + "EN3rbx6signalIS[0-9A-Z]*_EEMS2_S[0-9A-Z]*_EE$");
-			const auto found = g_rtti_provider->find_class_vtable_matching("N3RBX10Reflection9EventDescINS_", [&](const std::string_view name) {
-				return std::regex_match(name.begin(), name.end(), shape);
-			});
-			if (found)
-				vtable = *found;
-		}
-		cache[mangled_arguments] = vtable;
-		return vtable;
+		const auto names = arguments | std::views::transform([](const EventArgument& argument) { return std::string_view(property_type_info(argument.type).cpp_name); });
+		const auto found = index->find_matching(std::format("RBX::Reflection::EventDesc<*,void({}),*", utils::join(names, ",")));
+		return found ? *found : nullptr;
 	}
 
 	static void* typed_property_vtable(const PropertyType type)
 	{
-		static std::mutex mutex;
-		static std::unordered_map<PropertyType, void*> cache;
+		auto* const index = memory::rtti();
+		if (!index)
+			return nullptr;
 
-		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(type); it != cache.end())
-			return it->second;
-
-		void* vtable = nullptr;
-		if (g_rtti_provider)
-		{
-			if (const auto found = g_rtti_provider->find_class_vtable(property_type_info(type).descriptor_class))
-				vtable = *found;
-		}
-		cache[type] = vtable;
-		return vtable;
+		const auto found = index->find(property_type_info(type).descriptor_class);
+		return found ? *found : nullptr;
 	}
 
 	std::expected<ModMember, std::string> make_property(void* owner_storage, const std::string& name, const std::string& category, const PropertyType type, void* accessor)
@@ -201,7 +137,7 @@ namespace rml::reflection
 		const auto& info = property_type_info(type);
 		const auto engine_type = type_singleton(type);
 		if (!engine_type)
-			return std::unexpected(std::format("Type::getSingleton<{}> was not found; property '{}' skipped", info.engine_name, name));
+			return std::unexpected(std::format("Type::singleton<{}> was not found; property '{}' skipped", info.cpp_name, name));
 
 		const auto vtable = typed_property_vtable(type);
 		if (!vtable)
@@ -256,7 +192,7 @@ namespace rml::reflection
 
 		const auto void_type = void_type_singleton();
 		if (!void_type)
-			return std::unexpected("Type::getSingleton<void> was not found");
+			return std::unexpected("Type::singleton<void> was not found");
 
 		std::vector<RBX::Reflection::SignatureDescriptor::Argument> items;
 		items.reserve(arguments.size());
@@ -264,7 +200,7 @@ namespace rml::reflection
 		{
 			const auto type = type_singleton(arguments[i].type);
 			if (!type)
-				return std::unexpected(std::format("Type::getSingleton<{}> was not found; event '{}' skipped", property_type_info(arguments[i].type).engine_name, name));
+				return std::unexpected(std::format("Type::singleton<{}> was not found; event '{}' skipped", property_type_info(arguments[i].type).cpp_name, name));
 
 			const auto argument_name = arguments[i].name.empty() ? std::format("arg{}", i + 1) : arguments[i].name;
 			items.push_back({p.name_declare(argument_name.c_str()), type, nullptr, nullptr, RBX::Reflection::Variant{}});

@@ -7,6 +7,7 @@
 #include "subsystems/init_gate_subsystem.hpp"
 #include "subsystems/logger_subsystem.hpp"
 #include "subsystems/crash_dumper_subsystem.hpp"
+#include "subsystems/engine_signatures_subsystem.hpp"
 #include "subsystems/event_manager_subsystem.hpp"
 #include "subsystems/qt_integration_subsystem.hpp"
 #include "subsystems/rtti_manager_subsystem.hpp"
@@ -45,12 +46,13 @@ namespace rml
 
 		m_subsystems.push_back(std::make_unique<ConfigSubsystem>());
 		m_subsystems.push_back(std::make_unique<LoggerSubsystem>());
-		m_subsystems.push_back(std::make_unique<InitGateSubsystem>());
 		m_subsystems.push_back(std::make_unique<PointersSubsystem>());
+		m_subsystems.push_back(std::make_unique<RttiManagerSubsystem>());
+		m_subsystems.push_back(std::make_unique<InitGateSubsystem>());
+		m_subsystems.push_back(std::make_unique<EngineSignaturesSubsystem>());
 		m_subsystems.push_back(std::make_unique<CrashDumperSubsystem>());
 		m_subsystems.push_back(std::move(event_manager_subsystem));
 		m_subsystems.push_back(std::make_unique<QtIntegrationSubsystem>());
-		m_subsystems.push_back(std::make_unique<RttiManagerSubsystem>());
 		m_subsystems.push_back(std::move(task_scheduler_subsystem));
 		m_subsystems.push_back(std::make_unique<JobManagerSubsystem>(task_scheduler_subsystem_ref));
 		m_subsystems.push_back(std::make_unique<HookingSubsystem>());

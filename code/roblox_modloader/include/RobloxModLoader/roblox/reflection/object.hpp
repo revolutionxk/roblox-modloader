@@ -374,6 +374,11 @@ namespace RBX::Reflection
 			return std::shared_ptr<const DescribedBase>(weak_this);
 		}
 
+		std::weak_ptr<DescribedBase> weak_from_this() noexcept
+		{
+			return weak_this;
+		}
+
 		inline const ClassDescriptor& get_descriptor() const
 		{
 			return *descriptor;

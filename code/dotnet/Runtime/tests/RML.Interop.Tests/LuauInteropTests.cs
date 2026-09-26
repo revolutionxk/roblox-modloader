@@ -99,16 +99,16 @@ public unsafe class LuauInteropTests : IDisposable
         (nint)(delegate* unmanaged[Cdecl]<void*, InteropVariant*, sbyte*, void>)&NoOpCompletion;
 
     [Fact]
-    public void Initialize_Accepts_A_Version10_Table()
+    public void Initialize_Accepts_A_Version11_Table()
     {
         Assert.True(Interop.IsInitialized);
-        Assert.Equal(10, NativeInterop.InteropTableVersion);
+        Assert.Equal(11, NativeInterop.InteropTableVersion);
     }
 
     [Fact]
-    public void InteropTable_Layout_Matches_The_Version10_Native_Abi()
+    public void InteropTable_Layout_Matches_The_Version11_Native_Abi()
     {
-        Assert.Equal(232, sizeof(NativeInterop.InteropTable));
+        Assert.Equal(248, sizeof(NativeInterop.InteropTable));
         Assert.Equal(16, sizeof(InteropVariant));
     }
 

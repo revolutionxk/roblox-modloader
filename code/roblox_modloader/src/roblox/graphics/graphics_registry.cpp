@@ -3,7 +3,7 @@
 #include "RobloxModLoader/hooking/vtable_index.hpp"
 #include "RobloxModLoader/memory/vtable.hpp"
 #include "RobloxModLoader/internal/common.hpp"
-#include "RobloxModLoader/memory/i_rtti_provider.hpp"
+#include "RobloxModLoader/memory/rtti_index.hpp"
 #include "RobloxModLoader/memory/module.hpp"
 #include "RobloxModLoader/memory/string_anchor.hpp"
 #include "RobloxModLoader/platform/memory/host_image.hpp"
@@ -189,10 +189,11 @@ namespace rml::graphics
 
 	void* adorn_render_pre_submit_pass_target()
 	{
-		if (!g_rtti_provider)
+		auto* const index = memory::rtti();
+		if (!index)
 			return nullptr;
 
-		const auto vtable = g_rtti_provider->find_class_vtable("RBX::Graphics::AdornRender");
+		const auto vtable = index->find("RBX::Graphics::AdornRender");
 		if (!vtable)
 			return nullptr;
 

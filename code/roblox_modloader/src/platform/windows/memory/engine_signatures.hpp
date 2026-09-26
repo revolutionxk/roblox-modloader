@@ -5,17 +5,25 @@
 
 namespace rml
 {
-	constexpr auto Pointers::get_roblox_batch()
+	constexpr auto Pointers::get_early_batch()
 	{
 		// clang-format off
-		constexpr auto batch_and_hash = memory::make_batch<
+		return memory::make_batch<
 		    {
 		        "RBX_GLOBAL_INIT",
 		        memory::referencing("[FLog::Error] Unable to initialize libsodium."),
 		        [](const memory::handle ptr) {
 			        g_pointers->m_roblox_pointers.global_init = ptr.as<functions::global_init>();
 		        },
-		    },
+		    }
+		>();
+		// clang-format on
+	}
+
+	constexpr auto Pointers::get_roblox_batch()
+	{
+		// clang-format off
+		constexpr auto batch_and_hash = memory::make_batch<
 		    // Lua Functions
 		    {
 		        "LUA_LOAD",

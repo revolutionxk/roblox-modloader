@@ -46,7 +46,7 @@ namespace rml::dotnet
 
 		[[nodiscard]] static bool returns_indirectly(const RBX::Reflection::Type* type) noexcept;
 
-		[[nodiscard]] static InteropVariant encode_variant(const RBX::Reflection::Variant& variant, InteropStringPool* strings = nullptr);
+		[[nodiscard]] static InteropVariant encode_variant(const RBX::Reflection::Variant& variant, InteropStringPool* strings = nullptr, InstanceOwnership ownership = InstanceOwnership::Borrowed);
 		[[nodiscard]] static InteropVariant encode_property(const RBX::Reflection::PropertyDescriptor* descriptor, const RBX::Reflection::DescribedBase* instance);
 
 		[[nodiscard]] static bool decode_property(const RBX::Reflection::PropertyDescriptor* descriptor, RBX::Reflection::DescribedBase* instance, const InteropVariant& value);
@@ -54,7 +54,6 @@ namespace rml::dotnet
 
 		static void encode_return_value(const RBX::Reflection::Type* type, uint64_t raw_return, uintptr_t return_slot_address, InteropVariant& out) noexcept;
 
-		[[nodiscard]] static const RBX::Reflection::Type* find_type_by_id(int type_id) noexcept;
 
 		[[nodiscard]] static bool build_tuple_variant(const InteropVariant* args, uint32_t count, const RBX::Reflection::Type* tuple_type, RBX::Reflection::Variant& out);
 	};

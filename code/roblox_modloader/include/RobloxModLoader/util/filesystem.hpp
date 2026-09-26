@@ -3,9 +3,11 @@
 #include <cstddef>
 #include <expected>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <iterator>
+#include <random>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -59,6 +61,24 @@ namespace rml::utils
 		std::ofstream stream(path, std::ios::binary | std::ios::trunc);
 		if (!stream.write(bytes.data(), static_cast<std::streamsize>(bytes.size())))
 			return std::unexpected(std::make_error_code(std::errc::io_error));
+		return {};
+	}
+
+	[[nodiscard]] inline std::expected<void, std::error_code> write_file_atomic(const std::filesystem::path& path, const std::string_view bytes)
+	{
+		auto staging = path;
+		staging += std::format(".{:08x}.tmp", std::random_device{}());
+
+		if (auto written = write_file(staging, bytes); !written)
+			return written;
+
+		std::error_code ec;
+		std::filesystem::rename(staging, path, ec);
+		if (ec)
+		{
+			std::filesystem::remove(staging, ec);
+			return std::unexpected(ec);
+		}
 		return {};
 	}
 

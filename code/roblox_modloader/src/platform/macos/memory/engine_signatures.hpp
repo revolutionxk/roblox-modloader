@@ -5,18 +5,25 @@
 
 namespace rml
 {
-	constexpr auto Pointers::get_roblox_batch()
+	constexpr auto Pointers::get_early_batch()
 	{
 		// clang-format off
-		constexpr auto batch_and_hash = memory::make_batch<
-
+		return memory::make_batch<
 			{
 				"RBX_GLOBAL_INIT",
 				memory::referencing("[FLog::Error] Unable to initialize libsodium."),
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.global_init = ptr.as<functions::global_init>();
 				},
-			},
+			}
+		>();
+		// clang-format on
+	}
+
+	constexpr auto Pointers::get_roblox_batch()
+	{
+		// clang-format off
+		constexpr auto batch_and_hash = memory::make_batch<
 			{
 				"CLASS_DESCRIPTOR_CTOR",
 				"FF C3 01 D1 FC 6F 01 A9 FA 67 02 A9 F8 5F 03 A9 F6 57 04 A9 F4 4F 05 A9 FD 7B 06 A9 FD 83 01 91 F8 03 07 AA F6 03 06 AA",
@@ -29,6 +36,13 @@ namespace rml
 				"FF C3 00 D1 FD 7B 02 A9 FD 83 00 91 ? ? ? ? ? ? ? ? E8 07 00 F9 ? ? ? ? ? ? ? ? 08 C1 BF F8 1F 05 00 B1 ? ? ? ? E8 23 00 91 A8 83 1F F8 A8 23 00 D1 E8 0B 00 F9 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? E1 43 00 91 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? FD 7B 42 A9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.class_descriptor_all_classes = ptr.as<functions::class_descriptor_all_classes>();
+				},
+			},
+			{
+				"TYPE_REGISTRY",
+				"FF 83 00 D1 FD 7B 01 A9 FD 43 00 91 ? ? ? ? ? ? ? ? 08 C1 BF 38 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? E0 07 00 F9 E1 23 00 91 E0 03 08 AA ? ? ? ? FD 7B 41 A9 FF 83 00 91 C0 03 5F D6",
+				[](const memory::handle ptr) {
+					g_pointers->m_roblox_pointers.type_registry = ptr.add(0x1C).adrp().as<const std::vector<const RBX::Reflection::Type*>*>();
 				},
 			},
 			{

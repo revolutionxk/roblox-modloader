@@ -11,7 +11,9 @@ public static unsafe class Reflection
     public static Task<T?> InvokeAsync<T>(Object @object, string methodName, params object?[] args)
     {
         ArgumentNullException.ThrowIfNull(@object);
-        return InvokeAsync<T>(@object.Handle, methodName, args);
+        var task = InvokeAsync<T>(@object.Handle, methodName, args);
+        GC.KeepAlive(@object);
+        return task;
     }
 
     public static Task<T?> InvokeAsync<T>(nuint handle, string methodName, params object?[] args)
@@ -51,7 +53,8 @@ public static unsafe class Reflection
         {
             var callback = (delegate* unmanaged[Cdecl]<void*, InteropVariant*, sbyte*, void>)&AsyncComplete;
             Interop.Reflection.InvokeAsync((void*)handle, methodName, callback, (void*)GCHandle.ToIntPtr(gcHandle),
-                args);
+                ToNativeArguments(args));
+            GC.KeepAlive(args);
         }
         catch
         {
@@ -86,7 +89,9 @@ public static unsafe class Reflection
     {
         ArgumentNullException.ThrowIfNull(@object);
 
-        return Invoke<T>(@object.Handle, methodName, args);
+        var result = Invoke<T>(@object.Handle, methodName, args);
+        GC.KeepAlive(@object);
+        return result;
     }
 
     public static T? Invoke<T>(nuint handle, string methodName, params object?[] args)
@@ -98,7 +103,8 @@ public static unsafe class Reflection
             throw new ArgumentException("Instance handle is null", nameof(handle));
         }
 
-        InteropVariant variant = Interop.Reflection.Invoke((void*)handle, methodName, args);
+        InteropVariant variant = Interop.Reflection.Invoke((void*)handle, methodName, ToNativeArguments(args));
+        GC.KeepAlive(args);
         return ConvertResult<T>(variant);
     }
 
@@ -106,7 +112,9 @@ public static unsafe class Reflection
     {
         ArgumentNullException.ThrowIfNull(@object);
 
-        return GetProperty<T>(@object.Handle, propertyName);
+        var value = GetProperty<T>(@object.Handle, propertyName);
+        GC.KeepAlive(@object);
+        return value;
     }
 
     public static T? GetProperty<T>(nuint handle, string propertyName)
@@ -126,6 +134,8 @@ public static unsafe class Reflection
         ArgumentNullException.ThrowIfNull(@object);
 
         SetProperty(@object.Handle, propertyName, value);
+        GC.KeepAlive(@object);
+        GC.KeepAlive(value);
     }
 
     public static void SetProperty<T>(nuint handle, string propertyName, T value)
@@ -209,16 +219,35 @@ public static unsafe class Reflection
 
     public static T CreateInstance<T>(CreatorRole role) where T : Instance
     {
-        var className = RobloxTypeRegistry.ClassNameOf<T>();
-        var handle = Interop.Reflection.CreateInstanceByName(className, (int)role);
-        return handle == 0
-            ? throw new InvalidOperationException($"Failed to create instance of type '{className}'")
-            : RobloxTypeRegistry.CreateAs<T>(handle);
+        var handle = CreateOwnedHandle(RobloxTypeRegistry.ClassNameOf<T>(), role);
+        try
+        {
+            return RobloxTypeRegistry.CreateAs<T>(handle);
+        }
+        finally
+        {
+            Interop.Reflection.InstanceRelease(handle);
+        }
     }
 
     public static T CreateInstance<T>() where T : Instance => CreateInstance<T>(CreatorRole.Engine);
 
-    public static nuint CreateInstance(string className, CreatorRole role)
+    public static Instance CreateInstance(string className, CreatorRole role)
+    {
+        var handle = CreateOwnedHandle(className, role);
+        try
+        {
+            return (Instance)RobloxTypeRegistry.Create(handle);
+        }
+        finally
+        {
+            Interop.Reflection.InstanceRelease(handle);
+        }
+    }
+
+    public static Instance CreateInstance(string className) => CreateInstance(className, CreatorRole.Engine);
+
+    internal static nuint CreateOwnedHandle(string className, CreatorRole role)
     {
         var handle = Interop.Reflection.CreateInstanceByName(className, (int)role);
         return handle == 0
@@ -226,7 +255,20 @@ public static unsafe class Reflection
             : handle;
     }
 
-    public static nuint CreateInstance(string className) => CreateInstance(className, CreatorRole.Engine);
+    private static object?[] ToNativeArguments(object?[] args)
+    {
+        object?[]? converted = null;
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (args[i] is Object instance)
+            {
+                converted ??= (object?[])args.Clone();
+                converted[i] = instance.Handle;
+            }
+        }
+
+        return converted ?? args;
+    }
 
     private static long ToInt64OrThrow(object value, string propertyName)
     {

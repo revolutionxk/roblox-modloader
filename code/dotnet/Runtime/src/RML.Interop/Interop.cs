@@ -761,6 +761,26 @@ public static unsafe class Interop
             Table->EventSlotRelease(slotHandle);
         }
 
+        public static bool InstanceRetain(nuint instance)
+        {
+            if (instance == 0 || !IsInitialized || Table == null || Table->InstanceRetain == null)
+            {
+                return false;
+            }
+
+            return Table->InstanceRetain(instance) != 0;
+        }
+
+        public static void InstanceRelease(nuint instance)
+        {
+            if (instance == 0 || !IsInitialized || Table == null || Table->InstanceRelease == null)
+            {
+                return;
+            }
+
+            Table->InstanceRelease(instance);
+        }
+
         public static nuint CreateInstanceByName(string className, int creatorRole)
         {
             if (!IsInitialized || Table == null || Table->CreateInstanceByName == null)

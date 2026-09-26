@@ -38,12 +38,12 @@ namespace rml::dotnet
 				if (const RBX::Reflection::Tuple* tuple = shared ? shared->get() : nullptr)
 				{
 					for (const auto& value : tuple->values)
-						m_values.push_back(TypeMarshaler::encode_variant(value, &m_strings));
+						m_values.push_back(TypeMarshaler::encode_variant(value, &m_strings, InstanceOwnership::Transferred));
 				}
 				return;
 			}
 
-			m_values.push_back(TypeMarshaler::encode_variant(*result, &m_strings));
+			m_values.push_back(TypeMarshaler::encode_variant(*result, &m_strings, InstanceOwnership::Transferred));
 		}
 
 		void take_error(const RBX::Reflection::Variant* message)

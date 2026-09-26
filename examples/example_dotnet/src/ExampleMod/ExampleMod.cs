@@ -86,6 +86,7 @@ public sealed class ExampleMod : ModBase, IDataModelAware
             };
 
             RunEventDiagnostics(workspace);
+            RunLifetimeDiagnostics(workspace, part);
 
             _ = Task.Run(async () =>
             {
@@ -115,6 +116,37 @@ public sealed class ExampleMod : ModBase, IDataModelAware
 
     public void OnDataModelUnloaded(DataModel dataModel, DataModelType dataModelType)
     {
+    }
+
+    private static void RunLifetimeDiagnostics(Workspace workspace, Part part)
+    {
+        try
+        {
+            for (var i = 0; i < 2000; i++)
+            {
+                var folder = Instance.New<Folder>(f => f.Name = $"RML_Lifetime_{i}");
+                if (i % 2 == 0)
+                {
+                    folder.Dispose();
+                }
+            }
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            Logger.Info("[LIFETIME]: dropped 2000 unparented folders (1000 disposed, 1000 left to the finalizer)");
+
+            var clone = part.Clone<Part>();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            Logger.Info($"[LIFETIME]: clone outlives the call that made it: {clone?.Name} ({clone?.ClassName})");
+
+            Logger.Info($"[LIFETIME]: workspace.IsAncestorOf(part) = {workspace.IsAncestorOf(part)}");
+            Logger.Info($"[LIFETIME]: workspace children wrapped: {workspace.GetChildren().Count}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"[LIFETIME]: {ex.GetBaseException().Message}");
+        }
     }
 
     private static void RunEventDiagnostics(Workspace workspace)

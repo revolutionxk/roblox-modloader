@@ -8,6 +8,18 @@ internal static unsafe class VariantReader
 {
     public static object? Read(InteropVariant variant, Type targetType, bool freeNativeResources)
     {
+        if (freeNativeResources && variant.Tag == InteropVariant.Tags.Instance && variant.AsPointer != 0)
+        {
+            try
+            {
+                return Read(variant, targetType, false);
+            }
+            finally
+            {
+                Interop.Reflection.InstanceRelease(variant.AsPointer);
+            }
+        }
+
         if (targetType == typeof(object[]) || targetType == typeof(object?[]))
         {
             return ReadTupleArray(variant, freeNativeResources);
@@ -164,7 +176,22 @@ internal static unsafe class VariantReader
             case InteropVariant.Tags.String:
                 return ReadString(variant, freeNativeResources);
             case InteropVariant.Tags.Instance:
-                return variant.AsPointer == 0 ? null : RobloxTypeRegistry.Create(variant.AsPointer);
+                if (variant.AsPointer == 0)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    return RobloxTypeRegistry.Create(variant.AsPointer);
+                }
+                finally
+                {
+                    if (freeNativeResources)
+                    {
+                        Interop.Reflection.InstanceRelease(variant.AsPointer);
+                    }
+                }
             case InteropVariant.Tags.InstanceArray:
                 return ReadInstanceArray(variant, typeof(List<Instance>), freeNativeResources);
             case InteropVariant.Tags.Tuple:
@@ -216,20 +243,28 @@ internal static unsafe class VariantReader
             var handles = (nuint*)(buf + sizeof(ulong));
 
             list.Capacity = (int)count;
-            for (var i = 0u; i < count; i++)
+            try
             {
-                var handle = handles[i];
-                if (handle == 0)
+                for (var i = 0u; i < count; i++)
                 {
-                    continue;
+                    var handle = handles[i];
+                    if (handle != 0)
+                    {
+                        list.Add((Instance)RobloxTypeRegistry.Create(handle));
+                    }
                 }
-
-                list.Add((Instance)RobloxTypeRegistry.Create(handle));
             }
-
-            if (freeNativeResources)
+            finally
             {
-                Interop.FreeNativeArray((nint)variant.AsPointer);
+                if (freeNativeResources)
+                {
+                    for (var i = 0u; i < count; i++)
+                    {
+                        Interop.Reflection.InstanceRelease(handles[i]);
+                    }
+
+                    Interop.FreeNativeArray((nint)variant.AsPointer);
+                }
             }
         }
 

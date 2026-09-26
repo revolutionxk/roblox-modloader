@@ -8,7 +8,9 @@
 #include "RobloxModLoader/roblox/util/G3DCore.h"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "RobloxModLoader/util/memory.hpp"
+#include "instance_handles.hpp"
 #include "pointers.hpp"
+#include "roblox/reflection/type_index.hpp"
 
 #include <array>
 #include <cstring>
@@ -68,7 +70,19 @@ namespace rml::dotnet
 		return 0;
 	}
 
-	[[nodiscard]] static InteropVariant marshal_tuple(const RBX::Reflection::Tuple* tuple)
+	[[nodiscard]] static InteropVariant owned_instance_value(std::shared_ptr<RBX::Reflection::DescribedBase> object)
+	{
+		const auto handle = instance_handles().retain(std::move(object));
+		return handle ? instance_value(handle) : null_value();
+	}
+
+	[[nodiscard]] static InteropVariant owned_instance_value(RBX::Reflection::DescribedBase* object)
+	{
+		const auto handle = instance_handles().retain(object);
+		return handle ? instance_value(handle) : null_value();
+	}
+
+	[[nodiscard]] static InteropVariant marshal_tuple(const RBX::Reflection::Tuple* tuple, const InstanceOwnership ownership)
 	{
 		if (!tuple || !utils::memory::is_valid_pointer(reinterpret_cast<uintptr_t>(tuple)) || tuple->values.empty())
 			return null_value();
@@ -77,7 +91,7 @@ namespace rml::dotnet
 		std::vector<InteropVariant> values;
 		values.reserve(tuple->values.size());
 		for (const auto& value : tuple->values)
-			values.push_back(TypeMarshaler::encode_variant(value, &strings));
+			values.push_back(TypeMarshaler::encode_variant(value, &strings, ownership));
 
 		return tuple_value(values);
 	}
@@ -129,24 +143,6 @@ namespace rml::dotnet
 		delete tuple;
 	}
 
-	const RBX::Reflection::Type* TypeMarshaler::find_type_by_id(const int type_id) noexcept
-	{
-		if (!g_pointers || !g_pointers->m_roblox_pointers.type_registry)
-			return nullptr;
-
-		const auto registry = g_pointers->m_roblox_pointers.type_registry;
-
-		if (!registry || registry->size() > 100000)
-			return nullptr;
-
-		for (const auto* type : *registry)
-		{
-			if (type && type->type_id == type_id)
-				return type;
-		}
-		return nullptr;
-	}
-
 	bool TypeMarshaler::build_tuple_variant(const InteropVariant* args, const uint32_t count, const RBX::Reflection::Type* tuple_type, RBX::Reflection::Variant& out)
 	{
 		if (!tuple_type)
@@ -157,7 +153,7 @@ namespace rml::dotnet
 
 		for (uint32_t i = 0; i < count; ++i)
 		{
-			const auto* type = find_type_by_id(tag_to_type_id(args[i].tag));
+			const auto* type = reflection::TypeIndex::find_by_id(tag_to_type_id(args[i].tag));
 			if (!type)
 				continue;
 
@@ -225,7 +221,7 @@ namespace rml::dotnet
 		return {MarshalKind::Unsupported, 0};
 	}
 
-	InteropVariant TypeMarshaler::encode_variant(const RBX::Reflection::Variant& variant, InteropStringPool* strings)
+	InteropVariant TypeMarshaler::encode_variant(const RBX::Reflection::Variant& variant, InteropStringPool* strings, const InstanceOwnership ownership)
 	{
 		if (variant.is_void())
 			return null_value();
@@ -244,12 +240,14 @@ namespace rml::dotnet
 				RML_WARN("Dropping implausible instance handle {:#x} for type '{}'", instance, type.name.c_str());
 				return null_value();
 			}
-			return instance_value(instance);
+			return ownership == InstanceOwnership::Transferred ? owned_instance_value(*shared) : instance_value(instance);
 		}
 		case MarshalKind::Instance:
 		{
 			const auto* instance = variant.try_cast<RBX::Instance*>();
-			return instance ? instance_value(reinterpret_cast<uintptr_t>(*instance)) : null_value();
+			if (!instance)
+				return null_value();
+			return ownership == InstanceOwnership::Transferred ? owned_instance_value(*instance) : instance_value(reinterpret_cast<uintptr_t>(*instance));
 		}
 		case MarshalKind::String:
 			return strings ? string_value(variant.try_cast<std::string>()->c_str(), *strings) :
@@ -263,7 +261,7 @@ namespace rml::dotnet
 		case MarshalKind::Tuple:
 		{
 			const auto* shared = variant.try_cast<TupleSharedPtr>();
-			return marshal_tuple(shared ? shared->get() : nullptr);
+			return marshal_tuple(shared ? shared->get() : nullptr, ownership);
 		}
 		default: RML_WARN("Unsupported variant type '{}'", type.name.c_str()); return null_value();
 		}
@@ -280,7 +278,7 @@ namespace rml::dotnet
 		if (kind == MarshalKind::RefInstance)
 		{
 			const auto* ref_descriptor = dynamic_cast<const RBX::Reflection::RefPropertyDescriptor*>(descriptor);
-			return instance_value(reinterpret_cast<uintptr_t>(ref_descriptor->get_ref_value(instance)));
+			return owned_instance_value(ref_descriptor->get_ref_value(instance));
 		}
 
 		if (kind == MarshalKind::Unsupported)
@@ -300,7 +298,7 @@ namespace rml::dotnet
 		if (kind == MarshalKind::Blittable)
 			return blittable_value(variant.try_cast<std::byte>(), byte_size);
 
-		return encode_variant(variant);
+		return encode_variant(variant, nullptr, InstanceOwnership::Transferred);
 	}
 
 	bool TypeMarshaler::decode_property(const RBX::Reflection::PropertyDescriptor* descriptor, RBX::Reflection::DescribedBase* instance, const InteropVariant& value)
@@ -492,7 +490,7 @@ namespace rml::dotnet
 		case MarshalKind::Tuple:
 		{
 			auto* slot = reinterpret_cast<std::shared_ptr<const RBX::Reflection::Tuple>*>(return_slot_address);
-			out = marshal_tuple(slot ? slot->get() : nullptr);
+			out = marshal_tuple(slot ? slot->get() : nullptr, InstanceOwnership::Transferred);
 			std::destroy_at(slot);
 			return;
 		}
@@ -516,7 +514,7 @@ namespace rml::dotnet
 
 					for (const auto& element : instances)
 					{
-						if (const auto handle = reinterpret_cast<uintptr_t>(element.get()))
+						if (const auto handle = instance_handles().retain(element))
 							handles[written++] = handle;
 					}
 					*count_field = written;
@@ -531,7 +529,7 @@ namespace rml::dotnet
 		case MarshalKind::Instance:
 		{
 			auto* slot = reinterpret_cast<std::shared_ptr<RBX::Instance>*>(return_slot_address);
-			out = instance_value(reinterpret_cast<uintptr_t>(slot->get()));
+			out = owned_instance_value(*slot);
 			std::destroy_at(slot);
 			return;
 		}
@@ -544,6 +542,12 @@ namespace rml::dotnet
 		}
 		case MarshalKind::Blittable:
 			out = blittable_value(reinterpret_cast<const void*>(return_slot_address), plan.byte_size);
+			return;
+		case MarshalKind::Bool:
+			out = bool_value(static_cast<std::uint8_t>(raw_return) != 0);
+			return;
+		case MarshalKind::Number:
+			out = int64_value(type->type_id == RBX::Reflection::TypeId::Int ? static_cast<std::int32_t>(raw_return) : static_cast<std::int64_t>(raw_return));
 			return;
 		default: break;
 		}

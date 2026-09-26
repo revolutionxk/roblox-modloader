@@ -1,7 +1,8 @@
 #pragma once
 
 #include "../isubsystem.hpp"
-#include "RobloxModLoader/memory/i_rtti_provider.hpp"
+#include "RobloxModLoader/memory/rtti_index.hpp"
+#include "filesystem/directory.hpp"
 
 namespace rml
 {
@@ -12,22 +13,21 @@ namespace rml
 		{
 			try
 			{
-				m_instance = memory::create_rtti_provider();
+				m_index = std::make_unique<memory::RttiIndex>(memory::create_rtti_backend(), filesystem::directory::get_mod_loader_directory() / "cache" / "rtti.bin");
 			}
 			catch (const std::exception& e)
 			{
 				return std::unexpected(SubsystemError{std::string(name()), e.what()});
 			}
 
-			g_rtti_provider = m_instance.get();
-
+			memory::install_rtti(m_index.get());
 			return {};
 		}
 
 		void shutdown() override
 		{
-			g_rtti_provider = nullptr;
-			m_instance.reset();
+			memory::install_rtti(nullptr);
+			m_index.reset();
 		}
 
 		[[nodiscard]] std::string_view name() const noexcept override
@@ -36,6 +36,6 @@ namespace rml
 		}
 
 	private:
-		std::unique_ptr<memory::IRttiProvider> m_instance;
+		std::unique_ptr<memory::RttiIndex> m_index;
 	};
 }
