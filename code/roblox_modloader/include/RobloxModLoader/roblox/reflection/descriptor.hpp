@@ -41,7 +41,7 @@ namespace RBX::Reflection
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(Descriptor::Attributes, 0x10);
 	RML_ASSERT_SIZE(Descriptor, 0x28);
-	RML_ASSERT_OFFSET(Descriptor, name, 0x8);
+	RML_ASSERT_REF_OFFSET(Descriptor, name, 0x8);
 	RML_ASSERT_OFFSET(Descriptor, attributes, 0x10);
 	RML_ASSERT_OFFSET(Descriptor, id, 0x20);
 	RML_ASSERT_OFFSET(Descriptor, stable_id, 0x24);

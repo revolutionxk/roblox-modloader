@@ -66,8 +66,14 @@ namespace RBX
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_OFFSET(ContentProviderTemporaryIdFactory, files_mutex, 16);
 	RML_ASSERT_OFFSET(ContentProviderTemporaryIdFactory, files, 24);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(ContentProviderTemporaryIdFactory, buffers_mutex, 0x58);
+	RML_ASSERT_OFFSET(ContentProviderTemporaryIdFactory, buffers, 0x60);
+	RML_ASSERT_SIZE(ContentProviderTemporaryIdFactory, 0xa0);
+#else
 	RML_ASSERT_OFFSET(ContentProviderTemporaryIdFactory, buffers_mutex, 64);
 	RML_ASSERT_OFFSET(ContentProviderTemporaryIdFactory, buffers, 72);
 	RML_ASSERT_SIZE(ContentProviderTemporaryIdFactory, 112);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

@@ -99,9 +99,15 @@ namespace RBX::Graphics
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(Texture, type, 0x40);
+	RML_ASSERT_OFFSET(Texture, samples, 0x5c);
+	RML_ASSERT_SIZE(Texture, 0x70);
+#else
 	RML_ASSERT_OFFSET(Texture, type, 0x38);
 	RML_ASSERT_OFFSET(Texture, samples, 0x54);
 	RML_ASSERT_SIZE(Texture, 0x68);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	struct Renderbuffer
@@ -147,10 +153,18 @@ namespace RBX::Graphics
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(Framebuffer, color, 0x40);
+	RML_ASSERT_OFFSET(Framebuffer, depth, 0x58);
+	RML_ASSERT_OFFSET(Framebuffer, width, 0x78);
+	RML_ASSERT_OFFSET(Framebuffer, size, 0x88);
+	RML_ASSERT_OFFSET(Framebuffer, format, 0x90);
+#else
 	RML_ASSERT_OFFSET(Framebuffer, color, 0x38);
 	RML_ASSERT_OFFSET(Framebuffer, depth, 0x50);
 	RML_ASSERT_OFFSET(Framebuffer, width, 0x70);
 	RML_ASSERT_OFFSET(Framebuffer, size, 0x80);
 	RML_ASSERT_OFFSET(Framebuffer, format, 0x88);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

@@ -129,7 +129,7 @@ namespace RBX::Reflection
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(PropertyDescriptor::Attributes, 0x20);
 	RML_ASSERT_SIZE(PropertyDescriptor, 0x90);
-	RML_ASSERT_OFFSET(PropertyDescriptor, type, 0x68);
+	RML_ASSERT_REF_OFFSET(PropertyDescriptor, type, 0x68);
 	RML_ASSERT_OFFSET(PropertyDescriptor, protection_set, 0x78);
 	RML_ASSERT_OFFSET(PropertyDescriptor, index, 0x80);
 	RML_ASSERT_OFFSET(PropertyDescriptor, is_enum, 0x8A);

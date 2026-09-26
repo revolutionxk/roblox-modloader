@@ -37,9 +37,15 @@ namespace RBX::Graphics
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(Buffer, type, 0x40);
+	RML_ASSERT_OFFSET(Buffer, usage, 0x4c);
+	RML_ASSERT_SIZE(Buffer, 0x50);
+#else
 	RML_ASSERT_OFFSET(Buffer, type, 0x38);
 	RML_ASSERT_OFFSET(Buffer, usage, 0x44);
 	RML_ASSERT_SIZE(Buffer, 0x48);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	class VertexLayout : public Resource

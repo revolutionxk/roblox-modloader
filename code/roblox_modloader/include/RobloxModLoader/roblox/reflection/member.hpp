@@ -187,8 +187,8 @@ namespace RBX::Reflection
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(MemberDescriptor, 0x48);
-	RML_ASSERT_OFFSET(MemberDescriptor, category, 0x28);
-	RML_ASSERT_OFFSET(MemberDescriptor, owner, 0x30);
+	RML_ASSERT_REF_OFFSET(MemberDescriptor, category, 0x28);
+	RML_ASSERT_REF_OFFSET(MemberDescriptor, owner, 0x30);
 	RML_ASSERT_OFFSET(MemberDescriptor, security, 0x38);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

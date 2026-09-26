@@ -150,6 +150,23 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornMesh, z_index, 48);
 	RML_ASSERT_OFFSET(AdornMesh, rotation, 68);
 	RML_ASSERT_OFFSET(AdornMesh, texture, 120);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(AdornRender, visual_engine, 0xa8);
+	RML_ASSERT_OFFSET(AdornRender, context, 0xb8);
+	RML_ASSERT_OFFSET(AdornRender, vertex_streamer, 0xd8);
+	RML_ASSERT_OFFSET(AdornRender, unbind_resources, 0xe0);
+	RML_ASSERT_OFFSET(AdornRender, object_to_world, 0xec);
+	RML_ASSERT_OFFSET(AdornRender, current_texture, 0x120);
+	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 0x130);
+	RML_ASSERT_OFFSET(AdornRender, viewport_width, 0x144);
+	RML_ASSERT_OFFSET(AdornRender, meshes, 0x160);
+	RML_ASSERT_OFFSET(AdornRender, unit_batches, 0x208);
+	RML_ASSERT_OFFSET(AdornRender, custom_batch_cache, 0x3d8);
+	RML_ASSERT_OFFSET(AdornRender, techniques, 0x428);
+	RML_ASSERT_OFFSET(AdornRender, programs, 0x9d8);
+	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 0xaa8);
+	RML_ASSERT_SIZE(AdornRender, 0xad8);
+#else
 	RML_ASSERT_OFFSET(AdornRender, visual_engine, 144);
 	RML_ASSERT_OFFSET(AdornRender, context, 160);
 	RML_ASSERT_OFFSET(AdornRender, vertex_streamer, 184);
@@ -165,5 +182,6 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, programs, 2488);
 	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 2696);
 	RML_ASSERT_SIZE(AdornRender, 2744);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

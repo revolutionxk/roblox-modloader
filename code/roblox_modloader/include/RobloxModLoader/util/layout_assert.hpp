@@ -19,6 +19,15 @@
 #define RML_ASSERT_OFFSET(type, field, offset) \
 	static_assert(__builtin_offsetof(type, field) == (offset), #type "::" #field " offset mismatch")
 
+// MSVC answers 0 for __builtin_offsetof on a reference member instead of where the engine keeps
+// it, so a reference is pinned by its own offset on every other compiler and by the mirror's
+// total size on MSVC.
+#if defined(_MSC_VER) && !defined(__clang__)
+	#define RML_ASSERT_REF_OFFSET(type, field, offset)
+#else
+	#define RML_ASSERT_REF_OFFSET(type, field, offset) RML_ASSERT_OFFSET(type, field, offset)
+#endif
+
 #if defined(RML_WINDOWS)
 	#define RML_ASSERT_LAYOUT_SIZE(type, size) \
 		static_assert(sizeof(type) == (size), #type " layout size mismatch")
