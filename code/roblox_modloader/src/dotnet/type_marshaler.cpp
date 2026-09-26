@@ -21,116 +21,113 @@ RML_LOG_SCOPE("Interop");
 
 namespace rml::dotnet
 {
-	namespace
+	RML_ASSERT_LAYOUT_SIZE(RBX::Vector2, 8);
+	RML_ASSERT_LAYOUT_SIZE(RBX::Vector3, 12);
+	RML_ASSERT_LAYOUT_SIZE(RBX::Color3, 12);
+	RML_ASSERT_LAYOUT_SIZE(RBX::CoordinateFrame, 48);
+	RML_ASSERT_LAYOUT_SIZE(RBX::Rect2D, 16);
+	RML_ASSERT_LAYOUT_SIZE(RBX::BrickColor, 4);
+
+	static_assert(sizeof(float) == 4 && sizeof(int32_t) == 4, "Ray/UDim/UDim2/NumberRange/Region3/Faces/Axes/sequence-stride sizes below are engine-ABI facts (no matching 1:1 reconstructed C++ struct in this codebase; RBX::Ray/RbxRay carries a vtable and is not wire-compatible) and assume 32-bit float and int32 engine fields");
+
+	static_assert(TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::CoordinateFrame) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::Rect2D) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::Vector3) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::Color3) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::BrickColor), "TypeMarshaler::kMaxBlittableEngineTypeBytes must bound every reconstructed blittable engine type");
+
+	[[nodiscard]] static size_t blittable_size(const RBX::Name& type_name) noexcept
 	{
-		RML_ASSERT_LAYOUT_SIZE(RBX::Vector2, 8);
-		RML_ASSERT_LAYOUT_SIZE(RBX::Vector3, 12);
-		RML_ASSERT_LAYOUT_SIZE(RBX::Color3, 12);
-		RML_ASSERT_LAYOUT_SIZE(RBX::CoordinateFrame, 48);
-		RML_ASSERT_LAYOUT_SIZE(RBX::Rect2D, 16);
-		RML_ASSERT_LAYOUT_SIZE(RBX::BrickColor, 4);
+		static constexpr std::pair<const char*, size_t> table[] = {
+		    {"Vector3", sizeof(RBX::Vector3)},
+		    {"Vector2", sizeof(RBX::Vector2)},
+		    {"Color3", sizeof(RBX::Color3)},
+		    {"CoordinateFrame", sizeof(RBX::CoordinateFrame)},
+		    {"CFrame", sizeof(RBX::CoordinateFrame)},
+		    {"UDim", 8},
+		    {"UDim2", 16},
+		    {"Ray", 24},
+		    {"Rect2D", sizeof(RBX::Rect2D)},
+		    {"NumberRange", 8},
+		    {"Region3", TypeMarshaler::kMaxBlittableEngineTypeBytes},
+		    {"Faces", 4},
+		    {"Axes", 4},
+		    {"BrickColor", sizeof(RBX::BrickColor)},
+		};
 
-		static_assert(sizeof(float) == 4 && sizeof(int32_t) == 4, "Ray/UDim/UDim2/NumberRange/Region3/Faces/Axes/sequence-stride sizes below are engine-ABI facts (no matching 1:1 reconstructed C++ struct in this codebase; RBX::Ray/RbxRay carries a vtable and is not wire-compatible) and assume 32-bit float and int32 engine fields");
-
-		static_assert(TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::CoordinateFrame) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::Rect2D) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::Vector3) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::Color3) && TypeMarshaler::kMaxBlittableEngineTypeBytes >= sizeof(RBX::BrickColor), "TypeMarshaler::kMaxBlittableEngineTypeBytes must bound every reconstructed blittable engine type");
-
-		[[nodiscard]] size_t blittable_size(const RBX::Name& type_name) noexcept
+		for (const auto& [name, size] : table)
 		{
-			static constexpr std::pair<const char*, size_t> table[] = {
-			    {"Vector3", sizeof(RBX::Vector3)},
-			    {"Vector2", sizeof(RBX::Vector2)},
-			    {"Color3", sizeof(RBX::Color3)},
-			    {"CoordinateFrame", sizeof(RBX::CoordinateFrame)},
-			    {"CFrame", sizeof(RBX::CoordinateFrame)},
-			    {"UDim", 8},
-			    {"UDim2", 16},
-			    {"Ray", 24},
-			    {"Rect2D", sizeof(RBX::Rect2D)},
-			    {"NumberRange", 8},
-			    {"Region3", TypeMarshaler::kMaxBlittableEngineTypeBytes},
-			    {"Faces", 4},
-			    {"Axes", 4},
-			    {"BrickColor", sizeof(RBX::BrickColor)},
-			};
-
-			for (const auto& [name, size] : table)
-			{
-				if (type_name == name)
-					return size;
-			}
-			return 0;
+			if (type_name == name)
+				return size;
 		}
+		return 0;
+	}
 
-		[[nodiscard]] size_t sequence_stride(const RBX::Name& type_name) noexcept
+	[[nodiscard]] static size_t sequence_stride(const RBX::Name& type_name) noexcept
+	{
+		if (type_name == "NumberSequence")
+			return 12;
+		if (type_name == "ColorSequence")
+			return 20;
+		return 0;
+	}
+
+	[[nodiscard]] static InteropVariant marshal_tuple(const RBX::Reflection::Tuple* tuple)
+	{
+		if (!tuple || !utils::memory::is_valid_pointer(reinterpret_cast<uintptr_t>(tuple)) || tuple->values.empty())
+			return null_value();
+
+		InteropStringPool strings;
+		std::vector<InteropVariant> values;
+		values.reserve(tuple->values.size());
+		for (const auto& value : tuple->values)
+			values.push_back(TypeMarshaler::encode_variant(value, &strings));
+
+		return tuple_value(values);
+	}
+
+	using TupleSharedPtr = std::shared_ptr<const RBX::Reflection::Tuple>;
+
+	static void destroy_string_storage(void* storage)
+	{
+		static_cast<std::string*>(storage)->~basic_string();
+	}
+	static void destroy_trivial_storage(void*)
+	{
+	}
+	static void destroy_tuple_storage(void* storage)
+	{
+		static_cast<TupleSharedPtr*>(storage)->~shared_ptr();
+	}
+	static void* copy_tuple_storage(void* dst, const void* src)
+	{
+		::new (dst) TupleSharedPtr(*static_cast<const TupleSharedPtr*>(src));
+		return dst;
+	}
+
+	static const void* g_string_ops[3] = {nullptr, nullptr, reinterpret_cast<const void*>(&destroy_string_storage)};
+	static const void* g_trivial_ops[3] = {nullptr, nullptr, reinterpret_cast<const void*>(&destroy_trivial_storage)};
+	static const void* g_tuple_ops[3] = {reinterpret_cast<const void*>(&copy_tuple_storage), reinterpret_cast<const void*>(&copy_tuple_storage), reinterpret_cast<const void*>(&destroy_tuple_storage)};
+
+	[[nodiscard]] static int tag_to_type_id(const InteropValueTag tag) noexcept
+	{
+		switch (tag)
 		{
-			if (type_name == "NumberSequence")
-				return 12;
-			if (type_name == "ColorSequence")
-				return 20;
-			return 0;
+		case InteropValueTag::Bool: return RBX::Reflection::TypeId::Bool;
+		case InteropValueTag::Int64: return RBX::Reflection::TypeId::Int64;
+		case InteropValueTag::Float: return RBX::Reflection::TypeId::Float;
+		case InteropValueTag::Double: return RBX::Reflection::TypeId::Double;
+		case InteropValueTag::String: return RBX::Reflection::TypeId::String;
+		case InteropValueTag::Instance: return RBX::Reflection::TypeId::Instance;
+		default: return -1;
 		}
+	}
 
-		[[nodiscard]] InteropVariant marshal_tuple(const RBX::Reflection::Tuple* tuple)
+	static void destroy_tuple_contents(RBX::Reflection::Tuple* tuple)
+	{
+		for (auto& value : tuple->values)
 		{
-			if (!tuple || !utils::memory::is_valid_pointer(reinterpret_cast<uintptr_t>(tuple)) || tuple->values.empty())
-				return null_value();
-
-			InteropStringPool strings;
-			std::vector<InteropVariant> values;
-			values.reserve(tuple->values.size());
-			for (const auto& value : tuple->values)
-				values.push_back(TypeMarshaler::encode_variant(value, &strings));
-
-			return tuple_value(values);
+			if (const auto* const* ops = static_cast<const void* const*>(value.value_ops()); ops && ops[2])
+				reinterpret_cast<void (*)(void*)>(const_cast<void*>(ops[2]))(value.storage());
 		}
-
-		using TupleSharedPtr = std::shared_ptr<const RBX::Reflection::Tuple>;
-
-		void destroy_string_storage(void* storage)
-		{
-			static_cast<std::string*>(storage)->~basic_string();
-		}
-		void destroy_trivial_storage(void*)
-		{
-		}
-		void destroy_tuple_storage(void* storage)
-		{
-			static_cast<TupleSharedPtr*>(storage)->~shared_ptr();
-		}
-		void* copy_tuple_storage(void* dst, const void* src)
-		{
-			::new (dst) TupleSharedPtr(*static_cast<const TupleSharedPtr*>(src));
-			return dst;
-		}
-
-		const void* g_string_ops[3] = {nullptr, nullptr, reinterpret_cast<const void*>(&destroy_string_storage)};
-		const void* g_trivial_ops[3] = {nullptr, nullptr, reinterpret_cast<const void*>(&destroy_trivial_storage)};
-		const void* g_tuple_ops[3] = {reinterpret_cast<const void*>(&copy_tuple_storage), reinterpret_cast<const void*>(&copy_tuple_storage), reinterpret_cast<const void*>(&destroy_tuple_storage)};
-
-		[[nodiscard]] int tag_to_type_id(const InteropValueTag tag) noexcept
-		{
-			switch (tag)
-			{
-			case InteropValueTag::Bool: return RBX::Reflection::TypeId::Bool;
-			case InteropValueTag::Int64: return RBX::Reflection::TypeId::Int64;
-			case InteropValueTag::Float: return RBX::Reflection::TypeId::Float;
-			case InteropValueTag::Double: return RBX::Reflection::TypeId::Double;
-			case InteropValueTag::String: return RBX::Reflection::TypeId::String;
-			case InteropValueTag::Instance: return RBX::Reflection::TypeId::Instance;
-			default: return -1;
-			}
-		}
-
-		void destroy_tuple_contents(RBX::Reflection::Tuple* tuple)
-		{
-			for (auto& value : tuple->values)
-			{
-				if (const auto* const* ops = static_cast<const void* const*>(value.value_ops()); ops && ops[2])
-					reinterpret_cast<void (*)(void*)>(const_cast<void*>(ops[2]))(value.storage());
-			}
-			delete tuple;
-		}
-	} // namespace
+		delete tuple;
+	}
 
 	const RBX::Reflection::Type* TypeMarshaler::find_type_by_id(const int type_id) noexcept
 	{

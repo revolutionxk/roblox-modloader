@@ -29,22 +29,19 @@
 
 using namespace script_editor_bg;
 
-namespace
+[[nodiscard]] static int to_percent(const double opacity)
 {
-	[[nodiscard]] int to_percent(const double opacity)
-	{
-		return static_cast<int>(std::lround(opacity * 100.0));
-	}
+	return static_cast<int>(std::lround(opacity * 100.0));
+}
 
-	[[nodiscard]] std::string scale_label(const ScaleMode mode)
-	{
-		return "Scale: " + std::string(to_string(mode));
-	}
+[[nodiscard]] static std::string scale_label(const ScaleMode mode)
+{
+	return "Scale: " + std::string(to_string(mode));
+}
 
-	[[nodiscard]] std::string align_label(const Alignment alignment)
-	{
-		return "Align: " + std::string(to_string(alignment));
-	}
+[[nodiscard]] static std::string align_label(const Alignment alignment)
+{
+	return "Align: " + std::string(to_string(alignment));
 }
 
 class ScriptEditorBackground final : public ModBase

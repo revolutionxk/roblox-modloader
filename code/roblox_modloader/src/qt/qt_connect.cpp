@@ -10,33 +10,30 @@
 
 namespace rml::qt::detail
 {
-	namespace
+	using impl_fn = void (*)(int which, void* self, void* receiver, void** args, bool* ret);
+
+	struct FunctionSlot
 	{
-		using impl_fn = void (*)(int which, void* self, void* receiver, void** args, bool* ret);
+		int ref;
+		impl_fn impl;
+		std::function<void(void**)> callable;
+	};
 
-		struct FunctionSlot
+	static void slot_impl(const int which, void* self, void*, void** args, bool* ret)
+	{
+		const auto* const slot = static_cast<FunctionSlot*>(self);
+		switch (which)
 		{
-			int ref;
-			impl_fn impl;
-			std::function<void(void**)> callable;
-		};
-
-		void slot_impl(const int which, void* self, void*, void** args, bool* ret)
-		{
-			const auto* const slot = static_cast<FunctionSlot*>(self);
-			switch (which)
-			{
-			case 0: delete slot; break;
-			case 1:
-				if (slot->callable)
-					slot->callable(args);
-				break;
-			case 2:
-				if (ret)
-					*ret = false;
-				break;
-			default: break;
-			}
+		case 0: delete slot; break;
+		case 1:
+			if (slot->callable)
+				slot->callable(args);
+			break;
+		case 2:
+			if (ret)
+				*ret = false;
+			break;
+		default: break;
 		}
 	}
 
