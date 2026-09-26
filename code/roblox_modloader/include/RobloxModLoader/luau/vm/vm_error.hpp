@@ -4,6 +4,8 @@
 
 namespace rml::luau::vm
 {
+	inline constexpr char kUnknownError[] = "unknown Luau error";
+
 	struct VmError
 	{
 		enum class Kind : std::uint8_t

@@ -1,12 +1,12 @@
 #include "RobloxModLoader/luau/vm/vm_error.hpp"
 
+#include "RobloxModLoader/luau/vm/stack.hpp"
 #include "RobloxModLoader/luau/vm/vm_api.hpp"
 
 namespace rml::luau::vm
 {
 	static constexpr char kMessageField[] = "message";
 	static constexpr char kTracebackField[] = "traceback";
-	static constexpr char kUnknownError[] = "unknown Luau error";
 
 	std::string capture_traceback(lua_State* L)
 	{
@@ -44,9 +44,9 @@ namespace rml::luau::vm
 		const std::string traceback = capture_traceback(L);
 
 		lua_createtable(L, 0, 2);
-		lua_pushlstring(L, message.data(), message.size());
+		push_string(L, message);
 		lua_setfield(L, -2, kMessageField);
-		lua_pushlstring(L, traceback.data(), traceback.size());
+		push_string(L, traceback);
 		lua_setfield(L, -2, kTracebackField);
 
 		return 1;

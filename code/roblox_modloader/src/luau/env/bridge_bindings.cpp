@@ -3,6 +3,7 @@
 #include "RobloxModLoader/luau/luau_bridge.hpp"
 #include "RobloxModLoader/luau/script_host.hpp"
 #include "RobloxModLoader/luau/script_runtime.hpp"
+#include "RobloxModLoader/luau/vm/stack.hpp"
 #include "RobloxModLoader/luau/vm/stack_guard.hpp"
 #include "RobloxModLoader/roblox/data_model.hpp"
 
@@ -16,7 +17,7 @@ namespace rml::luau
 	{
 		auto table = std::make_shared<BridgeTable>();
 
-		const auto absolute = index < 0 ? lua_gettop(L) + index + 1 : index;
+		const auto absolute = vm::abs_index(L, index);
 
 		lua_pushnil(L);
 		while (lua_next(L, absolute) != 0)
@@ -43,11 +44,7 @@ namespace rml::luau
 		case LUA_TNUMBER:
 			return lua_tonumberx(L, index, nullptr);
 		case LUA_TSTRING:
-		{
-			std::size_t length = 0;
-			const auto* text = lua_tolstring(L, index, &length);
-			return std::string{text ? text : "", text ? length : 0};
-		}
+			return vm::to_string(L, index);
 		case LUA_TTABLE:
 			if (depth < 8)
 			{
@@ -75,7 +72,7 @@ namespace rml::luau
 			    }
 			    else if constexpr (std::is_same_v<Held, std::string>)
 			    {
-				    lua_pushlstring(L, held.data(), held.size());
+				    vm::push_string(L, held);
 			    }
 			    else if constexpr (std::is_same_v<Held, std::shared_ptr<const BridgeTable>>)
 			    {

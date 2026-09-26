@@ -1,5 +1,7 @@
 #include "RobloxModLoader/luau/vm/vm_guard.hpp"
 
+#include "RobloxModLoader/luau/vm/stack.hpp"
+
 #if defined(_MSC_VER)
 	#define RML_UNREACHABLE() __assume(0)
 #else
@@ -12,7 +14,7 @@ namespace rml::luau::vm
 	{
 		{
 			const std::string text = error.describe();
-			lua_pushlstring(L, text.data(), text.size());
+			push_string(L, text);
 		}
 
 		lua_error(L);
