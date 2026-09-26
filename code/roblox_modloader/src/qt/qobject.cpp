@@ -1,6 +1,6 @@
 #include "RobloxModLoader/qt/qobject.hpp"
 
-#include "RobloxModLoader/internal/platform.hpp"
+#include "RobloxModLoader/platform/abi.hpp"
 #include "RobloxModLoader/qt/qmetaobject.hpp"
 #include "RobloxModLoader/qt/qt_module.hpp"
 
@@ -14,11 +14,6 @@ namespace rml::qt
 	}
 
 	static constexpr std::size_t QT_METACAST_SLOT = 1;
-#if defined(RML_WINDOWS)
-	static constexpr std::size_t VTABLE_HEADER_ENTRIES = 0;
-#else
-	static constexpr std::size_t VTABLE_HEADER_ENTRIES = 2;
-#endif
 
 	using qt_metacast_fn = void* (*)(const void*, const char*);
 
@@ -31,7 +26,7 @@ namespace rml::qt
 			if (!vtable || !metacast)
 				return false;
 
-			const auto* const entries = static_cast<void* const*>(vtable) + VTABLE_HEADER_ENTRIES;
+			const auto* const entries = static_cast<void* const*>(vtable) + platform::abi::vtable_prefix_slots;
 			return entries[QT_METACAST_SLOT] == metacast;
 		}();
 

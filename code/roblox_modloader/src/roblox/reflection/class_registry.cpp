@@ -54,8 +54,6 @@ namespace rml::reflection
 	}
 
 #if defined(RML_WINDOWS)
-	static constexpr std::size_t k_first_merged_slot = 1;
-
 	static void* mod_scalar_deleting_dtor(void* self, unsigned int flags)
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
@@ -63,8 +61,6 @@ namespace rml::reflection
 		return reinterpret_cast<void* (*)(void*, unsigned int)>(entry->engine_vtable[0])(self, flags);
 	}
 #else
-	static constexpr std::size_t k_first_merged_slot = 2;
-
 	static void mod_complete_dtor(void* self)
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
@@ -376,7 +372,7 @@ namespace rml::reflection
 #endif
 
 			std::size_t merged = 0;
-			for (std::size_t slot = k_first_merged_slot; slot < entry.layout.virtual_slots && slot < k_cloned_vtable_slots; ++slot)
+			for (std::size_t slot = platform::abi::destructor_slots; slot < entry.layout.virtual_slots && slot < k_cloned_vtable_slots; ++slot)
 			{
 				if (derived_vtable[slot] == entry.layout.base_vtable[slot])
 					continue;
