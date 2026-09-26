@@ -4,6 +4,7 @@
 #include "RobloxModLoader/roblox/graphics/visual_engine.hpp"
 
 #include <atomic>
+#include <cstdint>
 #include <mutex>
 #include <vector>
 
@@ -21,11 +22,13 @@ namespace rml::graphics
 		[[nodiscard]] RBX::Graphics::SceneManager* scene_manager() const;
 		void set_visual_engine(RBX::Graphics::VisualEngine* engine);
 		void set_scene_manager(RBX::Graphics::SceneManager* scene_manager);
+		void advance_frame();
 		void add_render_callback(RenderCallback callback);
 		void run_render_callbacks(RenderPassContext& context);
 		void add_adorn_callback(AdornCallback callback);
 		void run_adorn_callbacks(RBX::Graphics::AdornRender& adorn);
-		[[nodiscard]] RBX::Graphics::AdornRender* adorn_render() const;
+		[[nodiscard]] RBX::Graphics::AdornRender* adorn_render();
+		[[nodiscard]] std::vector<RBX::Graphics::AdornRender*> adorn_renders();
 		[[nodiscard]] bool validate();
 
 	private:
@@ -35,13 +38,23 @@ namespace rml::graphics
 			unsigned failures;
 		};
 
+		struct AdornEntry
+		{
+			RBX::Graphics::AdornRender* adorn;
+			std::uint64_t last_frame;
+			float area;
+		};
+
+		void track_adorn_render(RBX::Graphics::AdornRender& adorn);
+
 		std::atomic<RBX::Graphics::VisualEngine*> m_visual_engine{nullptr};
 		std::atomic<RBX::Graphics::SceneManager*> m_scene_manager{nullptr};
 		std::mutex m_callbacks_mutex;
 		std::vector<Entry> m_callbacks;
 		std::vector<std::pair<AdornCallback, unsigned>> m_adorn_callbacks;
-		std::atomic<RBX::Graphics::AdornRender*> m_adorn_render{nullptr};
-		std::vector<const RBX::Graphics::AdornRender*> m_seen_adorn_renders;
+		std::atomic<std::uint64_t> m_frame{0};
+		std::mutex m_adorn_mutex;
+		std::vector<AdornEntry> m_adorn_renders;
 		std::atomic<int> m_validation{0};
 	};
 }

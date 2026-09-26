@@ -19,6 +19,7 @@ namespace rml::graphics
 {
 	static constexpr unsigned k_max_callback_failures = 2;
 	static constexpr std::size_t k_min_detour_target_size = 32;
+	static constexpr std::uint64_t k_adorn_stale_frames = 8;
 
 	static bool printable(const std::string& text)
 	{
@@ -67,6 +68,11 @@ namespace rml::graphics
 			    reinterpret_cast<std::uintptr_t>(engine ? engine->device : nullptr));
 	}
 
+	void GraphicsRegistry::advance_frame()
+	{
+		m_frame.fetch_add(1, std::memory_order_acq_rel);
+	}
+
 	void GraphicsRegistry::add_render_callback(RenderCallback callback)
 	{
 		std::lock_guard lock(m_callbacks_mutex);
@@ -113,17 +119,9 @@ namespace rml::graphics
 
 	void GraphicsRegistry::run_adorn_callbacks(RBX::Graphics::AdornRender& adorn)
 	{
-		m_adorn_render.store(&adorn, std::memory_order_release);
+		track_adorn_render(adorn);
 
 		std::lock_guard lock(m_callbacks_mutex);
-		if (std::ranges::find(m_seen_adorn_renders, &adorn) == m_seen_adorn_renders.end())
-		{
-			m_seen_adorn_renders.push_back(&adorn);
-			RML_INFO("AdornRender captured at 0x{:X} ({}x{})",
-			    reinterpret_cast<std::uintptr_t>(&adorn),
-			    adorn.viewport_width,
-			    adorn.viewport_height);
-		}
 
 		for (auto it = m_adorn_callbacks.begin(); it != m_adorn_callbacks.end();)
 		{
@@ -154,9 +152,49 @@ namespace rml::graphics
 		}
 	}
 
-	RBX::Graphics::AdornRender* GraphicsRegistry::adorn_render() const
+	void GraphicsRegistry::track_adorn_render(RBX::Graphics::AdornRender& adorn)
 	{
-		return m_adorn_render.load(std::memory_order_acquire);
+		const auto frame = m_frame.load(std::memory_order_acquire);
+		const auto area = adorn.viewport_width * adorn.viewport_height;
+		std::lock_guard lock(m_adorn_mutex);
+		const auto it = std::ranges::find(m_adorn_renders, &adorn, &AdornEntry::adorn);
+		if (it != m_adorn_renders.end())
+		{
+			it->last_frame = frame;
+			it->area = area;
+			return;
+		}
+
+		m_adorn_renders.push_back({&adorn, frame, area});
+		RML_INFO("AdornRender captured at 0x{:X} ({}x{}), {} active",
+		    reinterpret_cast<std::uintptr_t>(&adorn),
+		    adorn.viewport_width,
+		    adorn.viewport_height,
+		    m_adorn_renders.size());
+	}
+
+	std::vector<RBX::Graphics::AdornRender*> GraphicsRegistry::adorn_renders()
+	{
+		const auto frame = m_frame.load(std::memory_order_acquire);
+		std::lock_guard lock(m_adorn_mutex);
+		std::erase_if(m_adorn_renders, [frame](const AdornEntry& entry) {
+			return entry.last_frame + k_adorn_stale_frames < frame;
+		});
+
+		auto entries = m_adorn_renders;
+		std::ranges::stable_sort(entries, std::greater{}, &AdornEntry::area);
+
+		std::vector<RBX::Graphics::AdornRender*> result;
+		result.reserve(entries.size());
+		for (const auto& entry : entries)
+			result.push_back(entry.adorn);
+		return result;
+	}
+
+	RBX::Graphics::AdornRender* GraphicsRegistry::adorn_render()
+	{
+		const auto renders = adorn_renders();
+		return renders.empty() ? nullptr : renders.front();
 	}
 
 	void* adorn_render_pre_submit_pass_target()
@@ -270,6 +308,11 @@ namespace rml::graphics
 	RBX::Graphics::AdornRender* adorn_render()
 	{
 		return GraphicsRegistry::instance().adorn_render();
+	}
+
+	std::vector<RBX::Graphics::AdornRender*> adorn_renders()
+	{
+		return GraphicsRegistry::instance().adorn_renders();
 	}
 
 	void add_render_callback(RenderCallback callback)

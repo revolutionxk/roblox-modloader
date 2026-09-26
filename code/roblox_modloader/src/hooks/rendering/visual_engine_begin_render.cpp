@@ -5,6 +5,8 @@
 
 RBX::Graphics::DeviceContext* rml::Hooks::visual_engine_begin_render(RBX::Graphics::VisualEngine* self)
 {
-	graphics::GraphicsRegistry::instance().set_visual_engine(self);
+	auto& registry = graphics::GraphicsRegistry::instance();
+	registry.set_visual_engine(self);
+	registry.advance_frame();
 	return Hooking::get_original<&Hooks::visual_engine_begin_render>()(self);
 }
