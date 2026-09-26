@@ -113,13 +113,18 @@ namespace rml::graphics
 
 	void GraphicsRegistry::run_adorn_callbacks(RBX::Graphics::AdornRender& adorn)
 	{
-		if (m_adorn_render.exchange(&adorn, std::memory_order_acq_rel) != &adorn)
+		m_adorn_render.store(&adorn, std::memory_order_release);
+
+		std::lock_guard lock(m_callbacks_mutex);
+		if (std::ranges::find(m_seen_adorn_renders, &adorn) == m_seen_adorn_renders.end())
+		{
+			m_seen_adorn_renders.push_back(&adorn);
 			RML_INFO("AdornRender captured at 0x{:X} ({}x{})",
 			    reinterpret_cast<std::uintptr_t>(&adorn),
 			    adorn.viewport_width,
 			    adorn.viewport_height);
+		}
 
-		std::lock_guard lock(m_callbacks_mutex);
 		for (auto it = m_adorn_callbacks.begin(); it != m_adorn_callbacks.end();)
 		{
 			try

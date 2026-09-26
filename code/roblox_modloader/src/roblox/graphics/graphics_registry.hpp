@@ -41,6 +41,7 @@ namespace rml::graphics
 		std::vector<Entry> m_callbacks;
 		std::vector<std::pair<AdornCallback, unsigned>> m_adorn_callbacks;
 		std::atomic<RBX::Graphics::AdornRender*> m_adorn_render{nullptr};
+		std::vector<const RBX::Graphics::AdornRender*> m_seen_adorn_renders;
 		std::atomic<int> m_validation{0};
 	};
 }
