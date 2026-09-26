@@ -20,9 +20,27 @@ namespace rml::memory
 			return vtable;
 		}
 
-		std::optional<void**> find_class_vtable_matching(std::string_view, const std::function<bool(std::string_view)>&) override
+		// Undecorated names, as the scanner keys them. The alphabetically first match wins, every launch.
+		std::optional<void**> find_class_vtable_matching(const std::string_view mangled_prefix, const std::function<bool(std::string_view)>& accept) override
 		{
-			return std::nullopt;
+			const std::string* chosen_name = nullptr;
+			void** chosen = nullptr;
+			for (const auto& [name, info] : rtti::Scanner::get_all_classes())
+			{
+				if (!info || !name.starts_with(mangled_prefix) || !accept(name))
+					continue;
+				if (chosen_name && *chosen_name <= name)
+					continue;
+				if (auto* vtable = info->get_virtual_function_table())
+				{
+					chosen_name = &name;
+					chosen = vtable;
+				}
+			}
+
+			if (!chosen)
+				return std::nullopt;
+			return chosen;
 		}
 
 	private:

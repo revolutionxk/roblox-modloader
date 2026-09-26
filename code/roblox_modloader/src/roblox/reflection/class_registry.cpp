@@ -109,7 +109,7 @@ namespace rml::reflection
 			return false;
 
 		const auto& p = g_pointers->m_roblox_pointers;
-		return p.class_descriptor_ctor && p.class_descriptor_all_classes && p.creatable_get_creator && p.instance_ctor && p.create_instance_impl;
+		return p.class_descriptor_ctor && p.class_descriptor_all_classes && (p.creatable_get_creator || p.creatable_register_creator) && p.instance_ctor && p.create_instance_impl;
 	}
 
 	template<typename T>
@@ -277,8 +277,12 @@ namespace rml::reflection
 
 		entry.descriptor = reinterpret_cast<RBX::Reflection::ClassDescriptor*>(entry.storage.get());
 		entry.creator = std::make_unique<ModInstanceCreator>(entry);
-		m_creators[&entry.descriptor->name] = entry.creator.get();
 		m_by_descriptor[entry.descriptor] = &entry;
+		// Windows files the creator in the engine's own map, as Folder::classDescriptor() does.
+		if (p.creatable_register_creator)
+			p.creatable_register_creator(entry.descriptor, entry.creator.get());
+		else
+			m_creators[&entry.descriptor->name] = entry.creator.get();
 
 		RML_INFO("Registered class {} : {} ({} bytes, {} properties, {} functions, {} events, descriptor 0x{:X})", spec.name, spec.base, spec.layout.size,
 		    entry.property_table.size(), entry.function_table.size(), entry.event_table.size(), reinterpret_cast<std::uintptr_t>(entry.descriptor));
@@ -425,6 +429,11 @@ namespace rml::reflection
 	bool ModInstanceCreator::is_script_creatable() const
 	{
 		return true;
+	}
+
+	const RBX::Reflection::ClassDescriptor* ModInstanceCreator::descriptor() const
+	{
+		return m_entry.descriptor;
 	}
 }
 

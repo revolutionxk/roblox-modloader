@@ -72,18 +72,12 @@ namespace RBX::Reflection
 		public:
 		std::uint64_t security;
 		std::byte reserved_after_security[16];
-#if defined(RML_WINDOWS)
-		std::uint32_t functionality;
-		std::uint32_t reserved_after_functionality;
-		const std::uint32_t* memory_category;
-		ClassDescriptor* base;
-#else
+		// Same on both STLs: measured in Windows 0.739's ClassDescriptor constructor.
 		const std::uint32_t* memory_category;
 		ClassDescriptor* base;
 		std::uint32_t reserved_before_functionality;
 		std::uint16_t functionality;
 		std::uint16_t reserved_after_functionality;
-#endif
 		ClassDescriptors derived_classes;
 		std::uint32_t member_table_count;
 		std::uint32_t reserved_1dc;
@@ -317,17 +311,6 @@ namespace RBX::Reflection
 	private:
 		RML_LAYOUT_GUARD_BEGIN()
 			RML_LAYOUT_DIAGNOSTIC_PUSH()
-#if defined(RML_WINDOWS)
-			RML_ASSERT_SIZE(ClassDescriptor, 0x2A8);
-			RML_ASSERT_OFFSET(ClassDescriptor, security, 0x208);
-			RML_ASSERT_OFFSET(ClassDescriptor, functionality, 0x220);
-			RML_ASSERT_OFFSET(ClassDescriptor, memory_category, 0x228);
-			RML_ASSERT_OFFSET(ClassDescriptor, base, 0x230);
-			RML_ASSERT_OFFSET(ClassDescriptor, derived_classes, 0x238);
-			RML_ASSERT_OFFSET(ClassDescriptor, member_table_count, 0x250);
-			RML_ASSERT_OFFSET(ClassDescriptor, member_table, 0x260);
-			RML_ASSERT_OFFSET(ClassDescriptor, arena, 0x270);
-#else
 			RML_ASSERT_SIZE(ClassDescriptor, 0x230);
 			RML_ASSERT_OFFSET(ClassDescriptor, security, 0x190);
 			RML_ASSERT_OFFSET(ClassDescriptor, memory_category, 0x1A8);
@@ -337,7 +320,6 @@ namespace RBX::Reflection
 			RML_ASSERT_OFFSET(ClassDescriptor, member_table_count, 0x1D8);
 			RML_ASSERT_OFFSET(ClassDescriptor, member_table, 0x1E8);
 			RML_ASSERT_OFFSET(ClassDescriptor, arena, 0x1F8);
-#endif
 			RML_LAYOUT_DIAGNOSTIC_POP()
 		RML_LAYOUT_GUARD_END()
 	};

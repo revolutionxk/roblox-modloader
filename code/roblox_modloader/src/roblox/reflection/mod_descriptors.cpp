@@ -65,8 +65,18 @@ namespace rml::reflection
 		return *reinterpret_cast<void* const*>(&carrier);
 	}
 
+	// `mangled` spells T as it appears in an EventDesc RTTI name: Itanium on macOS, undecorated on Windows.
 	const PropertyTypeInfo& property_type_info(const PropertyType type)
 	{
+#if defined(RML_WINDOWS)
+		static constexpr PropertyTypeInfo infos[] = {
+		    {"bool", "RBX::Reflection::TypedPropertyDescriptor<bool>", "bool", RBX::Reflection::TypeId::Bool, true, false},
+		    {"int", "RBX::Reflection::TypedPropertyDescriptor<int>", "int", RBX::Reflection::TypeId::Int, true, false},
+		    {"float", "RBX::Reflection::TypedPropertyDescriptor<float>", "float", RBX::Reflection::TypeId::Float, true, true},
+		    {"double", "RBX::Reflection::TypedPropertyDescriptor<double>", "double", RBX::Reflection::TypeId::Double, true, true},
+		    {"string", "RBX::Reflection::TypedPropertyDescriptor<std::basic_string<char,std::char_traits<char>,std::allocator<char> > >", "std::basic_string<char,std::char_traits<char>,std::allocator<char> >", RBX::Reflection::TypeId::String, false, false},
+		};
+#else
 		static constexpr PropertyTypeInfo infos[] = {
 		    {"bool", "RBX::Reflection::TypedPropertyDescriptor<bool>", "b", RBX::Reflection::TypeId::Bool, true, false},
 		    {"int", "RBX::Reflection::TypedPropertyDescriptor<int>", "i", RBX::Reflection::TypeId::Int, true, false},
@@ -74,6 +84,7 @@ namespace rml::reflection
 		    {"double", "RBX::Reflection::TypedPropertyDescriptor<double>", "d", RBX::Reflection::TypeId::Double, true, true},
 		    {"string", "RBX::Reflection::TypedPropertyDescriptor<std::string>", "NSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE", RBX::Reflection::TypeId::String, false, false},
 		};
+#endif
 		return infos[static_cast<std::size_t>(type)];
 	}
 
@@ -93,9 +104,31 @@ namespace rml::reflection
 	}
 
 #if defined(RML_WINDOWS)
+	// Every Type registers itself in the engine's type vector; exactly one must match.
 	static const RBX::Reflection::Type* find_type_singleton(const PropertyTypeInfo& info)
 	{
-		return nullptr;
+		const auto* registry = g_pointers ? g_pointers->m_roblox_pointers.type_registry : nullptr;
+		if (!registry)
+			return nullptr;
+
+		const RBX::Reflection::Type* found = nullptr;
+		std::size_t matches = 0;
+		for (const auto* type : *registry)
+		{
+			if (!type || type->name != info.engine_name || type->type_id != info.type_id || type->is_number != info.is_number
+			    || type->is_float != info.is_float)
+				continue;
+			found = type;
+			++matches;
+		}
+
+		if (matches != 1)
+		{
+			RML_ERROR("Expected one Type named '{}' (id {}) in the type registry, found {}", info.engine_name, info.type_id, matches);
+			return nullptr;
+		}
+
+		return found;
 	}
 #else
 	static const RBX::Reflection::Type* find_type_singleton(const PropertyTypeInfo& info)
@@ -143,6 +176,21 @@ namespace rml::reflection
 
 	static void* event_desc_vtable(const std::vector<EventArgument>& arguments)
 	{
+#if defined(RML_WINDOWS)
+		// Undecorated spelling: "void (float,int)", "void (void)" for none.
+		std::string key;
+		for (const auto& argument : arguments)
+		{
+			if (!key.empty())
+				key += ',';
+			key += property_type_info(argument.type).mangled;
+		}
+		if (arguments.empty())
+			key = "void";
+
+		const std::string prefix = "RBX::Reflection::EventDesc<";
+		const std::string pattern = "^RBX::Reflection::EventDesc<([A-Za-z0-9_:]+),void \\(" + key + "\\),rbx::signal<void \\(" + key + "\\)>,rbx::signal<void \\(" + key + "\\)> \\1::\\*>$";
+#else
 		std::string mangled_arguments;
 		std::size_t strings = 0;
 		for (const auto& argument : arguments)
@@ -154,23 +202,28 @@ namespace rml::reflection
 		if (arguments.empty())
 			mangled_arguments = "v";
 
+		const auto key = mangled_arguments;
+		const std::string prefix = "N3RBX10Reflection9EventDescINS_";
+		const std::string pattern = "^N3RBX10Reflection9EventDescINS_[0-9]+[A-Za-z0-9_]+?EFv" + mangled_arguments + "EN3rbx6signalIS[0-9A-Z]*_EEMS2_S[0-9A-Z]*_EE$";
+#endif
+
 		static std::mutex mutex;
 		static std::unordered_map<std::string, void*> cache;
 		std::lock_guard lock(mutex);
-		if (const auto it = cache.find(mangled_arguments); it != cache.end())
+		if (const auto it = cache.find(key); it != cache.end())
 			return it->second;
 
 		void* vtable = nullptr;
 		if (g_rtti_provider)
 		{
-			const std::regex shape("^N3RBX10Reflection9EventDescINS_[0-9]+[A-Za-z0-9_]+?EFv" + mangled_arguments + "EN3rbx6signalIS[0-9A-Z]*_EEMS2_S[0-9A-Z]*_EE$");
-			const auto found = g_rtti_provider->find_class_vtable_matching("N3RBX10Reflection9EventDescINS_", [&](const std::string_view name) {
+			const std::regex shape(pattern);
+			const auto found = g_rtti_provider->find_class_vtable_matching(prefix, [&](const std::string_view name) {
 				return std::regex_match(name.begin(), name.end(), shape);
 			});
 			if (found)
 				vtable = *found;
 		}
-		cache[mangled_arguments] = vtable;
+		cache[key] = vtable;
 		return vtable;
 	}
 
@@ -234,7 +287,7 @@ namespace rml::reflection
 		std::memset(member.storage.get(), 0, k_member_storage);
 
 		auto* bytes = member.storage.get();
-		p.function_descriptor_ctor(bytes, owner_storage, name.c_str(), k_protection_none, 0, 0);
+		p.function_descriptor_ctor(bytes, owner_storage, name.c_str(), k_protection_none, RBX::Reflection::Descriptor::Attributes{});
 		*reinterpret_cast<void**>(bytes) = function_carrier_vtable();
 
 		{

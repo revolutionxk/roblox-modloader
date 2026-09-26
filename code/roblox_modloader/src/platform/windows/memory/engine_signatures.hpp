@@ -138,6 +138,62 @@ namespace rml
 			        g_pointers->m_roblox_pointers.type_registry = ptr.add(10).rip().as<const std::vector<const RBX::Reflection::Type*>*>();
 		        }
 		    },
+		    {"CLASS_DESCRIPTOR_CTOR",
+		        "48 89 5C 24 ? 48 89 54 24 ? 48 89 4C 24 ? 55 56 57 41 54 41 55 41 56 41 57 48 8B EC 48 83 EC 70 4D 8B D0",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.class_descriptor_ctor = ptr.as<functions::class_descriptor_ctor>();
+		        }
+		    },
+		    {"CLASS_DESCRIPTOR_ALL_CLASSES",
+		        "48 8B C8 E8 ? ? ? ? 45 33 C9 4C 8D 45 ? 33 D2 48 8D 0D ? ? ? ? FF 15 ? ? ? ? 85 C0 0F 84 ? ? ? ? 83 7D ? 00 74 ? E8",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.class_descriptor_all_classes = ptr.add(45).rip().as<functions::class_descriptor_all_classes>();
+		        }
+		    },
+		    {"CREATABLE_REGISTER_CREATOR",
+		        "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC 20 48 8B F2 48 8B D9 E8 ? ? ? ? 48 8B 5B 08",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.creatable_register_creator = ptr.as<functions::creatable_register_creator>();
+		        }
+		    },
+		    {"INSTANCE_CTOR",
+		        "40 53 55 56 57 41 56 48 81 EC 80 00 00 00 48 8B 05 ? ? ? ? 48 33 C4 48 89 44 24 ? 49 8B F8 48 8B D9 48 89 4C 24 ? E8 ? ? ? ? 90 F0 FF 05 ? ? ? ? 48 8D 73 60",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.instance_ctor = ptr.as<functions::instance_ctor>();
+		        }
+		    },
+		    {"CREATABLE_CREATE_INSTANCE_IMPL",
+		        "48 89 5C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 4C 89 4C 24 ? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ? 48 81 EC 90 00 00 00 49 8B D8 44 8B EA",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.create_instance_impl = ptr.as<functions::create_instance_impl>();
+		        }
+		    },
+		    {"NAME_DECLARE",
+		        "40 53 48 83 EC 20 48 8B 05 ? ? ? ? 48 8B D9 48 85 C0 75 ? E8 ? ? ? ? 48 8B D3",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.name_declare = ptr.as<functions::name_declare>();
+		        }
+		    },
+		    {"PROPERTY_DESCRIPTOR_CTOR",
+		        "48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 30 48 8B 44 24 ? 4D 8B D1",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.property_descriptor_ctor = ptr.as<functions::property_descriptor_ctor>();
+		        }
+		    },
+		    {"FUNCTION_DESCRIPTOR_CTOR",
+		        "40 53 48 83 EC 30 48 8B 44 24 ? 48 8B D9 4C 89 4C 24 ? 4C 8D 0D ? ? ? ? 48 89 44 24 ? E8 ? ? ? ? 48 8D 05 ? ? ? ? 48 89 03 33 C0 48 89 43 48 48 89 43 50 48 89 43 58 48 89 43 60 48 89 43 68 48 89 43 70 89 43 78",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.function_descriptor_ctor = ptr.as<functions::function_descriptor_ctor>();
+		        }
+		    },
+		    {"EVENT_DESCRIPTOR_CTOR",
+		        "40 53 48 83 EC 30 48 8B 44 24 ? 48 8B D9 4C 89 4C 24 ? 4C 8D 0D ? ? ? ? 48 89 44 24 ? E8 ? ? ? ? 48 8D 05 ? ? ? ? 48 89 03 33 C0 48 89 43 48 48 89 43 50 48 89 43 58 48 89 43 60 48 89 43 68 48 89 43 70 48 8B C3 48 83 C4 30 5B C3",
+		        [](const memory::handle ptr) {
+			        // YieldFunctionDescriptor's constructor has the same bytes; only the category it passes differs.
+			        if (std::string_view(ptr.add(22).rip().as<const char*>()) == "Signals")
+				        g_pointers->m_roblox_pointers.event_descriptor_ctor = ptr.as<functions::event_descriptor_ctor>();
+		        }
+		    },
 		    {"LUA_GETTOP",
 		        memory::referencing("assertion failed!").call(2),
 		        [](const memory::handle ptr) {

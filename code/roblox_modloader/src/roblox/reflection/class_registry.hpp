@@ -78,6 +78,7 @@ namespace rml::reflection
 		std::shared_ptr<void> create(RBX::EngineContext* context, RBX::CreatorRole role) const override;
 		bool is_serializable() const override;
 		bool is_script_creatable() const override;
+		const RBX::Reflection::ClassDescriptor* descriptor() const override;
 
 	private:
 		RegisteredClass& m_entry;

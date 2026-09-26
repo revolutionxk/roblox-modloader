@@ -161,6 +161,8 @@ struct RobloxPointers
 	functions::scene_manager_render_scene scene_manager_render_scene;
 
 	const std::vector<const RBX::Reflection::Type*>* type_registry;
+	// Windows files mod creators through it; macOS keeps the getCreator hook and leaves it null.
+	functions::creatable_register_creator creatable_register_creator;
 };
 #pragma pack(pop)
 static_assert(sizeof(RobloxPointers) % 8 == 0, "Pointers are not properly aligned");

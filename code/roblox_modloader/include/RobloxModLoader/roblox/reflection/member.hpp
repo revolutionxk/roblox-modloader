@@ -83,9 +83,6 @@ namespace RBX::Reflection
 		std::size_t finalized_size;
 		std::uint64_t total;
 		MemberDescriptorContainer* base_container;
-#if defined(RML_WINDOWS)
-		std::vector<RBX::ArrayView<const MemberDescriptorType*>> finalize_scratch;
-#endif
 		void* owner;
 		std::uint8_t finalized;
 		std::byte reserved_41[7];
@@ -158,15 +155,10 @@ namespace RBX::Reflection
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, finalized_data, 0x18);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, total, 0x28);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, base_container, 0x30);
-#if defined(RML_WINDOWS)
-	RML_ASSERT_SIZE(MemberDescriptorContainer<ClassDescriptor>, 0x60);
-	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, owner, 0x50);
-	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, finalized, 0x58);
-#else
+	// Windows 0.739 lays the containers out 0x48 apart too, the same as libc++.
 	RML_ASSERT_SIZE(MemberDescriptorContainer<ClassDescriptor>, 0x48);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, owner, 0x38);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, finalized, 0x40);
-#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 		class MemberDescriptor : public Descriptor
