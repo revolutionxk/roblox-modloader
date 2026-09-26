@@ -1,9 +1,11 @@
 #include "crash_dumper.hpp"
+#include "stack_trace.hpp"
 
 #include "RobloxModLoader/internal/platform.hpp"
 
 #include "RobloxModLoader/memory/module_utils.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <dbghelp.h>
 #include <filesystem>
@@ -153,50 +155,13 @@ namespace rml::exception_filter
 			}
 #endif
 
-			std::wstring filename;
-			if (use_local_time)
-			{
-				const auto now = time_point_cast<seconds>(system_clock::now());
-				const auto time_t = system_clock::to_time_t(now);
-
-				std::tm local_tm{};
-				if (localtime_s(&local_tm, &time_t) == 0)
-				{
-					filename = std::format(L"crash_{:04d}_{:02d}_{:02d}_{:02d}_{:02d}_{:02d}.dmp",
-					    local_tm.tm_year + 1900,
-					    local_tm.tm_mon + 1,
-					    local_tm.tm_mday,
-					    local_tm.tm_hour,
-					    local_tm.tm_min,
-					    local_tm.tm_sec);
-				}
-				else
-				{
-					filename = std::format(L"crash_{}.dmp",
-					    std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count());
-				}
-			}
-			else
-			{
-				const auto now = time_point_cast<seconds>(system_clock::now());
-				const auto time_t = system_clock::to_time_t(now);
-
-				std::tm utc_tm{};
-				if (gmtime_s(&utc_tm, &time_t) == 0)
-				{
-					filename = std::format(L"crash_{:04d}_{:02d}_{:02d}_{:02d}_{:02d}_{:02d}.dmp",
-					    utc_tm.tm_year + 1900,
-					    utc_tm.tm_mon + 1,
-					    utc_tm.tm_mday,
-					    utc_tm.tm_hour,
-					    utc_tm.tm_min,
-					    utc_tm.tm_sec);
-				}
-				else
-				{
-					filename = std::format(L"crash_{}.dmp", std::chrono::duration_cast<seconds>(now.time_since_epoch()).count());
-				}
-			}
+			const auto now = time_point_cast<seconds>(system_clock::now());
+			const auto time_t = system_clock::to_time_t(now);
+			std::tm tm{};
+			const bool converted = (use_local_time ? localtime_s(&tm, &time_t) : gmtime_s(&tm, &time_t)) == 0;
+			const auto filename = converted
+			    ? std::format(L"crash_{:04d}_{:02d}_{:02d}_{:02d}_{:02d}_{:02d}.dmp", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec)
+			    : std::format(L"crash_{}.dmp", now.time_since_epoch().count());
 
 			return (crash_dir / filename).wstring();
 		}
@@ -253,13 +218,8 @@ namespace rml::exception_filter
 	{
 		const DWORD code = exception_pointers->ExceptionRecord->ExceptionCode;
 		constexpr DWORD NON_FATAL_CODES[] = {0xE06D7363, 0xE0434352, 0x04242420, EXCEPTION_BREAKPOINT, EXCEPTION_SINGLE_STEP, DBG_PRINTEXCEPTION_C, DBG_PRINTEXCEPTION_WIDE_C, 0x406D1388, 0x000006BA, 0xC0000135, 0xC0000138, 0xC0000139};
-		for (const DWORD non_fatal : NON_FATAL_CODES)
-		{
-			if (code == non_fatal)
-			{
-				return EXCEPTION_CONTINUE_SEARCH;
-			}
-		}
+		if (std::ranges::contains(NON_FATAL_CODES, code))
+			return EXCEPTION_CONTINUE_SEARCH;
 
 		thread_local bool in_veh = false;
 		if (in_veh)
@@ -459,118 +419,9 @@ namespace rml::exception_filter
 		}
 	}
 
-	static bool safe_resolve_symbol(const HANDLE process, const DWORD64 address, char* symbol_name, const size_t symbol_name_size, DWORD64* displacement)
-	{
-		__try
-		{
-			char symbol_buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(char)];
-			auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
-			symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-			symbol->MaxNameLen = MAX_SYM_NAME;
-
-			if (SymFromAddr(process, address, displacement, symbol))
-			{
-				strncpy_s(symbol_name, symbol_name_size, symbol->Name, _TRUNCATE);
-				return true;
-			}
-			return false;
-		}
-		__except (EXCEPTION_EXECUTE_HANDLER)
-		{
-			return false;
-		}
-	}
-
 	void CrashDumper::log_stack_trace()
 	{
-		try
-		{
-			RML_ERROR("=== STACK TRACE ===");
-
-			HANDLE process = nullptr;
-			if (!DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &process, PROCESS_ALL_ACCESS, FALSE, 0))
-			{
-				RML_ERROR("Failed to duplicate process handle: {}", GetLastError());
-				process = GetCurrentProcess();
-			}
-
-			if (!SymInitialize(process, nullptr, TRUE))
-			{
-				RML_ERROR("Failed to initialize symbol handler: {}", GetLastError());
-				if (process != GetCurrentProcess())
-				{
-					CloseHandle(process);
-				}
-				return;
-			}
-
-			SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-
-			void* stack[256];
-			const auto frame_count = RtlCaptureStackBackTrace(0, 255, stack, nullptr);
-
-			RML_ERROR("Captured {} stack frames:", frame_count);
-
-			for (WORD i = 0; i < frame_count; ++i)
-			{
-				try
-				{
-					const auto address = reinterpret_cast<DWORD64>(stack[i]);
-					char symbol_name[MAX_SYM_NAME] = {0};
-					DWORD64 displacement = 0;
-
-					if (safe_resolve_symbol(process, address, symbol_name, sizeof(symbol_name), &displacement))
-					{
-						const auto module_name = memory::module_utils::get_module_name_from_address(address);
-						const auto roblox_base = memory::module_utils::get_roblox_studio_base();
-						const auto rebased_addr = memory::module_utils::get_roblox_studio_rebased_address(address, roblox_base);
-
-						RML_ERROR("[Stack Frame {}] Inside {} @ 0x{:016X} ({}) | Studio Rebase: 0x{:016X} | Displacement: +0x{:X}", i, symbol_name, address, module_name, rebased_addr, displacement);
-					}
-					else
-					{
-						const auto module_name = memory::module_utils::get_module_name_from_address(address);
-						const auto roblox_base = memory::module_utils::get_roblox_studio_base();
-						const auto rebased_addr = memory::module_utils::get_roblox_studio_rebased_address(address, roblox_base);
-
-						RML_ERROR("[Stack Frame {}] Unknown Subroutine @ 0x{:016X} ({}) | Studio Rebase: 0x{:016X}", i, address, module_name, rebased_addr);
-					}
-				}
-				catch (...)
-				{
-					RML_ERROR("[Stack Frame {}] Failed to resolve frame", i);
-				}
-			}
-
-			try
-			{
-				std::stringstream stack_chain;
-				for (WORD i = 0; i < frame_count; ++i)
-				{
-					stack_chain << std::hex << "0x" << reinterpret_cast<uintptr_t>(stack[i]);
-					if (i < frame_count - 1)
-					{
-						stack_chain << " -> ";
-					}
-				}
-				RML_ERROR("Stack Chain: {}", stack_chain.str());
-			}
-			catch (...)
-			{
-				RML_ERROR("Failed to generate stack chain");
-			}
-
-			SymCleanup(process);
-
-			if (process != GetCurrentProcess())
-			{
-				CloseHandle(process);
-			}
-		}
-		catch (...)
-		{
-			RML_ERROR("Failed to log stack trace safely");
-		}
+		exception_filter::log_stack_trace({.heading = "STACK TRACE", .frame = "Stack Frame", .chain = "Stack Chain"});
 	}
 
 	std::unique_ptr<ICrashHandler> create_crash_handler()

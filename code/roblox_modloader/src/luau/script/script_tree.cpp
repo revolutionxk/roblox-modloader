@@ -1,6 +1,7 @@
 #include "RobloxModLoader/luau/script/script_tree.hpp"
 
 #include "RobloxModLoader/luau/script/script_asset.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 
 RML_LOG_SCOPE("ScriptTree");
 
@@ -141,18 +142,6 @@ namespace rml::luau
 		return std::ranges::any_of(m_nodes, [node](const auto& held) { return held.get() == node; });
 	}
 
-	static std::filesystem::path canonical_of(const std::filesystem::path& path)
-	{
-		std::error_code error;
-		auto resolved = std::filesystem::weakly_canonical(path, error);
-		return error ? path : resolved;
-	}
-
-	static bool is_init_file(const std::filesystem::path& path)
-	{
-		return path.stem() == "init";
-	}
-
 	class TreeBuilder final
 	{
 	public:
@@ -177,7 +166,7 @@ namespace rml::luau
 			    .name = std::move(name),
 			    .logical = std::move(logical),
 			    .klass = init.empty() ? NodeClass::Folder : classify(init),
-			    .source = init.empty() ? std::filesystem::path{} : canonical_of(init),
+			    .source = init.empty() ? std::filesystem::path{} : utils::canonical_or_self(init),
 			    .parent = parent,
 			});
 
@@ -197,7 +186,7 @@ namespace rml::luau
 				    .name = stem,
 				    .logical = std::format("{}/{}", node.logical, stem),
 				    .klass = classify(file),
-				    .source = canonical_of(file),
+				    .source = utils::canonical_or_self(file),
 				    .parent = &node,
 				}));
 
@@ -236,7 +225,7 @@ namespace rml::luau
 	private:
 		[[nodiscard]] NodeClass classify(const std::filesystem::path& file) const
 		{
-			return m_entries->contains(canonical_of(file).generic_string()) ? NodeClass::Script
+			return m_entries->contains(utils::canonical_or_self(file).generic_string()) ? NodeClass::Script
 			                                                                : NodeClass::ModuleScript;
 		}
 
@@ -310,7 +299,7 @@ namespace rml::luau
 		entries.reserve(entry_scripts.size());
 		for (const auto& entry : entry_scripts)
 		{
-			entries.insert(canonical_of(entry).generic_string());
+			entries.insert(utils::canonical_or_self(entry).generic_string());
 		}
 
 		auto tree = std::make_shared<ScriptTree>();

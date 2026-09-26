@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "data_model_prop.hpp"
 #include "data_model_serialize.hpp"

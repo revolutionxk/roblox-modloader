@@ -1,5 +1,7 @@
 #include "directory_watcher.hpp"
 
+#include "RobloxModLoader/util/hash.hpp"
+
 #include <algorithm>
 
 namespace rml::filesystem
@@ -62,11 +64,7 @@ namespace rml::filesystem
 			return 0;
 		}
 
-		std::size_t fingerprint = 1469598103934665603ull;
-
-		const auto mix = [&fingerprint](const std::size_t value) {
-			fingerprint ^= value + 0x9e3779b97f4a7c15ull + (fingerprint << 6) + (fingerprint >> 2);
-		};
+		std::size_t fingerprint = utils::fnv64_offset;
 
 		const std::filesystem::recursive_directory_iterator end;
 		for (; it != end; it.increment(ec))
@@ -93,12 +91,12 @@ namespace rml::filesystem
 				}
 			}
 
-			mix(std::hash<std::string>{}(path.generic_string()));
+			utils::hash_combine(fingerprint, std::hash<std::string>{}(path.generic_string()));
 
 			const auto written = std::filesystem::last_write_time(path, entry_error);
 			if (!entry_error)
 			{
-				mix(static_cast<std::size_t>(written.time_since_epoch().count()));
+				utils::hash_combine(fingerprint, static_cast<std::size_t>(written.time_since_epoch().count()));
 			}
 		}
 

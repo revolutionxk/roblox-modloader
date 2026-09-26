@@ -8,17 +8,13 @@
 #include "lstate.h"
 
 #include <cstdarg>
+#include <utility>
 #include <cstdio>
 
 #undef luaO_nilobject
 
 #define RP (g_pointers->m_roblox_pointers)
 
-#if defined(_MSC_VER)
-	#define RML_UNREACHABLE() __assume(0)
-#else
-	#define RML_UNREACHABLE() __builtin_unreachable()
-#endif
 
 int lua_gettop(lua_State* L) { return RP.lua_gettop(L); }
 void lua_settop(lua_State* L, int idx) { RP.lua_settop(L, idx); }
@@ -79,7 +75,7 @@ int lua_getinfo(lua_State* L, int level, const char* what, lua_Debug* ar) { retu
 l_noret lua_error(lua_State* L)
 {
 	RP.lua_error(L);
-	RML_UNREACHABLE();
+	std::unreachable();
 }
 
 void luaL_register(lua_State* L, const char* libname, const luaL_Reg* l) { RP.luaL_register(L, libname, l); }
@@ -96,13 +92,13 @@ void luaL_sandboxthread(lua_State* L) { RP.luaL_sandboxthread(L); }
 l_noret luaL_typeerrorL(lua_State* L, int narg, const char* tname)
 {
 	RP.luaL_typeerrorL(L, narg, tname);
-	RML_UNREACHABLE();
+	std::unreachable();
 }
 
 l_noret luaL_argerrorL(lua_State* L, int narg, const char* extramsg)
 {
 	RP.luaL_argerrorL(L, narg, extramsg);
-	RML_UNREACHABLE();
+	std::unreachable();
 }
 
 l_noret luaL_errorL(lua_State* L, const char* fmt, ...)
@@ -114,7 +110,7 @@ l_noret luaL_errorL(lua_State* L, const char* fmt, ...)
 	va_end(argp);
 	RP.lua_pushstring(L, buffer);
 	RP.lua_error(L);
-	RML_UNREACHABLE();
+	std::unreachable();
 }
 
 Closure* luaF_newLclosure(lua_State* L, int nelems, LuaTable* e, Proto* p) { return static_cast<Closure*>(RP.luaF_newLclosure(L, nelems, e, p)); }

@@ -17,7 +17,7 @@ namespace rml
 
 		if (old_data_model && old_data_model != data_model)
 		{
-			RML_INFO("DataModel type {} changed, cleaning up old instance", static_cast<int>(type));
+			RML_INFO("DataModel type {} changed, cleaning up old instance", std::to_underlying(type));
 		}
 
 		{
@@ -46,13 +46,13 @@ namespace rml
 
 	void DataModelRegistry::cleanup_data_model(const RBX::DataModelType data_model_type)
 	{
-		RML_INFO("Cleaning up DataModel type: {}", static_cast<int>(data_model_type));
+		RML_INFO("Cleaning up DataModel type: {}", std::to_underlying(data_model_type));
 
 		{
 			std::unique_lock lock(m_data_model_mutex);
 			m_data_models.erase(data_model_type);
 		}
 
-		RML_INFO("DataModel type {} cleanup completed", static_cast<int>(data_model_type));
+		RML_INFO("DataModel type {} cleanup completed", std::to_underlying(data_model_type));
 	}
 }

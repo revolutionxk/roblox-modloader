@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "RobloxModLoader/luau/script/mod_manifest.hpp"
 #include "RobloxModLoader/luau/script/script_asset.hpp"
 #include <unordered_map>
@@ -7,11 +8,6 @@
 namespace rml::config
 {
 	struct ModConfig;
-}
-
-namespace RBX
-{
-	enum class DataModelType : std::int32_t;
 }
 
 namespace rml::luau

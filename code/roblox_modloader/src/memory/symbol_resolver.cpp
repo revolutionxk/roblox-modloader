@@ -12,13 +12,22 @@
 	#include <cxxabi.h>
 #endif
 
+#include <algorithm>
 #include <array>
 #include <cctype>
+#include <span>
 #include <string_view>
 #include <vector>
 
 namespace rml::memory
 {
+	static bool valid_identifiers(const std::span<const std::string_view> parts)
+	{
+		return std::ranges::all_of(parts, [](const std::string_view part) {
+			return !part.empty() && std::ranges::all_of(part, [](const unsigned char c) { return std::isalnum(c) || c == '_'; });
+		});
+	}
+
 	static bool is_itanium_mangled(const char* mangled)
 	{
 		return mangled[0] == '_' && mangled[1] == 'Z';
@@ -53,17 +62,8 @@ namespace rml::memory
 		if (parts.size() < 2)
 			return {};
 
-		for (const std::string_view part : parts)
-		{
-			if (part.empty())
-				return {};
-
-			for (const char c : part)
-			{
-				if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
-					return {};
-			}
-		}
+		if (!valid_identifiers(parts))
+			return {};
 
 		std::string result;
 		for (std::size_t i = parts.size(); i-- > 1;)
@@ -101,17 +101,8 @@ namespace rml::memory
 
 		parts.emplace_back(start, static_cast<std::size_t>(p - start));
 
-		for (const std::string_view part : parts)
-		{
-			if (part.empty())
-				return {};
-
-			for (const char c : part)
-			{
-				if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
-					return {};
-			}
-		}
+		if (!valid_identifiers(parts))
+			return {};
 
 		std::string result = "vtable for ";
 		for (std::size_t i = parts.size(); i-- > 0;)

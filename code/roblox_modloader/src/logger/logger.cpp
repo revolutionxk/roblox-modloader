@@ -10,6 +10,7 @@
 #include "spdlog/sinks/base_sink.h"
 #include "spdlog/sinks/daily_file_sink.h"
 #include "RobloxModLoader/logger/platform_console.hpp"
+#include "RobloxModLoader/util/hash.hpp"
 #include "filesystem/directory.hpp"
 
 #include <atomic>
@@ -18,7 +19,7 @@
 #include <string>
 #include <vector>
 
-namespace
+namespace rml::detail
 {
 	struct global_logger_holder
 	{
@@ -86,9 +87,7 @@ namespace
 	std::string source_color(const spdlog::string_view_t name)
 	{
 		static constexpr int palette[] = {39, 75, 114, 150, 179, 215, 210, 207, 141, 116, 108, 180, 81, 222};
-		std::uint32_t hash = 2166136261u;
-		for (size_t i = 0; i < name.size(); ++i)
-			hash = (hash ^ static_cast<unsigned char>(name.data()[i])) * 16777619u;
+		const auto hash = rml::utils::fnv1a_32(std::string_view(name.data(), name.size()));
 		const int code = palette[hash % std::size(palette)];
 		return spdlog::fmt_lib::format("\x1b[1;38;5;{}m", code);
 	}
@@ -191,26 +190,27 @@ namespace
 	}
 }
 
+
 std::shared_ptr<spdlog::logger> global_logger()
 {
 	{
-		std::scoped_lock lock(global_logger_holder::logger_mutex);
-		if (global_logger_holder::logger)
-			return global_logger_holder::logger;
+		std::scoped_lock lock(rml::detail::global_logger_holder::logger_mutex);
+		if (rml::detail::global_logger_holder::logger)
+			return rml::detail::global_logger_holder::logger;
 	}
 
 	rml::Logger::init();
 
-	std::scoped_lock lock(global_logger_holder::logger_mutex);
-	return global_logger_holder::logger;
+	std::scoped_lock lock(rml::detail::global_logger_holder::logger_mutex);
+	return rml::detail::global_logger_holder::logger;
 }
 
 namespace rml
 {
 	void Logger::open_console()
 	{
-		init_sinks();
-		global_logger_holder::console->open();
+		detail::init_sinks();
+		detail::global_logger_holder::console->open();
 	}
 
 	void Logger::init()
@@ -225,7 +225,7 @@ namespace rml
 #if IS_RML
 		open_console();
 #endif
-		ensure_log_directory();
+		detail::ensure_log_directory();
 
 		try
 		{
@@ -239,7 +239,7 @@ namespace rml
 			set_async_mode();
 		}
 
-		const auto sinks = get_shared_sinks();
+		const auto sinks = detail::get_shared_sinks();
 		const auto new_logger = std::make_shared<spdlog::logger>(LOGGER_NAME, sinks.begin(), sinks.end());
 
 		spdlog::register_logger(new_logger);
@@ -257,8 +257,8 @@ namespace rml
 		}
 
 		{
-			std::scoped_lock lock(global_logger_holder::logger_mutex);
-			global_logger_holder::logger = new_logger;
+			std::scoped_lock lock(detail::global_logger_holder::logger_mutex);
+			detail::global_logger_holder::logger = new_logger;
 		}
 		logger_initialized = true;
 	}
@@ -284,8 +284,8 @@ namespace rml
 			return existing_logger;
 		}
 
-		ensure_log_directory();
-		const auto sinks = get_shared_sinks();
+		detail::ensure_log_directory();
+		const auto sinks = detail::get_shared_sinks();
 		auto new_logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
 
 		new_logger->set_level(spdlog::level::debug);

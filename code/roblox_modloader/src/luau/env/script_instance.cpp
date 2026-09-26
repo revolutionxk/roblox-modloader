@@ -3,6 +3,7 @@
 #include "RobloxModLoader/luau/env/binding.hpp"
 #include "RobloxModLoader/luau/script_host.hpp"
 #include "RobloxModLoader/luau/vm/chunk.hpp"
+#include "RobloxModLoader/luau/vm/stack.hpp"
 #include "RobloxModLoader/luau/vm/stack_guard.hpp"
 
 #include <cstring>
@@ -17,14 +18,9 @@ namespace rml::luau
 		const ScriptNode* node{nullptr};
 	};
 
-	static int absolute(lua_State* L, const int index) noexcept
-	{
-		return index < 0 && index > LUA_REGISTRYINDEX ? lua_gettop(L) + 1 + index : index;
-	}
-
 	const ScriptNode* to_script_node(lua_State* L, const int index, const ScriptEnv* env) noexcept
 	{
-		const auto subject = absolute(L, index);
+		const auto subject = vm::abs_index(L, index);
 
 		if (lua_type(L, subject) != LUA_TTABLE || !lua_getmetatable(L, subject))
 		{
@@ -61,11 +57,6 @@ namespace rml::luau
 		}
 
 		luaL_error(L, "expected a script tree node, this one belongs to a mod that was unloaded");
-	}
-
-	static void push_name(lua_State* L, const std::string_view text)
-	{
-		lua_pushlstring(L, text.data(), text.size());
 	}
 
 	static int node_get_children(lua_State* L)
@@ -167,7 +158,7 @@ namespace rml::luau
 		const auto& node = checked_node(L, env);
 
 		const auto rendered = node.full_name();
-		push_name(L, rendered);
+		vm::push_string(L, rendered);
 
 		return 1;
 	}
@@ -223,13 +214,13 @@ namespace rml::luau
 
 		if (wanted == "Name")
 		{
-			push_name(L, node.name);
+			vm::push_string(L, node.name);
 			return 1;
 		}
 
 		if (wanted == "ClassName")
 		{
-			push_name(L, node.class_name());
+			vm::push_string(L, node.class_name());
 			return 1;
 		}
 
@@ -276,7 +267,7 @@ namespace rml::luau
 		const auto& env = bound_env(L);
 		const auto& node = checked_node(L, env);
 
-		push_name(L, node.name);
+		vm::push_string(L, node.name);
 		return 1;
 	}
 

@@ -1,15 +1,13 @@
 #include "RobloxModLoader/luau/modules/module_id.hpp"
 
+#include "RobloxModLoader/util/string.hpp"
+
 namespace rml::luau
 {
 	static std::string identity_key(const std::string& path)
 	{
 #if defined(RML_WINDOWS)
-		std::string folded;
-		folded.reserve(path.size());
-		std::ranges::transform(path, std::back_inserter(folded),
-		                       [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
-		return folded;
+		return utils::to_lower(path);
 #else
 		return path;
 #endif

@@ -1,6 +1,7 @@
 #include "graphics_registry.hpp"
 
 #include "RobloxModLoader/hooking/vtable_index.hpp"
+#include "RobloxModLoader/memory/vtable.hpp"
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/memory/i_rtti_provider.hpp"
 #include "RobloxModLoader/memory/module.hpp"
@@ -9,9 +10,9 @@
 #include "RobloxModLoader/roblox/graphics/adorn_render.hpp"
 #include "RobloxModLoader/roblox/graphics/device.hpp"
 #include "RobloxModLoader/roblox/graphics/shader_manager.hpp"
+#include "RobloxModLoader/util/string.hpp"
 
 #include <algorithm>
-#include <cctype>
 
 RML_LOG_SCOPE("Graphics");
 
@@ -20,17 +21,6 @@ namespace rml::graphics
 	static constexpr unsigned k_max_callback_failures = 2;
 	static constexpr std::size_t k_min_detour_target_size = 32;
 	static constexpr std::uint64_t k_adorn_stale_frames = 8;
-
-	static bool printable(const std::string& text)
-	{
-		return !text.empty() && text.size() < 64
-		    && std::all_of(
-		        text.begin(),
-		        text.end(),
-		        [](const unsigned char c) {
-			        return std::isprint(c);
-		        });
-	}
 
 	GraphicsRegistry& GraphicsRegistry::instance()
 	{
@@ -238,7 +228,7 @@ namespace rml::graphics
 			}
 
 			const memory::module image(platform::studio_image_name());
-			auto** vtable = *reinterpret_cast<void***>(device);
+			auto** vtable = memory::vtable_of(device);
 			const auto slots = vtable_index_of(&RBX::Graphics::Device::create_texture_with_hardware_buffer_impl, RBX::Graphics::Texture::Type::Type_2D, RBX::Graphics::Texture::Format::RGBA8, 0u, 0u, 0u, 0u, 0u, 0u, RBX::Graphics::Texture::Usage::Static, std::string{}, nullptr) + 1;
 			for (std::size_t slot = 0; slot < slots; ++slot)
 			{
@@ -256,7 +246,7 @@ namespace rml::graphics
 
 			const auto language = device->get_shading_language();
 			const auto level = device->get_feature_level();
-			if (!printable(language) || !printable(level))
+			if (!utils::is_printable(language, 64) || !utils::is_printable(level, 64))
 			{
 				RML_ERROR("graphics surface disabled: Device strings are not printable");
 				return false;

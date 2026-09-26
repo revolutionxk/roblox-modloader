@@ -2,6 +2,7 @@
 
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/memory/foreign_call.hpp"
+#include "RobloxModLoader/memory/vtable.hpp"
 #include "RobloxModLoader/qt/qt_module.hpp"
 
 #include <cstdint>
@@ -9,40 +10,31 @@
 
 namespace rml::qt::detail
 {
-	namespace
+	using impl_fn = void (*)(int which, void* self, void* receiver, void** args, bool* ret);
+
+	struct FunctionSlot
 	{
-		using impl_fn = void (*)(int which, void* self, void* receiver, void** args, bool* ret);
+		int ref;
+		impl_fn impl;
+		std::function<void(void**)> callable;
+	};
 
-		struct FunctionSlot
+	static void slot_impl(const int which, void* self, void*, void** args, bool* ret)
+	{
+		const auto* const slot = static_cast<FunctionSlot*>(self);
+		switch (which)
 		{
-			int ref;
-			impl_fn impl;
-			std::function<void(void**)> callable;
-		};
-
-		void slot_impl(const int which, void* self, void*, void** args, bool* ret)
-		{
-			const auto* const slot = static_cast<FunctionSlot*>(self);
-			switch (which)
-			{
-			case 0: delete slot; break;
-			case 1:
-				if (slot->callable)
-					slot->callable(args);
-				break;
-			case 2:
-				if (ret)
-					*ret = false;
-				break;
-			default: break;
-			}
+		case 0: delete slot; break;
+		case 1:
+			if (slot->callable)
+				slot->callable(args);
+			break;
+		case 2:
+			if (ret)
+				*ret = false;
+			break;
+		default: break;
 		}
-
-		struct MemberFnPtr
-		{
-			void* code;
-			std::int64_t adjust;
-		};
 	}
 
 	bool connect_function(const void* sender, void* signal_addr, const void* sender_meta, std::function<void(void**)> slot)
@@ -56,7 +48,7 @@ namespace rml::qt::detail
 
 		auto* const function = new FunctionSlot{1, &slot_impl, std::move(slot)};
 
-		MemberFnPtr signal_pmf{signal_addr, 0};
+		memory::MemberFunctionPointer signal_pmf{reinterpret_cast<std::uintptr_t>(signal_addr), 0};
 		const auto signal = reinterpret_cast<void**>(&signal_pmf);
 
 		void* result = nullptr;

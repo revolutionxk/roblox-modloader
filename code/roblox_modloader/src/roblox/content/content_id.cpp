@@ -1,15 +1,9 @@
 #include "RobloxModLoader/roblox/content_id.hpp"
 
-#include <algorithm>
-#include <cctype>
+#include "RobloxModLoader/util/string.hpp"
 
 namespace RBX
 {
-	static bool starts_with(const std::string_view text, const std::size_t offset, const std::string_view prefix)
-	{
-		return text.size() >= offset + prefix.size() && text.compare(offset, prefix.size(), prefix) == 0;
-	}
-
 	ContentIdType ContentId::parse(const std::string_view id)
 	{
 		const auto size = id.size();
@@ -18,36 +12,36 @@ namespace RBX
 		if (size < 5)
 			return ContentIdType::Unknown;
 
-		if (size >= 10 && starts_with(id, 0, "rbx"))
+		if (size >= 10 && id.starts_with("rbx"))
 		{
 			if (id[4] == 'a')
 			{
-				if (starts_with(id, 4, "ssethash://"))
+				if (id.substr(4).starts_with("ssethash://"))
 					return ContentIdType::AssetHash;
-				if (starts_with(id, 4, "sset://"))
+				if (id.substr(4).starts_with("sset://"))
 					return ContentIdType::Asset;
-				if (starts_with(id, 4, "ssetid://"))
+				if (id.substr(4).starts_with("ssetid://"))
 					return ContentIdType::AssetId;
-				return starts_with(id, 4, "pp://") ? ContentIdType::App : ContentIdType::Unknown;
+				return id.substr(4).starts_with("pp://") ? ContentIdType::App : ContentIdType::Unknown;
 			}
 			if (id[4] == 't')
 			{
-				if (starts_with(id, 4, "emp://"))
+				if (id.substr(4).starts_with("emp://"))
 					return ContentIdType::Temporary;
-				return starts_with(id, 4, "humb://") ? ContentIdType::Thumb : ContentIdType::Unknown;
+				return id.substr(4).starts_with("humb://") ? ContentIdType::Thumb : ContentIdType::Unknown;
 			}
-			if (size >= 23 && starts_with(id, 3, "encryptedassetid://"))
+			if (size >= 23 && id.substr(3).starts_with("encryptedassetid://"))
 				return ContentIdType::EncryptedAssetId;
-			if (starts_with(id, 3, "http://"))
+			if (id.substr(3).starts_with("http://"))
 				return ContentIdType::RbxHttp;
-			if (size >= 16 && starts_with(id, 3, "gameasset://"))
+			if (size >= 16 && id.substr(3).starts_with("gameasset://"))
 				return ContentIdType::GameAsset;
-			return starts_with(id, 3, "runtime://") ? ContentIdType::Runtime : ContentIdType::Unknown;
+			return id.substr(3).starts_with("runtime://") ? ContentIdType::Runtime : ContentIdType::Unknown;
 		}
 
-		if (starts_with(id, 0, "http"))
+		if (id.starts_with("http"))
 			return ContentIdType::Http;
-		if (size >= 8 && starts_with(id, 0, "file://"))
+		if (size >= 8 && id.starts_with("file://"))
 			return ContentIdType::File;
 		return ContentIdType::Unknown;
 	}
@@ -84,10 +78,7 @@ namespace RBX
 
 		if (type == ContentIdType::Http || type == ContentIdType::RbxHttp)
 		{
-			std::string lower = id;
-			std::transform(lower.begin(), lower.end(), lower.begin(), [](const unsigned char c) {
-				return static_cast<char>(std::tolower(c));
-			});
+			const std::string lower = rml::utils::to_lower(id);
 			auto position = lower.find("id=");
 			if (position != std::string::npos)
 			{

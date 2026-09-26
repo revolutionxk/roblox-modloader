@@ -2,93 +2,7 @@
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/internal/hooking/engine_hooks.hpp"
 #include "RobloxModLoader/memory/module_utils.hpp"
-
-#include <dbghelp.h>
-
-#pragma comment(lib, "dbghelp.lib")
-
-void log_crash_stack_trace()
-{
-	LOG_ERROR("=== ROBLOX CRASH STACK TRACE ===");
-
-	HANDLE process = nullptr;
-	if (!DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &process, PROCESS_ALL_ACCESS, FALSE, 0))
-	{
-		LOG_ERROR("Failed to duplicate process handle: {}", GetLastError());
-		process = GetCurrentProcess();
-	}
-
-	if (!SymInitialize(process, nullptr, TRUE))
-	{
-		LOG_ERROR("Failed to initialize symbol handler: {}", GetLastError());
-		if (process != GetCurrentProcess())
-		{
-			CloseHandle(process);
-		}
-		return;
-	}
-
-	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-
-	void* stack[256];
-	const auto frame_count = RtlCaptureStackBackTrace(0, 100, stack, nullptr);
-
-	LOG_ERROR("Captured {} stack frames from Roblox crash:", frame_count);
-
-	for (WORD i = 0; i < frame_count; ++i)
-	{
-		const auto address = reinterpret_cast<DWORD64>(stack[i]);
-
-		char symbol_buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-		auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
-		symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-		symbol->MaxNameLen = MAX_SYM_NAME;
-
-		DWORD64 displacement = 0;
-
-		if (SymFromAddr(process, address, &displacement, symbol))
-		{
-			const auto module_name = rml::memory::module_utils::get_module_name_from_address(address);
-			const auto roblox_base = rml::memory::module_utils::get_roblox_studio_base();
-			const auto rebased_addr = rml::memory::module_utils::get_roblox_studio_rebased_address(address, roblox_base);
-
-			LOG_ERROR("[Crash Frame {}] Inside {} @ 0x{:016X} ({}) | Studio Rebase: 0x{:016X} | Displacement: +0x{:X}",
-			    i,
-			    symbol->Name,
-			    address,
-			    module_name,
-			    rebased_addr,
-			    displacement);
-		}
-		else
-		{
-			const auto module_name = rml::memory::module_utils::get_module_name_from_address(address);
-			const auto roblox_base = rml::memory::module_utils::get_roblox_studio_base();
-			const auto rebased_addr = rml::memory::module_utils::get_roblox_studio_rebased_address(address, roblox_base);
-
-			LOG_ERROR("[Crash Frame {}] Unknown Subroutine @ 0x{:016X} ({}) | Studio Rebase: 0x{:016X}", i, address, module_name, rebased_addr);
-		}
-	}
-
-	auto stack_chain = std::stringstream();
-	for (WORD i = 0; i < frame_count; ++i)
-	{
-		stack_chain << std::hex << "0x" << reinterpret_cast<uintptr_t>(stack[i]);
-		if (i < frame_count - 1)
-		{
-			stack_chain << " -> ";
-		}
-	}
-
-	if (stack_chain.str().empty())
-	{
-		stack_chain << "No stack trace available";
-	}
-
-	LOG_ERROR("Crash Stack Chain: {}", stack_chain.str());
-
-	SymCleanup(process);
-}
+#include "stack_trace.hpp"
 
 void try_capture_cpp_exception()
 {
@@ -126,7 +40,7 @@ void rml::Hooks::rbx_crash(const char* type, const char* message)
 
 	try_capture_cpp_exception();
 
-	log_crash_stack_trace();
+	rml::exception_filter::log_stack_trace({.heading = "ROBLOX CRASH STACK TRACE", .frame = "Crash Frame", .chain = "Crash Stack Chain"});
 
 	LOG_ERROR("=== END ROBLOX CRASH INFORMATION ===");
 	LOG_ERROR("Crash handling completed. Please send the log file to the developer.");

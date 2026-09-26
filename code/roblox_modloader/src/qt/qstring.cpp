@@ -3,6 +3,7 @@
 #include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/qt/qarray_data.hpp"
 #include "RobloxModLoader/qt/qt_module.hpp"
+#include "RobloxModLoader/util/string.hpp"
 
 
 namespace rml::qt
@@ -37,45 +38,6 @@ namespace rml::qt
 			return {};
 
 		const auto* const utf16_data = reinterpret_cast<const char16_t*>(utf16(&m_storage));
-		if (!utf16_data || !utf16_data[0])
-			return {};
-
-		std::string out;
-
-		for (const char16_t* it = utf16_data; *it; ++it)
-		{
-			char32_t code_point = *it;
-
-			if (code_point >= 0xD800 && code_point <= 0xDBFF && it[1] >= 0xDC00 && it[1] <= 0xDFFF)
-			{
-				code_point = 0x10000 + ((code_point - 0xD800) << 10) + (it[1] - 0xDC00);
-				++it;
-			}
-
-			if (code_point < 0x80)
-			{
-				out.push_back(static_cast<char>(code_point));
-			}
-			else if (code_point < 0x800)
-			{
-				out.push_back(static_cast<char>(0xC0 | (code_point >> 6)));
-				out.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-			}
-			else if (code_point < 0x10000)
-			{
-				out.push_back(static_cast<char>(0xE0 | (code_point >> 12)));
-				out.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-				out.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-			}
-			else
-			{
-				out.push_back(static_cast<char>(0xF0 | (code_point >> 18)));
-				out.push_back(static_cast<char>(0x80 | ((code_point >> 12) & 0x3F)));
-				out.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-				out.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-			}
-		}
-
-		return out;
+		return utf16_data ? utils::from_utf16(utf16_data) : std::string{};
 	}
 }

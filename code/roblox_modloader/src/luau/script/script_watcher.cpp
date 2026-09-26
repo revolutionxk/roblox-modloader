@@ -1,5 +1,6 @@
 #include "script_watcher.hpp"
 
+#include "RobloxModLoader/luau/script/script_asset.hpp"
 #include "RobloxModLoader/luau/script_runtime.hpp"
 
 RML_LOG_SCOPE("ScriptWatcher");
@@ -36,7 +37,7 @@ namespace rml::luau
 		filesystem::DirectoryWatcher::Options options{
 		    .poll_interval = std::chrono::milliseconds{500},
 		    .settle = std::chrono::milliseconds{250},
-		    .extensions = {".luau", ".lua"},
+		    .extensions = {kSourceExtensions.begin(), kSourceExtensions.end()},
 		};
 
 		const auto watched_count = watched.size();

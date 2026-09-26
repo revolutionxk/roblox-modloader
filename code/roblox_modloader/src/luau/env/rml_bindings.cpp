@@ -2,6 +2,7 @@
 #include "RobloxModLoader/assets/temporary_assets.hpp"
 #include "RobloxModLoader/luau/env/binding.hpp"
 #include "RobloxModLoader/luau/script_host.hpp"
+#include "RobloxModLoader/luau/vm/stack.hpp"
 
 #include <filesystem>
 
@@ -31,9 +32,7 @@ namespace rml::luau
 		}
 		lua_call(L, argc, 1);
 
-		std::size_t result_length = 0;
-		const auto* text = lua_tolstring(L, -1, &result_length);
-		std::string message{text ? text : "", text ? result_length : 0};
+		std::string message = vm::to_string(L, -1);
 
 		lua_settop(L, base);
 		return message;

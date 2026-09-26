@@ -4,6 +4,7 @@
 #include "RobloxModLoader/luau/modules/module_resolver.hpp"
 #include "RobloxModLoader/luau/script_runtime.hpp"
 #include "RobloxModLoader/luau/vm/chunk.hpp"
+#include "RobloxModLoader/luau/vm/stack.hpp"
 #include "RobloxModLoader/luau/vm/stack_guard.hpp"
 #include "RobloxModLoader/luau/vm/thread_identity.hpp"
 #include "RobloxModLoader/luau/vm/vm_api.hpp"
@@ -115,7 +116,7 @@ namespace rml::luau
 
 		if (const auto pending = m_dispatcher.pending_count(); pending > 0)
 		{
-			RML_INFO("Pumping {} queued item(s) for DataModel type {}", pending, static_cast<int>(m_type));
+			RML_INFO("Pumping {} queued item(s) for DataModel type {}", pending, std::to_underlying(m_type));
 		}
 
 		m_dispatcher.pump(*this, budget);
@@ -141,7 +142,7 @@ namespace rml::luau
 			    }
 			    else if constexpr (std::is_same_v<Held, std::string>)
 			    {
-				    lua_pushlstring(L, held.data(), held.size());
+				    vm::push_string(L, held);
 			    }
 			    else if constexpr (std::is_same_v<Held, LuauRefHandle>)
 			    {
@@ -169,12 +170,7 @@ namespace rml::luau
 		case LUA_TNIL: return Value{};
 		case LUA_TBOOLEAN: return lua_toboolean(L, index) != 0;
 		case LUA_TNUMBER: return lua_tonumberx(L, index, nullptr);
-		case LUA_TSTRING:
-		{
-			std::size_t length = 0;
-			const auto* text = lua_tolstring(L, index, &length);
-			return std::string{text ? text : "", text ? length : 0};
-		}
+		case LUA_TSTRING: return vm::to_string(L, index);
 		default: break;
 		}
 
@@ -187,9 +183,7 @@ namespace rml::luau
 
 	static int report_script_error(lua_State* L)
 	{
-		std::size_t length = 0;
-		const auto* raw = lua_tolstring(L, 1, &length);
-		std::string message = raw ? std::string{raw, length} : "unknown Luau error";
+		std::string message = lua_isstring(L, 1) ? vm::to_string(L, 1) : std::string{vm::kUnknownError};
 
 		const auto traceback = vm::capture_traceback(L);
 		const auto* label = lua_tolstring(L, lua_upvalueindex(1), nullptr);
@@ -201,13 +195,13 @@ namespace rml::luau
 			message.append("\n").append(traceback);
 		}
 
-		lua_pushlstring(L, message.data(), message.size());
+		vm::push_string(L, message);
 		return 1;
 	}
 
 	static void push_error_handler(lua_State* L, const std::string& label)
 	{
-		lua_pushlstring(L, label.data(), label.size());
+		vm::push_string(L, label);
 		lua_pushcclosure(L, &report_script_error, "rml_script_error", 1);
 	}
 
@@ -625,7 +619,7 @@ namespace rml::luau
 			++posted;
 		}
 
-		RML_INFO("Reloaded mod '{}' on DataModel type {}: {} module(s) dropped, {} script(s) queued", mod_name, static_cast<int>(m_type), dropped, posted);
+		RML_INFO("Reloaded mod '{}' on DataModel type {}: {} module(s) dropped, {} script(s) queued", mod_name, std::to_underlying(m_type), dropped, posted);
 
 		return {};
 	}

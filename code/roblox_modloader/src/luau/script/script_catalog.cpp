@@ -293,7 +293,7 @@ namespace rml::luau
 			const PatternSet set{std::span<const std::string>{*patterns}};
 			auto assets = collect_scripts(scripts_root, set);
 
-			RML_DEBUG("Mod '{}' context {}: {} scripts", mod_config->name, static_cast<int>(type), assets.size());
+			RML_DEBUG("Mod '{}' context {}: {} scripts", mod_config->name, std::to_underlying(type), assets.size());
 
 			scripts.by_context.emplace(type, std::move(assets));
 		}

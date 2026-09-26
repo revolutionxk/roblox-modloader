@@ -15,7 +15,6 @@ RML_LOG_SCOPE("ModDescriptors");
 
 namespace rml::reflection
 {
-	static constexpr std::uint32_t k_protection_none = 0;
 
 	static std::mutex s_functions_mutex;
 	static std::unordered_map<const void*, const FunctionInvoker*> s_functions;

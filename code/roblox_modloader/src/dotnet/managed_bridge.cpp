@@ -6,15 +6,12 @@ RML_LOG_SCOPE("ManagedBridge");
 
 namespace rml::dotnet
 {
-	namespace
-	{
-		constexpr host_string_view k_type = RML_HOST_STR("RML.NativeHost.NativeHost, RML.NativeHost");
-		constexpr host_string_view k_init = RML_HOST_STR("Initialize");
-		constexpr host_string_view k_load = RML_HOST_STR("LoadMod");
-		constexpr host_string_view k_unload = RML_HOST_STR("UnloadMod");
-		constexpr host_string_view k_shutdown = RML_HOST_STR("Shutdown");
-		constexpr host_string_view k_notify = RML_HOST_STR("NotifyDataModelChanged");
-	}
+	static constexpr host_string_view k_type = RML_HOST_STR("RML.NativeHost.NativeHost, RML.NativeHost");
+	static constexpr host_string_view k_init = RML_HOST_STR("Initialize");
+	static constexpr host_string_view k_load = RML_HOST_STR("LoadMod");
+	static constexpr host_string_view k_unload = RML_HOST_STR("UnloadMod");
+	static constexpr host_string_view k_shutdown = RML_HOST_STR("Shutdown");
+	static constexpr host_string_view k_notify = RML_HOST_STR("NotifyDataModelChanged");
 
 	std::expected<void, std::string> ManagedBridge::initialize(const std::filesystem::path& native_host_dll, const std::filesystem::path& mods_root)
 	{

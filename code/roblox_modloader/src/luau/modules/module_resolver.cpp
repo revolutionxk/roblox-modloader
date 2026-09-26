@@ -1,5 +1,9 @@
 #include "RobloxModLoader/luau/modules/module_resolver.hpp"
 
+#include "RobloxModLoader/luau/script/script_asset.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
+#include "RobloxModLoader/util/string.hpp"
+
 RML_LOG_SCOPE("Modules");
 
 namespace rml::luau
@@ -17,35 +21,14 @@ namespace rml::luau
 		}
 	}
 
-	static constexpr std::array kSourceExtensions{std::string_view{".luau"}, std::string_view{".lua"}};
-	static constexpr std::array kInitNames{std::string_view{"init.luau"}, std::string_view{"init.lua"}};
-
 	static std::string join_attempts(const std::vector<std::string>& attempted)
 	{
-		std::string joined;
-		for (const auto& path : attempted)
-		{
-			if (!joined.empty())
-			{
-				joined += ", ";
-			}
-			joined += path;
-		}
-		return joined.empty() ? std::string{"nothing"} : joined;
+		return attempted.empty() ? std::string{"nothing"} : utils::join(attempted, ", ");
 	}
 
 	static std::string known_aliases()
 	{
-		std::string joined;
-		for (const auto& rule : kResolveRules)
-		{
-			if (!joined.empty())
-			{
-				joined += ", ";
-			}
-			joined += std::format("'@{}/'", rule.alias);
-		}
-		return joined;
+		return utils::join(kResolveRules | std::views::transform([](const auto& rule) { return std::format("'@{}/'", rule.alias); }), ", ");
 	}
 
 	std::string ResolveFailure::describe() const
@@ -80,16 +63,6 @@ namespace rml::luau
 		return std::format("module '{}' not found from '{}' (tried: {})", specifier, requirer, join_attempts(attempted));
 	}
 
-	static std::string lowered(const std::string_view text)
-	{
-		std::string folded;
-		folded.reserve(text.size());
-		std::ranges::transform(text, std::back_inserter(folded), [](const unsigned char c) {
-			return static_cast<char>(std::tolower(c));
-		});
-		return folded;
-	}
-
 	struct AliasSplit
 	{
 		std::string alias;
@@ -101,10 +74,10 @@ namespace rml::luau
 		const auto slash = aliased.find('/');
 		if (slash == std::string_view::npos)
 		{
-			return AliasSplit{.alias = lowered(aliased.substr(1)), .rest = {}};
+			return AliasSplit{.alias = utils::to_lower(aliased.substr(1)), .rest = {}};
 		}
 
-		return AliasSplit{.alias = lowered(aliased.substr(1, slash - 1)), .rest = aliased.substr(slash + 1)};
+		return AliasSplit{.alias = utils::to_lower(aliased.substr(1, slash - 1)), .rest = aliased.substr(slash + 1)};
 	}
 
 	static const ResolveRule* rule_for(const std::string_view alias)
@@ -162,36 +135,14 @@ namespace rml::luau
 
 	static std::string build_logical(const std::string_view alias, const std::vector<std::string>& segments)
 	{
-		std::string logical{"@"};
-		logical += alias;
-
-		for (const auto& segment : segments)
-		{
-			logical += '/';
-			logical += segment;
-		}
-
-		return logical;
-	}
-
-	static bool is_inside(const std::filesystem::path& root, const std::filesystem::path& candidate)
-	{
-		std::error_code ec;
-		const auto relative = std::filesystem::relative(candidate, root, ec);
-		if (ec || relative.empty())
-		{
-			return false;
-		}
-
-		const auto first = relative.begin();
-		return first != relative.end() && *first != "..";
+		return segments.empty() ? std::format("@{}", alias) : std::format("@{}/{}", alias, utils::join(segments, "/"));
 	}
 
 	static std::vector<std::filesystem::path> candidates_for(const std::filesystem::path& target, const std::vector<std::string>& segments)
 	{
 		std::vector<std::filesystem::path> candidates;
 
-		if (!segments.empty() && segments.back() != "init")
+		if (!segments.empty() && segments.back() != kInitStem)
 		{
 			for (const auto extension : kSourceExtensions)
 			{
@@ -335,7 +286,7 @@ namespace rml::luau
 				return std::unexpected(std::move(failure));
 			}
 
-			if (!is_inside(canonical_root, resolved))
+			if (!utils::is_under(canonical_root, resolved))
 			{
 				RML_WARN("Rejected module '{}': '{}' resolves outside '{}'",
 				    raw_specifier,
@@ -354,12 +305,7 @@ namespace rml::luau
 
 	std::string logical_name_for(const std::filesystem::path& file, const ModEnvironment& env)
 	{
-		std::error_code ec;
-		auto subject = std::filesystem::weakly_canonical(file, ec);
-		if (ec)
-		{
-			subject = file;
-		}
+		const auto subject = utils::canonical_or_self(file);
 
 		for (const auto& rule : kResolveRules)
 		{
@@ -369,19 +315,14 @@ namespace rml::luau
 				continue;
 			}
 
-			ec.clear();
-			auto canonical_root = std::filesystem::weakly_canonical(root, ec);
-			if (ec)
-			{
-				canonical_root = root;
-			}
+			const auto canonical_root = utils::canonical_or_self(root);
 
-			if (!is_inside(canonical_root, subject))
+			if (!utils::is_under(canonical_root, subject))
 			{
 				continue;
 			}
 
-			ec.clear();
+			std::error_code ec;
 			const auto relative = std::filesystem::relative(subject, canonical_root, ec);
 			if (ec || relative.empty())
 			{
@@ -399,7 +340,7 @@ namespace rml::luau
 				}
 			}
 
-			if (text == "init")
+			if (text == kInitStem)
 			{
 				text.clear();
 			}

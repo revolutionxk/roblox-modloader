@@ -1,4 +1,5 @@
 #pragma once
+#include "RobloxModLoader/memory/instruction.hpp"
 #include "RobloxModLoader/rml_export.hpp"
 
 #include <cstddef>
@@ -90,62 +91,19 @@ namespace rml::memory
 
 	inline handle handle::rip() const
 	{
-		return add(as<std::int32_t&>()).add(4);
+		return handle(instruction::x64_relative_target(as<std::uintptr_t>() + 4, as<std::int32_t&>()));
 	}
 
 	inline handle handle::adrp() const
 	{
-		constexpr std::uintptr_t page_mask = 0xFFF;
-		constexpr std::uint32_t load_store_mask = 0x3B000000;
-		constexpr std::uint32_t load_store_value = 0x39000000;
-		constexpr std::uint32_t add_immediate_mask = 0xFF800000;
-		constexpr std::uint32_t add_immediate_value = 0x91000000;
-		constexpr std::int64_t page_offset_sign = std::int64_t{1} << 32;
-		constexpr std::uint32_t shifted_immediate = 1;
-
 		const auto* const instructions = as<const std::uint32_t*>();
-		const std::uint32_t adrp_instruction = instructions[0];
-		const std::uint32_t offset_instruction = instructions[1];
-
-		const std::int64_t immediate_low = (adrp_instruction >> 29) & 0x3;
-		const std::int64_t immediate_high = (adrp_instruction >> 5) & 0x7FFFF;
-
-		std::int64_t page_offset = ((immediate_high << 2) | immediate_low) << 12;
-		if (page_offset & page_offset_sign)
-			page_offset -= page_offset_sign << 1;
-
-		const auto page = (as<std::uintptr_t>() & ~page_mask) + page_offset;
-
-		if ((offset_instruction & load_store_mask) == load_store_value)
-		{
-			const std::uint32_t scale = offset_instruction >> 30;
-			const std::uint32_t immediate = (offset_instruction >> 10) & 0xFFF;
-			return handle(page + (static_cast<std::uintptr_t>(immediate) << scale));
-		}
-
-		if ((offset_instruction & add_immediate_mask) == add_immediate_value)
-		{
-			const std::uint32_t shift = (offset_instruction >> 22) & 0x3;
-			const std::uint32_t immediate = (offset_instruction >> 10) & 0xFFF;
-			return handle(page + (static_cast<std::uintptr_t>(immediate) << (shift == shifted_immediate ? 12 : 0)));
-		}
-
-		return handle(page);
+		const auto page = instruction::arm64_adrp_page(as<std::uintptr_t>(), instructions[0]);
+		return handle(page + instruction::arm64_page_offset(instructions[1]).value_or(0));
 	}
 
 	inline handle handle::bl() const
 	{
-		constexpr std::uint32_t branch_immediate_mask = 0x03FFFFFF;
-		constexpr std::int32_t branch_immediate_sign = 1 << 25;
-		constexpr std::int32_t instruction_size = 4;
-
-		const auto instruction = as<const std::uint32_t&>();
-
-		auto immediate = static_cast<std::int32_t>(instruction & branch_immediate_mask);
-		if (immediate & branch_immediate_sign)
-			immediate -= branch_immediate_sign << 1;
-
-		return add(static_cast<std::intptr_t>(immediate) * instruction_size);
+		return handle(instruction::arm64_branch_target(as<std::uintptr_t>(), as<const std::uint32_t&>()));
 	}
 
 	inline bool operator==(handle a, handle b)

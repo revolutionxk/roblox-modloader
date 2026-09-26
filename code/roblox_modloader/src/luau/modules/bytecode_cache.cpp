@@ -1,6 +1,8 @@
 #include "RobloxModLoader/luau/modules/bytecode_cache.hpp"
 
+#include "RobloxModLoader/luau/script/script_asset.hpp"
 #include "RobloxModLoader/luau/vm/compile_options.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 
 #include <Luau/Compiler.h>
 
@@ -8,37 +10,6 @@ RML_LOG_SCOPE("Modules");
 
 namespace rml::luau
 {
-	static std::expected<std::string, vm::VmError> read_source(const std::filesystem::path& path)
-	{
-		std::error_code ec;
-		const auto size = std::filesystem::file_size(path, ec);
-		if (ec)
-		{
-			return std::unexpected(vm::VmError::internal(std::format("cannot size module '{}': {}", path.generic_string(), ec.message())));
-		}
-
-		std::ifstream file(path, std::ios::binary);
-		if (!file.is_open())
-		{
-			return std::unexpected(vm::VmError::internal(std::format("cannot open module '{}'", path.generic_string())));
-		}
-
-		std::string source;
-		source.resize(size);
-
-		if (size != 0)
-		{
-			file.read(source.data(), static_cast<std::streamsize>(size));
-			if (file.bad())
-			{
-				return std::unexpected(vm::VmError::internal(std::format("cannot read module '{}'", path.generic_string())));
-			}
-			source.resize(static_cast<std::size_t>(file.gcount()));
-		}
-
-		return source;
-	}
-
 	std::expected<std::vector<std::byte>, vm::VmError> BytecodeCache::compile(const std::string_view source, const std::string_view chunk_name)
 	{
 		const auto encoded = Luau::compile(std::string{source}, vm::kCompileOptions);
@@ -75,7 +46,7 @@ namespace rml::luau
 		auto source = read_source(path);
 		if (!source)
 		{
-			return std::unexpected(std::move(source.error()));
+			return std::unexpected(vm::VmError::internal(std::move(source.error())));
 		}
 
 		auto bytecode = compile(*source, id.display());
@@ -98,22 +69,7 @@ namespace rml::luau
 
 	std::size_t BytecodeCache::invalidate_under(const std::filesystem::path& root)
 	{
-		std::error_code ec;
-		auto canonical = std::filesystem::weakly_canonical(root, ec);
-		if (ec)
-		{
-			canonical = root;
-		}
-
-		auto prefix = canonical.generic_string();
-		if (!prefix.empty() && prefix.back() != '/')
-		{
-			prefix += '/';
-		}
-
-		return std::erase_if(m_entries, [&prefix](const auto& entry) {
-			return entry.first.string().starts_with(prefix);
-		});
+		return utils::erase_under(m_entries, root, &ModuleId::string);
 	}
 
 	void BytecodeCache::clear() noexcept

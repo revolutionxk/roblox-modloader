@@ -8,6 +8,7 @@
 #include <RobloxModLoader/qt/qrect.hpp>
 #include <RobloxModLoader/qt/qstring.hpp>
 #include <RobloxModLoader/qt/qwidget.hpp>
+#include <RobloxModLoader/util/string.hpp>
 #include <algorithm>
 #include <cmath>
 #include <string_view>
@@ -16,11 +17,6 @@
 namespace script_editor_bg
 {
 	EditorOverlay* g_active = nullptr;
-
-	void** vtable_of(void* object)
-	{
-		return *static_cast<void***>(object);
-	}
 
 	bool is_script_editor(const rml::qt::QObject* widget)
 	{
@@ -119,7 +115,7 @@ namespace script_editor_bg
 		if (paint_slot() == static_cast<std::size_t>(-1))
 			return;
 
-		void** const vtable = vtable_of(editor_handle);
+		void** const vtable = rml::memory::vtable_of(editor_handle);
 		if (m_originals.contains(vtable))
 			return;
 
@@ -158,7 +154,7 @@ namespace script_editor_bg
 
 		paint_fn original = nullptr;
 		if (overlay)
-			if (const auto it = overlay->m_originals.find(vtable_of(self)); it != overlay->m_originals.end())
+			if (const auto it = overlay->m_originals.find(rml::memory::vtable_of(self)); it != overlay->m_originals.end())
 				original = it->second;
 
 		if (overlay)
@@ -173,10 +169,7 @@ namespace script_editor_bg
 		if (!path.has_extension())
 			return false;
 
-		std::string ext = path.extension().string();
-		std::ranges::transform(ext, ext.begin(), [](const unsigned char c) {
-			return static_cast<char>(std::tolower(c));
-		});
+		const auto ext = rml::utils::to_lower(path.extension().string());
 		return ext == ".gif" || ext == ".webp" || ext == ".apng" || ext == ".mng";
 	}
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/mod/events.hpp"
 #include "RobloxModLoader/mod/mod_base.hpp"
@@ -9,7 +10,6 @@
 namespace RBX
 {
 	class DataModel;
-	enum class DataModelType : std::int32_t;
 }
 
 namespace rml

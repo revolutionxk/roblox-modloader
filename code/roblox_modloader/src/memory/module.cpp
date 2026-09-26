@@ -54,25 +54,6 @@ namespace rml::memory
 		return 0;
 	}
 
-	namespace
-	{
-#if defined(RML_WINDOWS)
-		std::string win32_error_string(const DWORD err)
-		{
-			char buf[512] = {};
-
-			if (const DWORD len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf, static_cast<DWORD>(sizeof buf), nullptr); len > 0)
-			{
-				std::string s(buf, len);
-				while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
-					s.pop_back();
-				return s;
-			}
-			return std::format("(Win32 error {})", static_cast<unsigned>(err));
-		}
-#endif
-	}
-
 	module::module(std::string_view name) :range(nullptr, 0), m_name(name)
 	{
 		std::scoped_lock lk(m_mtx);
@@ -309,7 +290,7 @@ namespace rml::memory
 
 			const DWORD err = GetLastError();
 			if (!h_module)
-				return std::unexpected(std::format("Failed to attach module '{}' : Failed to load module '{}': {}", m_name, abs_path_str, win32_error_string(err)));
+				return std::unexpected(std::format("Failed to attach module '{}' : Failed to load module '{}': {}", m_name, abs_path_str, std::system_category().message(static_cast<int>(err))));
 
 			loaded = h_module;
 		}
@@ -319,7 +300,7 @@ namespace rml::memory
 			if (!loaded)
 			{
 				const DWORD err = GetLastError();
-				return std::unexpected(std::format("Failed to attach module '{}': {}", m_name, win32_error_string(err)));
+				return std::unexpected(std::format("Failed to attach module '{}': {}", m_name, std::system_category().message(static_cast<int>(err))));
 			}
 		}
 
@@ -365,7 +346,7 @@ namespace rml::memory
 		if (m_attached_owner && !FreeLibrary(static_cast<HMODULE>(m_attached_handle)))
 		{
 			const DWORD err = GetLastError();
-			return std::unexpected(std::format("Failed to detach module '{}': {}", m_name, win32_error_string(err)));
+			return std::unexpected(std::format("Failed to detach module '{}': {}", m_name, std::system_category().message(static_cast<int>(err))));
 		}
 #else
 		if (m_attached_owner && dlclose(m_attached_handle) != 0)

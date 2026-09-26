@@ -1,11 +1,17 @@
 #include "RobloxModLoader/luau/script/script_asset.hpp"
 
+#include "RobloxModLoader/util/filesystem.hpp"
+
 namespace rml::luau
 {
 	bool is_script_file(const std::filesystem::path& path)
 	{
-		const auto extension = path.extension().string();
-		return extension == ".lua" || extension == ".luau";
+		return std::ranges::find(kSourceExtensions, path.extension().string()) != kSourceExtensions.end();
+	}
+
+	bool is_init_file(const std::filesystem::path& path)
+	{
+		return path.stem() == kInitStem;
 	}
 
 	std::expected<std::string, std::string> read_source(const std::filesystem::path& path)
@@ -22,26 +28,13 @@ namespace rml::luau
 			return std::unexpected(std::format("not a regular file: '{}'", path.string()));
 		}
 
-		std::ifstream stream(path, std::ios::binary);
-		if (!stream.is_open())
+		auto source = utils::read_file(path);
+		if (!source)
 		{
-			return std::unexpected(std::format("cannot open '{}'", path.string()));
+			return std::unexpected(std::format("cannot read '{}': {}", path.string(), source.error().message()));
 		}
 
-		std::string source;
-		if (const auto size = std::filesystem::file_size(path, error); !error)
-		{
-			source.reserve(static_cast<std::size_t>(size));
-		}
-
-		source.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
-
-		if (stream.bad())
-		{
-			return std::unexpected(std::format("failed while reading '{}'", path.string()));
-		}
-
-		return source;
+		return std::move(*source);
 	}
 
 	std::optional<std::filesystem::file_time_type> file_mtime(const std::filesystem::path& path) noexcept

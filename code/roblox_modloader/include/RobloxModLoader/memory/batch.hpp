@@ -15,6 +15,7 @@
 #endif
 
 #include "RobloxModLoader/logger/logger.hpp"
+#include "RobloxModLoader/util/hash.hpp"
 #include "pattern.hpp"
 #include "range.hpp"
 #include "signature.hpp"
@@ -49,31 +50,20 @@ namespace rml::memory
 
 	struct signature_hasher
 	{
-		static inline constexpr uint32_t FNV_PRIME_32 = 16777619u;
-		static inline constexpr uint32_t FNV_OFFSET_32 = 2166136261u;
-
-		static inline constexpr uint32_t fnv1a_32(const char* str, uint32_t hash = FNV_OFFSET_32) noexcept
-		{
-			for (; *str != '\0'; ++str)
-				hash = (hash ^ static_cast<uint32_t>(*str)) * FNV_PRIME_32;
-
-			return hash;
-		}
-
 		template<signature sig>
 		static inline constexpr uint32_t compute_hash(uint32_t hash)
 		{
-			hash = fnv1a_32(sig.m_ida.c_str(), hash);
-			hash = fnv1a_32(sig.m_anchor.m_text.c_str(), hash);
-			hash = fnv1a_32(sig.m_anchor.m_origin.c_str(), hash);
+			hash = utils::fnv1a_32(sig.m_ida.view(), hash);
+			hash = utils::fnv1a_32(sig.m_anchor.m_text.view(), hash);
+			hash = utils::fnv1a_32(sig.m_anchor.m_origin.view(), hash);
 			for (std::uint8_t i = 0; i < sig.m_anchor.m_step_count; ++i)
-				hash = (hash ^ ((static_cast<uint32_t>(sig.m_anchor.m_steps[i]) << 8) | sig.m_anchor.m_indices[i])) * FNV_PRIME_32;
+				hash = (hash ^ ((static_cast<uint32_t>(sig.m_anchor.m_steps[i]) << 8) | sig.m_anchor.m_indices[i])) * utils::fnv32_prime;
 
 			return hash;
 		}
 
 		template<signature... sigs>
-		static inline constexpr uint32_t add(uint32_t hash = FNV_OFFSET_32)
+		static inline constexpr uint32_t add(uint32_t hash = utils::fnv32_offset)
 		{
 			((hash = compute_hash<sigs>(hash)), ...);
 
@@ -82,7 +72,7 @@ namespace rml::memory
 	};
 
 	template<signature... args>
-	static inline constexpr auto make_batch(uint32_t hash = signature_hasher::FNV_OFFSET_32)
+	static inline constexpr auto make_batch(uint32_t hash = utils::fnv32_offset)
 	{
 		constexpr std::array<signature, sizeof...(args)> a1 = {args...};
 

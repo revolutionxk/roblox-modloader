@@ -3,7 +3,7 @@
 #include "RobloxModLoader/internal/platform.hpp"
 #include "RobloxModLoader/logger/logger.hpp"
 #include "RobloxModLoader/platform/memory/host_image.hpp"
-#include "RobloxModLoader/util/compile_time_helpers.hpp"
+#include "RobloxModLoader/util/compile_time.hpp"
 
 #include <iterator>
 

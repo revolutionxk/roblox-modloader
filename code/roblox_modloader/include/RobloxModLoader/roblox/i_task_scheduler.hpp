@@ -1,8 +1,8 @@
 #pragma once
+#include "RobloxModLoader/roblox/data_model_type.hpp"
 #include "job.hpp"
 
 namespace RBX {
-    enum class DataModelType;
     class DataModel;
     class ScriptContext;
 }
