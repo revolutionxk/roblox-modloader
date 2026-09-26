@@ -1,5 +1,6 @@
 
 #include "RobloxModLoader/memory/foreign_call.hpp"
+#include "RobloxModLoader/platform/abi.hpp"
 #include "roblox_interop_provider.hpp"
 
 #include "pointers.hpp"
@@ -14,6 +15,7 @@
 #include "dotnet_event_descriptor.hpp"
 #include "dotnet_variant.hpp"
 #include "dotnet_yield.hpp"
+#include "instance_handles.hpp"
 #include "type_marshaler.hpp"
 
 #include <RobloxModLoader/qt/mods_menu.hpp>
@@ -70,6 +72,8 @@ namespace rml::dotnet
 		    {reinterpret_cast<const void*>(table.luau_ref_call), "luau_ref_call"},
 		    {reinterpret_cast<const void*>(table.luau_ref_index), "luau_ref_index"},
 		    {reinterpret_cast<const void*>(table.luau_ref_release), "luau_ref_release"},
+		    {reinterpret_cast<const void*>(table.instance_retain), "instance_retain"},
+		    {reinterpret_cast<const void*>(table.instance_release), "instance_release"},
 		};
 
 		for (const auto& [pointer, name] : members)
@@ -99,6 +103,8 @@ namespace rml::dotnet
 		const bool indirect_result = TypeMarshaler::returns_indirectly(type);
 
 		const auto ret = function.invoke(arguments, indirect_result);
+		if constexpr (platform::abi::callee_destroys_arguments)
+			arguments.hand_over_by_value_arguments();
 
 		TypeMarshaler::encode_return_value(type, ret, reinterpret_cast<uintptr_t>(&arguments.return_value), out);
 	}
@@ -138,28 +144,6 @@ namespace rml::dotnet
 	}
 
 #if RML_ENABLE_LUAU
-	class RetainedInstances
-	{
-	public:
-		RBX::Instance* retain(std::shared_ptr<RBX::Instance> instance)
-		{
-			auto* raw = instance.get();
-			std::scoped_lock lock(m_mutex);
-			m_instances.insert_or_assign(raw, std::move(instance));
-			return raw;
-		}
-
-	private:
-		std::mutex m_mutex;
-		std::unordered_map<const RBX::Instance*, std::shared_ptr<RBX::Instance>> m_instances;
-	};
-
-	static RetainedInstances& retained_instances()
-	{
-		static RetainedInstances instances;
-		return instances;
-	}
-
 	static luau::Value to_luau_value(const InteropVariant& value)
 	{
 		switch (value.tag)
@@ -420,7 +404,7 @@ namespace rml::dotnet
 					return 0;
 				}
 
-				return reinterpret_cast<uintptr_t>(retained_instances().retain(std::move(instance)));
+				return instance_handles().retain(std::move(instance));
 			}
 			catch (const std::exception& e)
 			{
@@ -432,6 +416,23 @@ namespace rml::dotnet
 				RML_ERROR("create_by_name('{}') failed: unknown exception", class_name);
 				return 0;
 			}
+		};
+
+		table.instance_retain = [](const uintptr_t instance) -> uint8_t {
+			try
+			{
+				return instance_handles().retain(instance) ? 1 : 0;
+			}
+			catch (const std::exception& e)
+			{
+				RML_ERROR("instance_retain failed: {}", e.what());
+				return 0;
+			}
+		};
+
+		table.instance_release = [](const uintptr_t instance) {
+			if (instance)
+				instance_handles().release(instance);
 		};
 
 		table.managed_log = [](const int32_t level, const char* utf8, const int32_t len) {

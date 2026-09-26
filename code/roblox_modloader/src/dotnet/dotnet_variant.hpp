@@ -19,6 +19,12 @@ namespace rml::dotnet
 		return out;
 	}
 
+	enum class InstanceOwnership : std::uint8_t
+	{
+		Borrowed,
+		Transferred
+	};
+
 	[[nodiscard]] inline InteropVariant instance_value(const uintptr_t ptr) noexcept
 	{
 		if (!utils::memory::is_valid_pointer(ptr))

@@ -91,9 +91,12 @@ namespace rml::dotnet
 		void(RML_INTEROP_CALL* luau_ref_call)(uintptr_t ref_handle, const InteropVariant* args, uint32_t arg_count, ManagedYieldCallback callback, void* state);
 		void(RML_INTEROP_CALL* luau_ref_index)(uintptr_t ref_handle, const char* key, ManagedYieldCallback callback, void* state);
 		void(RML_INTEROP_CALL* luau_ref_release)(uintptr_t ref_handle);
+
+		uint8_t(RML_INTEROP_CALL* instance_retain)(uintptr_t instance);
+		void(RML_INTEROP_CALL* instance_release)(uintptr_t instance);
 	};
 
-	inline constexpr uint32_t RML_INTEROP_VERSION = 10;
+	inline constexpr uint32_t RML_INTEROP_VERSION = 11;
 
 	class InteropRegistry
 	{

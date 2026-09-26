@@ -8,9 +8,10 @@ namespace Roblox;
 ///     API members declared in the Roblox API dump are generated into
 ///     <c>Generated/Classes/Object.Members.cs</c>.  Do not edit that file manually.
 /// </remarks>
-public partial class Object
+public partial class Object : IDisposable
 {
     internal readonly nuint Handle;
+    private readonly InstanceReference _reference;
 
     internal Object(nuint handle)
     {
@@ -20,10 +21,16 @@ public partial class Object
         }
 
         Handle = handle;
+        _reference = InstanceReference.Retain(handle);
     }
 
     protected Object(string className)
-        => Handle = Reflection.CreateInstance(className);
+    {
+        Handle = Reflection.CreateOwnedHandle(className, CreatorRole.Engine);
+        _reference = InstanceReference.Adopt(Handle);
+    }
+
+    public void Dispose() => _reference.Dispose();
 
     public override bool Equals(object? obj)
         => obj is Object other && other.Handle == Handle;

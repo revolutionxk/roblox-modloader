@@ -46,7 +46,7 @@ namespace rml::dotnet
 
 		[[nodiscard]] static bool returns_indirectly(const RBX::Reflection::Type* type) noexcept;
 
-		[[nodiscard]] static InteropVariant encode_variant(const RBX::Reflection::Variant& variant, InteropStringPool* strings = nullptr);
+		[[nodiscard]] static InteropVariant encode_variant(const RBX::Reflection::Variant& variant, InteropStringPool* strings = nullptr, InstanceOwnership ownership = InstanceOwnership::Borrowed);
 		[[nodiscard]] static InteropVariant encode_property(const RBX::Reflection::PropertyDescriptor* descriptor, const RBX::Reflection::DescribedBase* instance);
 
 		[[nodiscard]] static bool decode_property(const RBX::Reflection::PropertyDescriptor* descriptor, RBX::Reflection::DescribedBase* instance, const InteropVariant& value);
