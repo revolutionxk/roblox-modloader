@@ -4,6 +4,7 @@
 #include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/memory/string_anchor.hpp"
 #include "RobloxModLoader/roblox/subsystem.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 
 #include <cstring>
 #include <format>
@@ -186,13 +187,8 @@ namespace rml::assets
 
 	std::expected<RBX::ContentId, std::string> register_bytes(const std::filesystem::path& cache_file, const void* data, const std::size_t size)
 	{
-		std::error_code error;
-		std::filesystem::create_directories(cache_file.parent_path(), error);
-
-		std::ofstream out(cache_file, std::ios::binary | std::ios::trunc);
-		if (!out || !out.write(static_cast<const char*>(data), static_cast<std::streamsize>(size)))
+		if (!utils::write_file(cache_file, std::string_view(static_cast<const char*>(data), size)))
 			return std::unexpected(std::format("could not write '{}'", cache_file.string()));
-		out.close();
 
 		return register_file(cache_file);
 	}

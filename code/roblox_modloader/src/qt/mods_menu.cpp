@@ -8,6 +8,7 @@
 #include "RobloxModLoader/qt/qmenubar.hpp"
 #include "RobloxModLoader/qt/qmessagebox.hpp"
 #include "RobloxModLoader/qt/qstring.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 #include "RobloxModLoader/version.hpp"
 #include "logo.hpp"
 #include "config/config_manager.hpp"
@@ -34,10 +35,7 @@ namespace rml::qt
 		}
 
 		const auto logo_path = filesystem::directory::get_mod_loader_directory() / "assets" / "logo.png";
-		std::error_code ec;
-		std::filesystem::create_directories(logo_path.parent_path(), ec);
-		if (std::ofstream out{logo_path, std::ios::binary | std::ios::trunc})
-			out.write(reinterpret_cast<const char*>(LOGO_PNG), LOGO_PNG_SIZE);
+		(void)utils::write_file(logo_path, std::string_view(reinterpret_cast<const char*>(LOGO_PNG), LOGO_PNG_SIZE));
 
 		const std::string logo_url = "file:///" + logo_path.generic_string();
 

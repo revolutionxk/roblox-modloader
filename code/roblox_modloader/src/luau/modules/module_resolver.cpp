@@ -1,5 +1,6 @@
 #include "RobloxModLoader/luau/modules/module_resolver.hpp"
 
+#include "RobloxModLoader/util/filesystem.hpp"
 #include "RobloxModLoader/util/string.hpp"
 
 RML_LOG_SCOPE("Modules");
@@ -137,19 +138,6 @@ namespace rml::luau
 	static std::string build_logical(const std::string_view alias, const std::vector<std::string>& segments)
 	{
 		return segments.empty() ? std::format("@{}", alias) : std::format("@{}/{}", alias, utils::join(segments, "/"));
-	}
-
-	static bool is_inside(const std::filesystem::path& root, const std::filesystem::path& candidate)
-	{
-		std::error_code ec;
-		const auto relative = std::filesystem::relative(candidate, root, ec);
-		if (ec || relative.empty())
-		{
-			return false;
-		}
-
-		const auto first = relative.begin();
-		return first != relative.end() && *first != "..";
 	}
 
 	static std::vector<std::filesystem::path> candidates_for(const std::filesystem::path& target, const std::vector<std::string>& segments)
@@ -300,7 +288,7 @@ namespace rml::luau
 				return std::unexpected(std::move(failure));
 			}
 
-			if (!is_inside(canonical_root, resolved))
+			if (!utils::is_under(canonical_root, resolved))
 			{
 				RML_WARN("Rejected module '{}': '{}' resolves outside '{}'",
 				    raw_specifier,
@@ -319,12 +307,7 @@ namespace rml::luau
 
 	std::string logical_name_for(const std::filesystem::path& file, const ModEnvironment& env)
 	{
-		std::error_code ec;
-		auto subject = std::filesystem::weakly_canonical(file, ec);
-		if (ec)
-		{
-			subject = file;
-		}
+		const auto subject = utils::canonical_or_self(file);
 
 		for (const auto& rule : kResolveRules)
 		{
@@ -334,19 +317,14 @@ namespace rml::luau
 				continue;
 			}
 
-			ec.clear();
-			auto canonical_root = std::filesystem::weakly_canonical(root, ec);
-			if (ec)
-			{
-				canonical_root = root;
-			}
+			const auto canonical_root = utils::canonical_or_self(root);
 
-			if (!is_inside(canonical_root, subject))
+			if (!utils::is_under(canonical_root, subject))
 			{
 				continue;
 			}
 
-			ec.clear();
+			std::error_code ec;
 			const auto relative = std::filesystem::relative(subject, canonical_root, ec);
 			if (ec || relative.empty())
 			{

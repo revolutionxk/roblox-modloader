@@ -4,6 +4,7 @@
 #include "RobloxModLoader/luau/vm/chunk.hpp"
 #include "RobloxModLoader/luau/vm/stack_guard.hpp"
 #include "RobloxModLoader/luau/vm/thread_identity.hpp"
+#include "RobloxModLoader/util/filesystem.hpp"
 #include "RobloxModLoader/util/string.hpp"
 
 RML_LOG_SCOPE("Modules");
@@ -136,22 +137,7 @@ namespace rml::luau
 
 	std::size_t ModuleRegistry::invalidate_under(const std::filesystem::path& root)
 	{
-		std::error_code ec;
-		auto canonical = std::filesystem::weakly_canonical(root, ec);
-		if (ec)
-		{
-			canonical = root;
-		}
-
-		auto prefix = canonical.generic_string();
-		if (!prefix.empty() && prefix.back() != '/')
-		{
-			prefix += '/';
-		}
-
-		return std::erase_if(m_loaded, [&prefix](const auto& entry) {
-			return entry.first.string().starts_with(prefix);
-		});
+		return utils::erase_under(m_loaded, root, &ModuleId::string);
 	}
 
 	void ModuleRegistry::clear() noexcept

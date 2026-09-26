@@ -1,5 +1,7 @@
 #include "RobloxModLoader/assets/roblox_mesh.hpp"
 
+#include "RobloxModLoader/util/filesystem.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -221,12 +223,8 @@ namespace rml::assets::mesh
 
 	std::expected<void, std::string> write_v2(const Mesh& mesh, const std::filesystem::path& path)
 	{
-		std::error_code error;
-		std::filesystem::create_directories(path.parent_path(), error);
-
 		const auto bytes = encode_v2(mesh);
-		std::ofstream out(path, std::ios::binary | std::ios::trunc);
-		if (!out || !out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size())))
+		if (!utils::write_file(path, std::string_view(reinterpret_cast<const char*>(bytes.data()), bytes.size())))
 			return std::unexpected(std::format("could not write '{}'", path.string()));
 		return {};
 	}
