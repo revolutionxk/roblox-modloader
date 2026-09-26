@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 using RML.Core.Api;
-using Roblox;
+using ScriptEditorWebview.Engine;
 using ScriptEditorWebview.Lsp;
 using ScriptEditorWebview.Native;
 using ScriptEditorWebview.Threading;
@@ -8,42 +8,52 @@ using ScriptEditorWebview.WebView;
 
 namespace ScriptEditorWebview.Editor;
 
+/// <summary>
+///     One Monaco instance over one native script editor. The session never touches the engine: it
+///     hands the editor's edits to <see cref="EngineAgent" /> and receives the document's text back
+///     from the poll loop, so the only Roblox contract it depends on lives in agent.luau.
+/// </summary>
 internal sealed class ScriptEditorSession : IDisposable
 {
-    private static readonly TimeSpan WritebackDebounce = TimeSpan.FromMilliseconds(300);
-
+    private readonly EngineAgent _agent;
     private readonly GuiDispatcher _gui;
     private readonly LuauLspBridge _lsp;
+    private readonly string _uri;
     private readonly string _webRoot;
-    private readonly Func<string?> _sourcemapProvider;
 
     private readonly WebViewHost _webView;
-    private readonly Timer _writebackTimer;
-    private readonly Lock _writeGate = new();
     private bool _disposed;
     private bool _editorReady;
 
     private string _lastSyncedText = string.Empty;
     private volatile bool _lspReady;
-    private string? _pendingWriteText;
+    private string? _pendingText;
+    private string? _sourcemap;
 
-    public ScriptEditorSession(GuiDispatcher gui, ScriptDocument document, IntPtr editorHwnd, ModContext context,
-        Func<string?> sourcemapProvider)
+    public ScriptEditorSession(GuiDispatcher gui, EngineAgent agent, int documentId, string name, string uri,
+        string text, IntPtr editorHwnd, ModContext context)
     {
         _gui = gui;
-        Document = document;
+        _agent = agent;
+        DocumentId = documentId;
+        Name = name;
+        _uri = string.IsNullOrEmpty(uri) ? "file:///rml/main.luau" : uri;
+        _pendingText = text;
         EditorHwnd = editorHwnd;
+        // The assembly lives in '<mod>/dotnet'; the payload beside it lives at the mod root, which
+        // is what GetPath resolves against.
         _webRoot = context.GetPath("web");
-        _sourcemapProvider = sourcemapProvider;
 
         _webView = new WebViewHost(gui);
         _lsp = new LuauLspBridge(
             context.GetPath("tools", "bin", "luau-lsp.exe"),
             context.GetPath("tools", "cache", "globalTypes.PluginSecurity.d.luau"));
-        _writebackTimer = new Timer(_ => FlushWriteback(), null, Timeout.Infinite, Timeout.Infinite);
     }
 
-    private ScriptDocument Document { get; }
+    public int DocumentId { get; }
+
+    /// <summary>Full name of the script this session mirrors, for logging.</summary>
+    public string Name { get; }
 
     public IntPtr EditorHwnd { get; }
 
@@ -54,11 +64,9 @@ internal sealed class ScriptEditorSession : IDisposable
         _disposed = true;
 
         _webView.MessageReceived -= OnWebMessage;
-        _webView.Ready -= OnWebViewReady;
         _lsp.ServerMessage -= OnLspServerMessage;
         _lsp.Initialized -= OnLspInitialized;
 
-        _writebackTimer.Dispose();
         _lsp.Dispose();
         _webView.Dispose();
     }
@@ -66,7 +74,6 @@ internal sealed class ScriptEditorSession : IDisposable
     public void Start()
     {
         _webView.MessageReceived += OnWebMessage;
-        _webView.Ready += OnWebViewReady;
 
         _lsp.ServerMessage += OnLspServerMessage;
         _lsp.Initialized += OnLspInitialized;
@@ -82,20 +89,61 @@ internal sealed class ScriptEditorSession : IDisposable
         _webView.SyncBounds();
     }
 
-    private void OnLspInitialized()
+    /// <summary>Text the engine reports for this document, on its way to Monaco.</summary>
+    public void OnEngineText(string text)
     {
-        _lspReady = true;
-        PushSourcemap();
+        if (_disposed) return;
+
+        if (!_editorReady)
+        {
+            _pendingText = text;
+            return;
+        }
+
+        PushTextToEditor(text);
     }
 
-    public void PushSourcemap()
+    /// <summary>
+    ///     Tells the editor how many of its edits the engine committed. Monaco counts the ones it is
+    ///     still owed and ignores a full-text push while any is outstanding, which is what keeps a
+    ///     report that crossed a keystroke from rolling the buffer back.
+    /// </summary>
+    public void OnEditsApplied(int count)
     {
-        if (_disposed || !_lspReady) return;
+        if (_disposed || count <= 0) return;
+
+        for (var i = 0; i < count; i++) _webView.PostMessage("{\"type\":\"editor.applied\"}");
+    }
+
+    /// <summary>
+    ///     Tells the editor that edits it is counting never reached the document. Without this the
+    ///     editor waits for an acknowledgement nobody will send and stops taking the engine's text
+    ///     for the rest of the session.
+    /// </summary>
+    public void OnEditsRejected(int count, string? reason)
+    {
+        if (_disposed || count <= 0) return;
+
+        ScriptEditorWebviewMod.Logger.Error(
+            $"the engine did not take {count} edit(s) for '{Name}': {reason ?? "no reason given"}");
+
+        var envelope = new JsonObject
+        {
+            ["type"] = "editor.rejected",
+            ["count"] = count
+        };
+        _webView.PostMessage(envelope.ToJsonString());
+    }
+
+    public void PushSourcemap(string? sourcemap)
+    {
+        if (sourcemap is { Length: > 0 }) _sourcemap = sourcemap;
+
+        if (_disposed || !_lspReady || _sourcemap is null or { Length: 0 }) return;
 
         try
         {
-            if (_sourcemapProvider() is { Length: > 0 } tree)
-                _lsp.SendNotification("$/plugin/full", tree);
+            _lsp.SendNotification("$/plugin/full", _sourcemap);
         }
         catch (Exception ex)
         {
@@ -103,8 +151,10 @@ internal sealed class ScriptEditorSession : IDisposable
         }
     }
 
-    private void OnWebViewReady()
+    private void OnLspInitialized()
     {
+        _lspReady = true;
+        PushSourcemap(null);
     }
 
     private void OnWebMessage(string raw)
@@ -123,13 +173,49 @@ internal sealed class ScriptEditorSession : IDisposable
         switch (type)
         {
             case "editor.ready":
-                _editorReady = true;
-                _gui.Post(PushEngineTextToEditor);
+                _gui.Post(() =>
+                {
+                    _editorReady = true;
+
+                    if (_pendingText is { } text)
+                    {
+                        _pendingText = null;
+                        PushTextToEditor(text);
+                    }
+                });
                 break;
 
-            case "editor.changed":
-                var text = message?["text"]?.GetValue<string>();
-                if (text is not null) QueueWriteback(text);
+            // The editor asks for the engine's own copy of the document; a regression check compares
+            // the two buffers to prove a Studio update did not break the round trip.
+            case "editor.verify":
+                _agent.TextAsync(DocumentId).ContinueWith(task =>
+                {
+                    var text = task.IsFaulted ? null : task.Result;
+                    var envelope = new JsonObject
+                    {
+                        ["type"] = "editor.engineText",
+                        ["text"] = text ?? string.Empty
+                    };
+                    _webView.PostMessage(envelope.ToJsonString());
+                }, TaskContinuationOptions.ExecuteSynchronously);
+
+                break;
+
+            // The editor missed a text report while it still owed the engine edits; it is asking
+            // for the current document now that it owes nothing.
+            case "editor.resync":
+                _agent.TextAsync(DocumentId).ContinueWith(task =>
+                {
+                    if (task.IsFaulted || task.Result is not { } current) return;
+
+                    _gui.Post(() => PushTextToEditor(current, true));
+                }, TaskContinuationOptions.ExecuteSynchronously);
+
+                break;
+
+            case "editor.edits":
+                if (message?["edits"] is JsonArray edits && edits.Count > 0)
+                    PushEdits(edits);
 
                 break;
 
@@ -141,35 +227,35 @@ internal sealed class ScriptEditorSession : IDisposable
         }
     }
 
+    /// <summary>
+    ///     Hands one batch to the engine and answers the editor either way: a batch the agent
+    ///     refused was never queued, and the editor is counting every edit it sent.
+    /// </summary>
+    private void PushEdits(JsonArray edits)
+    {
+        var count = edits.Count;
+
+        _agent.PushEditsAsync(DocumentId, edits).ContinueWith(task =>
+        {
+            if (task.IsCompletedSuccessfully && task.Result) return;
+
+            var reason = task.IsFaulted
+                ? task.Exception?.GetBaseException().Message
+                : "the agent refused the batch";
+
+            _gui.Post(() => OnEditsRejected(count, reason));
+        }, TaskContinuationOptions.ExecuteSynchronously);
+    }
+
     private void OnLspServerMessage(string json)
     {
         var envelope = $"{{\"type\":\"lsp.message\",\"data\":{json}}}";
         _webView.PostMessage(envelope);
     }
 
-    public void OnEngineDocumentChanged()
+    private void PushTextToEditor(string text, bool force = false)
     {
-        if (_disposed || !_editorReady) return;
-
-        PushEngineTextToEditor();
-    }
-
-    private void PushEngineTextToEditor()
-    {
-        if (_disposed || !_editorReady) return;
-
-        string text;
-        try
-        {
-            text = Document.GetText();
-        }
-        catch (Exception ex)
-        {
-            ScriptEditorWebviewMod.Logger.Error($"Reading ScriptDocument text failed: {ex}");
-            return;
-        }
-
-        if (text == _lastSyncedText) return;
+        if (!force && text == _lastSyncedText) return;
 
         _lastSyncedText = text;
 
@@ -177,67 +263,9 @@ internal sealed class ScriptEditorSession : IDisposable
         {
             ["type"] = "editor.setText",
             ["text"] = text,
-            ["uri"] = SafeInternalUri(),
+            ["uri"] = _uri,
             ["remote"] = true
         };
         _webView.PostMessage(envelope.ToJsonString());
-    }
-
-    private string SafeInternalUri()
-    {
-        try
-        {
-            return Document.GetInternalUri();
-        }
-        catch
-        {
-            return "file:///rml/main.luau";
-        }
-    }
-
-    private void QueueWriteback(string text)
-    {
-        lock (_writeGate)
-        {
-            _pendingWriteText = text;
-        }
-
-        _writebackTimer.Change(WritebackDebounce, Timeout.InfiniteTimeSpan);
-    }
-
-    private void FlushWriteback()
-    {
-        string? text;
-        lock (_writeGate)
-        {
-            text = _pendingWriteText;
-            _pendingWriteText = null;
-        }
-
-        if (text is null || _disposed) return;
-
-        _gui.Post(() => WriteToEngine(text));
-    }
-
-    private void WriteToEngine(string text)
-    {
-        if (_disposed || text == _lastSyncedText) return;
-
-        try
-        {
-            ReplaceWholeDocument(Document, text);
-            _lastSyncedText = text;
-        }
-        catch (Exception ex)
-        {
-            ScriptEditorWebviewMod.Logger.Error($"Writing ScriptDocument text failed: {ex}");
-        }
-    }
-
-    private static void ReplaceWholeDocument(ScriptDocument document, string newText)
-    {
-        var lineCount = Math.Max(1, document.GetLineCount());
-        var lastLine = document.GetLine(lineCount);
-        document.EditTextAsync(newText, 1, 1, lineCount, lastLine.Length + 1);
     }
 }

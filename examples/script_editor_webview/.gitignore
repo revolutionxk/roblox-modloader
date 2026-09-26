@@ -1,3 +1,6 @@
 bin/
 obj/
 WebView2/
+# Fetched payloads: monaco-editor's min/vs bundle and the luau-lsp binary plus its Roblox types.
+web/monaco/
+tools/

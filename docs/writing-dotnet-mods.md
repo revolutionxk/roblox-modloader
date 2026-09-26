@@ -115,6 +115,38 @@ if (part is not null)
 }
 ```
 
+## Driving the engine from Luau
+
+Some engine surfaces are best reached from Luau rather than through the reflection bridge:
+Studio-only APIs that check the calling thread's capabilities, anything that yields, and anything
+that would otherwise cost one interop call per instance. `LuauScriptManager` evaluates a chunk in a
+place's own Luau VM and hands back whatever it returns, so a mod can keep a table of functions on
+the engine side and call them by reference.
+
+```csharp
+var result = await LuauScriptManager.EvaluateAsync(DataModelType.Edit, source, "@mymod/agent");
+var agent = result.AsRef()!;               // the table the chunk returned
+var poll = (await agent.IndexAsync("poll")).AsRef()!;
+
+var payload = (await poll.InvokeAsync()).AsString();
+```
+
+- **Values cross as values; anything else crosses as a handle.** `nil`, booleans, numbers and
+  strings marshal directly; a table or function comes back as a `LuauRef` you can index and call.
+  JSON in a string is the simplest way to move a structure.
+- **A yielding call answers with nothing.** The moment the Luau thread yields, the call you awaited
+  completes with `nil` and the engine owns the resume. Keep the functions you call from .NET
+  non-yielding: let them queue work, and report what finished on a later call (the
+  `script_editor_webview` example queues document edits and drains the results from a `poll`).
+- **Capabilities follow the thread.** Chunks and callbacks run with full capabilities and Studio
+  identity, which is what lets a mod call plugin-security APIs such as
+  `ScriptDocument:EditTextAsync`.
+- **The chunk's environment survives.** Every chunk a mod evaluates shares one sandboxed
+  environment per mod, so state a chunk leaves behind is still there for the next one.
+
+`examples/script_editor_webview` is the worked example: `luau/agent.luau` owns every engine touch
+and the .NET half only moves JSON in and out of it.
+
 ## Notes
 
 - **Threading.** You can do background work (for example with `Task.Run`), but engine objects are

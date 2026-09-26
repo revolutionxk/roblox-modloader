@@ -12,16 +12,6 @@
   <div id="editor"></div>
 
   <script>
-    (function () {
-      const base = new URL('./monaco/', window.location.href).toString();
-      window.MonacoEnvironment = {
-        getWorkerUrl: function (_moduleId, _label) {
-          const source = `self.MonacoEnvironment={baseUrl:${JSON.stringify(base)}};importScripts(${JSON.stringify(base + 'vs/base/worker/workerMain.js')});`;
-          return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
-        }
-      };
-    })();
-
     const RMLHost = (function () {
       const canSend = !!(window.chrome && window.chrome.webview);
       const handlers = [];
@@ -53,23 +43,69 @@
       });
 
       const model = editor.getModel();
+      // Roblox stores sources with '\n'; a CRLF model would ship a stray '\r' per line to the engine.
+      model.setEOL(monaco.editor.EndOfLineSequence.LF);
 
       let applyingRemoteText = false;
+      // Edits the engine has not confirmed yet. A full-text push that arrives while any is
+      // outstanding was produced before those keystrokes and would roll the editor back.
+      let unacknowledgedEdits = 0;
 
-      function applyRemoteText(text, uri) {
+      // A push that lands while the engine still owes us edits describes a document the user has
+      // already typed past, so it cannot be applied -- but it also cannot be forgotten, or the two
+      // buffers stay apart when no further change arrives. We note it and ask for a fresh copy
+      // once the engine has caught up.
+      let missedRemoteText = false;
+
+      // Monaco counts columns in UTF-16 code units; the engine addresses a line in the UTF-8 buffer
+      // it keeps the source in, so one non-ASCII character earlier in the line shifts every range
+      // that follows it and the write lands in the wrong place. Ranges are expressed against the
+      // document as it was *before* the change, so that is the text they have to be measured on.
+      const utf8 = new TextEncoder();
+      let previousText = model.getValue();
+
+      function engineColumn(line, column) {
+        if (typeof line !== 'string' || column <= 1) return column;
+        const prefix = line.slice(0, column - 1);
+        // eslint-disable-next-line no-control-regex
+        if (!/[^\u0000-\u007F]/.test(prefix)) return column;
+        return utf8.encode(prefix).length + 1;
+      }
+
+      function applyRemoteText(text) {
         if (typeof text !== 'string') return;
+        if (unacknowledgedEdits > 0) { missedRemoteText = true; return; }
         if (model.getValue() === text) return;
         applyingRemoteText = true;
         try {
-          model.setValue(text);
+          // executeEdits keeps the cursor and the undo stack; setValue would reset both on every
+          // change the engine reports.
+          editor.executeEdits('rml-engine', [{ range: model.getFullModelRange(), text, forceMoveMarkers: true }]);
         } finally {
           applyingRemoteText = false;
+          previousText = model.getValue();
         }
       }
 
-      model.onDidChangeContent(function () {
+      model.onDidChangeContent(function (event) {
         if (applyingRemoteText) return;
-        RMLHost.send({ type: 'editor.changed', text: model.getValue() });
+        const before = previousText.split('\n');
+        previousText = model.getValue();
+        const edits = event.changes.map(function (change) {
+          const startLine = change.range.startLineNumber;
+          const endLine = change.range.endLineNumber;
+          return {
+            startLine: startLine,
+            startCharacter: engineColumn(before[startLine - 1], change.range.startColumn),
+            endLine: endLine,
+            endCharacter: engineColumn(before[endLine - 1], change.range.endColumn),
+            text: change.text
+          };
+        });
+        if (edits.length > 0) {
+          unacknowledgedEdits += edits.length;
+          RMLHost.send({ type: 'editor.edits', edits: edits });
+        }
       });
 
       const lsp = window.RMLLsp.start(monaco, editor, {
@@ -79,11 +115,38 @@
       RMLHost.onMessage(function (msg) {
         if (!msg || !msg.type) return;
         if (msg.type === 'editor.setText') {
-          applyRemoteText(msg.text, msg.uri);
+          applyRemoteText(msg.text);
+        } else if (msg.type === 'editor.applied') {
+          if (unacknowledgedEdits > 0) unacknowledgedEdits--;
+          if (unacknowledgedEdits === 0 && missedRemoteText) {
+            missedRemoteText = false;
+            RMLHost.send({ type: 'editor.resync' });
+          }
+        } else if (msg.type === 'editor.rejected') {
+          // Edits the engine never took. Stop counting them -- nothing will ever acknowledge them
+          // -- and take the engine's copy back, because what the user typed did not reach it.
+          const dropped = typeof msg.count === 'number' ? msg.count : 1;
+          unacknowledgedEdits = Math.max(0, unacknowledgedEdits - dropped);
+          console.error('the engine rejected ' + dropped + ' edit(s); resyncing from the document');
+          if (unacknowledgedEdits === 0) {
+            missedRemoteText = false;
+            RMLHost.send({ type: 'editor.resync' });
+          } else {
+            missedRemoteText = true;
+          }
+        } else if (msg.type === 'editor.engineText') {
+          // Answer to editor.verify: what the engine holds, for tests/monaco-sync.mjs to compare.
+          window.__rmlEngineText = msg.text;
         } else if (msg.type === 'lsp.message') {
           lsp.onServerMessage(msg.data);
         }
       });
+
+      // A regression check drives these from outside the page: ask the host what the engine holds,
+      // then compare it with the model the user sees.
+      window.__rmlVerify = function () { window.__rmlEngineText = null; RMLHost.send({ type: 'editor.verify' }); };
+      window.__rmlModelText = function () { return model.getValue(); };
+      window.__rmlPending = function () { return unacknowledgedEdits; };
 
       RMLHost.send({ type: 'editor.ready' });
     });
