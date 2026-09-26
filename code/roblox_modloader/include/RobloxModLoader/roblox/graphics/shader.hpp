@@ -25,8 +25,13 @@ namespace RBX::Graphics
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(Shader, type, 0x40);
+	RML_ASSERT_SIZE(Shader, 0x48);
+#else
 	RML_ASSERT_OFFSET(Shader, type, 0x38);
 	RML_ASSERT_SIZE(Shader, 0x40);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	class ShaderProgram : public Resource
@@ -45,8 +50,14 @@ namespace RBX::Graphics
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(ShaderProgram, shaders, 64);
+	RML_ASSERT_OFFSET(ShaderProgram, buffer_mask, 112);
+	RML_ASSERT_SIZE(ShaderProgram, 120);
+#else
 	RML_ASSERT_OFFSET(ShaderProgram, shaders, 56);
 	RML_ASSERT_OFFSET(ShaderProgram, buffer_mask, 104);
 	RML_ASSERT_SIZE(ShaderProgram, 112);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

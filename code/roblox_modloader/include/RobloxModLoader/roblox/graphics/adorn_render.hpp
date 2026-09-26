@@ -9,8 +9,10 @@
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
+#include <list>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace RBX
@@ -77,12 +79,13 @@ namespace RBX::Graphics
 		union {
 			std::vector<AdornMesh> meshes[Adorn::Pass_Count];
 		};
+		std::byte reserved_512[24];
 		std::unique_ptr<GeometryBatch> unit_batches[k_unit_batches];
-		std::byte custom_batch_cache[80];
+		std::byte custom_batch_cache[sizeof(void*) + sizeof(std::list<int>) + sizeof(std::unordered_map<int, int>) + sizeof(std::size_t)];
 		std::shared_ptr<Technique> techniques[Adorn::Pass_Count][Adorn::Material_Count];
 		std::shared_ptr<ShaderProgram> programs[Adorn::Material_Count];
 		void* font_subsystem;
-		std::byte texture_cache[40];
+		std::byte texture_cache[sizeof(std::unordered_map<int, int>)];
 
 		VertexStreamerMigrationLayer* get_vertex_streamer() const
 		{
@@ -150,6 +153,23 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornMesh, z_index, 48);
 	RML_ASSERT_OFFSET(AdornMesh, rotation, 68);
 	RML_ASSERT_OFFSET(AdornMesh, texture, 120);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(AdornRender, visual_engine, 168);
+	RML_ASSERT_OFFSET(AdornRender, context, 184);
+	RML_ASSERT_OFFSET(AdornRender, vertex_streamer, 216);
+	RML_ASSERT_OFFSET(AdornRender, unbind_resources, 224);
+	RML_ASSERT_OFFSET(AdornRender, object_to_world, 236);
+	RML_ASSERT_OFFSET(AdornRender, current_texture, 288);
+	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 304);
+	RML_ASSERT_OFFSET(AdornRender, viewport_width, 324);
+	RML_ASSERT_OFFSET(AdornRender, meshes, 352);
+	RML_ASSERT_OFFSET(AdornRender, unit_batches, 568);
+	RML_ASSERT_OFFSET(AdornRender, custom_batch_cache, 1032);
+	RML_ASSERT_OFFSET(AdornRender, techniques, 1128);
+	RML_ASSERT_OFFSET(AdornRender, programs, 2792);
+	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 3000);
+	RML_ASSERT_SIZE(AdornRender, 3072);
+#else
 	RML_ASSERT_OFFSET(AdornRender, visual_engine, 144);
 	RML_ASSERT_OFFSET(AdornRender, context, 160);
 	RML_ASSERT_OFFSET(AdornRender, vertex_streamer, 184);
@@ -159,11 +179,12 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 272);
 	RML_ASSERT_OFFSET(AdornRender, viewport_width, 292);
 	RML_ASSERT_OFFSET(AdornRender, meshes, 320);
-	RML_ASSERT_OFFSET(AdornRender, unit_batches, 488);
-	RML_ASSERT_OFFSET(AdornRender, custom_batch_cache, 952);
-	RML_ASSERT_OFFSET(AdornRender, techniques, 1032);
-	RML_ASSERT_OFFSET(AdornRender, programs, 2488);
-	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 2696);
-	RML_ASSERT_SIZE(AdornRender, 2744);
+	RML_ASSERT_OFFSET(AdornRender, unit_batches, 536);
+	RML_ASSERT_OFFSET(AdornRender, custom_batch_cache, 1000);
+	RML_ASSERT_OFFSET(AdornRender, techniques, 1080);
+	RML_ASSERT_OFFSET(AdornRender, programs, 2744);
+	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 2952);
+	RML_ASSERT_SIZE(AdornRender, 3000);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

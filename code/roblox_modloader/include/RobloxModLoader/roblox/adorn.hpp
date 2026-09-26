@@ -124,6 +124,7 @@ namespace RBX
 			Pass_Blend,
 			Pass_AlwaysOnTop,
 			Pass_Composite,
+			Pass_Reserved7,
 			Pass_Count
 		};
 
@@ -258,7 +259,12 @@ namespace RBX
 	RML_ASSERT_OFFSET(Adorn, current_gui, 40);
 	RML_ASSERT_OFFSET(Adorn, gui_list, 56);
 	RML_ASSERT_OFFSET(Adorn, gui_map, 80);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(Adorn, scratch_begin, 144);
+	RML_ASSERT_SIZE(Adorn, 168);
+#else
 	RML_ASSERT_OFFSET(Adorn, scratch_begin, 120);
 	RML_ASSERT_SIZE(Adorn, 144);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

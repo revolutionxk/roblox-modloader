@@ -22,9 +22,15 @@ namespace RBX
 
 		RML_LAYOUT_DIAGNOSTIC_PUSH()
 		RML_ASSERT_OFFSET(FlyweightData<std::string>, value, 0x8);
+#if defined(RML_WINDOWS)
+		RML_ASSERT_OFFSET(FlyweightData<std::string>, hash, 0x28);
+		RML_ASSERT_OFFSET(FlyweightData<std::string>, references, 0x30);
+		RML_ASSERT_SIZE(FlyweightData<std::string>, 0x38);
+#else
 		RML_ASSERT_OFFSET(FlyweightData<std::string>, hash, 0x20);
 		RML_ASSERT_OFFSET(FlyweightData<std::string>, references, 0x28);
 		RML_ASSERT_SIZE(FlyweightData<std::string>, 0x30);
+#endif
 		RML_LAYOUT_DIAGNOSTIC_POP()
 	}
 

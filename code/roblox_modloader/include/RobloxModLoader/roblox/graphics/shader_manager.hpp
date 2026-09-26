@@ -137,6 +137,18 @@ namespace RBX::Graphics
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_OFFSET(ShaderManager, visual_engine, 8);
 	RML_ASSERT_OFFSET(ShaderManager, shaders, 16);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(ShaderManager, deferred_shaders, 80);
+	RML_ASSERT_OFFSET(ShaderManager, programs, 120);
+	RML_ASSERT_OFFSET(ShaderManager, shader_names, 184);
+	RML_ASSERT_OFFSET(ShaderManager, shader_flags, 208);
+	RML_ASSERT_OFFSET(ShaderManager, pack_name, 280);
+	RML_ASSERT_OFFSET(ShaderManager, file_watcher, 336);
+	RML_ASSERT_OFFSET(ShaderManager, watched_paths, 344);
+	RML_ASSERT_OFFSET(ShaderManager, key_scratch, 368);
+	RML_ASSERT_OFFSET(ShaderManager, deferred_loading, 400);
+	RML_ASSERT_SIZE(ShaderManager, 408);
+#else
 	RML_ASSERT_OFFSET(ShaderManager, deferred_shaders, 56);
 	RML_ASSERT_OFFSET(ShaderManager, programs, 96);
 	RML_ASSERT_OFFSET(ShaderManager, shader_names, 136);
@@ -147,5 +159,6 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(ShaderManager, key_scratch, 288);
 	RML_ASSERT_OFFSET(ShaderManager, deferred_loading, 312);
 	RML_ASSERT_SIZE(ShaderManager, 320);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

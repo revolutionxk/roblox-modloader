@@ -39,6 +39,10 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(Resource, index, 0x10);
 	RML_ASSERT_OFFSET(Resource, memory_category, 0x18);
 	RML_ASSERT_OFFSET(Resource, debug_name, 0x20);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_SIZE(Resource, 0x40);
+#else
 	RML_ASSERT_SIZE(Resource, 0x38);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }
