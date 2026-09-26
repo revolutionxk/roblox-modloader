@@ -1,5 +1,7 @@
 #include "target/text_anchor_resolver.hpp"
 
+#include "target/call_path.hpp"
+
 #include <algorithm>
 #include <cstring>
 #include <format>
@@ -150,7 +152,14 @@ namespace rml::dumper::target
 				continue;
 			}
 
-			resolved.set(anchor.id, *owners.begin());
+			const auto target = follow_path(image, *owners.begin(), anchor.path);
+			if (!target)
+			{
+				failures += std::format("\n  {}: from the literal \"{}\": {}", name, anchor.text, target.error());
+				continue;
+			}
+
+			resolved.set(anchor.id, *target);
 		}
 
 		if (!failures.empty())

@@ -1,9 +1,10 @@
 #include "RobloxModLoader/memory/signature_cache.hpp"
 
 #include "RobloxModLoader/internal/platform.hpp"
+#include "RobloxModLoader/logger/logger.hpp"
 #include "RobloxModLoader/memory/batch.hpp"
 #include "RobloxModLoader/memory/handle.hpp"
-#include "RobloxModLoader/logger/logger.hpp"
+#include "RobloxModLoader/memory/string_anchor.hpp"
 #include "filesystem/directory.hpp"
 
 #if defined(RML_WINDOWS)
@@ -11,13 +12,21 @@
 		#define WIN32_LEAN_AND_MEAN
 	#endif
 	#include <Windows.h>
+#elif defined(RML_MACOS)
+	#include <mach-o/loader.h>
 #endif
 
+#include <algorithm>
+#include <array>
+#include <cstring>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <future>
 #include <mutex>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -31,14 +40,13 @@ namespace rml::memory
 		static bool run(std::span<const signature> entries, range region, std::uint32_t sigset_hash)
 		{
 			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
-			const ExeIdentity id = read_exe_identity(base);
+			const ExeIdentity id = read_exe_identity(region);
 
-			if (const auto cached = load();
-			    cached && id.size_of_image != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
+			if (const auto cached = load(); cached && id.image_size != 0 && cached->sigset_hash == sigset_hash && cached->id == id)
 			{
 				if (apply(entries, base, id, *cached))
 				{
-					LOG_INFO("Applied {} signatures from cache (Studio PE ts=0x{:X})", entries.size(), id.pe_timestamp);
+					LOG_INFO("Applied {} signatures from cache", entries.size());
 					return true;
 				}
 				LOG_WARN("Signature cache present but incomplete/out-of-range - rescanning");
@@ -52,10 +60,10 @@ namespace rml::memory
 			rvas.reserve(entries.size());
 			const bool found_all = scan(entries, region, base, rvas);
 
-			if (found_all && id.size_of_image != 0)
+			if (found_all && id.image_size != 0)
 			{
 				save(CacheData{id, sigset_hash, std::move(rvas)});
-				LOG_INFO("Wrote signature cache for Studio PE ts=0x{:X} ({} signatures)", id.pe_timestamp, entries.size());
+				LOG_INFO("Wrote signature cache ({} signatures)", entries.size());
 			}
 			else if (!found_all)
 			{
@@ -65,15 +73,43 @@ namespace rml::memory
 			return found_all;
 		}
 
+		static std::optional<handle> find(const signature& entry, range region, std::uint32_t sigset_hash)
+		{
+			const ExeIdentity id = read_exe_identity(region);
+			const auto cached = load();
+			if (!cached || id.image_size == 0 || cached->sigset_hash != sigset_hash || cached->id != id)
+				return std::nullopt;
+
+			const auto it = cached->rvas.find(name_hash(entry));
+			if (it == cached->rvas.end() || it->second >= id.image_size)
+				return std::nullopt;
+
+			return handle(region.begin().as<std::uintptr_t>() + it->second);
+		}
+
+		static std::optional<handle> scan_one(const signature& entry, range region)
+		{
+			if (!entry.anchored())
+				return region.scan(entry.m_ida.c_str());
+
+			const auto target = locate(entry.m_anchor);
+			if (!target)
+			{
+				LOG_INFO("Failed to find '{}': {}", entry.m_name.c_str(), target.error());
+				return std::nullopt;
+			}
+			return handle(*target);
+		}
+
 	private:
 		static constexpr std::uint32_t MAGIC = 0x434C4D52; // "RMLC"
-		static constexpr std::uint32_t FORMAT = 1;
+		static constexpr std::uint32_t FORMAT = 2;
 		static constexpr std::uint32_t MAX_ENTRIES = 100000;
 
 		struct ExeIdentity
 		{
-			std::uint32_t pe_timestamp{};
-			std::uint32_t size_of_image{};
+			std::array<std::uint8_t, 16> stamp{};
+			std::uint32_t image_size{};
 
 			bool operator==(const ExeIdentity&) const = default;
 		};
@@ -85,9 +121,10 @@ namespace rml::memory
 			std::unordered_map<std::uint32_t, std::uint32_t> rvas;
 		};
 
-		static ExeIdentity read_exe_identity(const std::uintptr_t base) noexcept
+		static ExeIdentity read_exe_identity(const range region) noexcept
 		{
 			ExeIdentity id{};
+			const std::uintptr_t base = region.begin().as<std::uintptr_t>();
 			if (!base) return id;
 
 #if defined(RML_WINDOWS)
@@ -97,8 +134,24 @@ namespace rml::memory
 			const auto nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
 			if (nt->Signature != IMAGE_NT_SIGNATURE) return id;
 
-			id.pe_timestamp = nt->FileHeader.TimeDateStamp;
-			id.size_of_image = nt->OptionalHeader.SizeOfImage;
+			std::memcpy(id.stamp.data(), &nt->FileHeader.TimeDateStamp, sizeof(nt->FileHeader.TimeDateStamp));
+			id.image_size = nt->OptionalHeader.SizeOfImage;
+#elif defined(RML_MACOS)
+			const auto header = reinterpret_cast<const mach_header_64*>(base);
+			if (header->magic != MH_MAGIC_64)
+				return id;
+
+			const auto* command = reinterpret_cast<const load_command*>(header + 1);
+			for (std::uint32_t i = 0; i < header->ncmds; ++i)
+			{
+				if (command->cmd == LC_UUID)
+				{
+					std::memcpy(id.stamp.data(), reinterpret_cast<const uuid_command*>(command)->uuid, id.stamp.size());
+					id.image_size = static_cast<std::uint32_t>(region.size());
+					break;
+				}
+				command = reinterpret_cast<const load_command*>(reinterpret_cast<const std::byte*>(command) + command->cmdsize);
+			}
 #endif
 			return id;
 		}
@@ -131,8 +184,8 @@ namespace rml::memory
 
 				CacheData data{};
 				read(data.sigset_hash);
-				read(data.id.pe_timestamp);
-				read(data.id.size_of_image);
+				read(data.id.stamp);
+				read(data.id.image_size);
 				read(count);
 				if (!file || count > MAX_ENTRIES) return std::nullopt;
 
@@ -176,8 +229,8 @@ namespace rml::memory
 				write(MAGIC);
 				write(FORMAT);
 				write(data.sigset_hash);
-				write(data.id.pe_timestamp);
-				write(data.id.size_of_image);
+				write(data.id.stamp);
+				write(data.id.image_size);
 				write(static_cast<std::uint32_t>(data.rvas.size()));
 				for (const auto& [nh, rva] : data.rvas)
 				{
@@ -197,7 +250,7 @@ namespace rml::memory
 			for (const auto& entry : entries)
 			{
 				const auto it = cached.rvas.find(name_hash(entry));
-				if (it == cached.rvas.end() || it->second >= id.size_of_image)
+				if (it == cached.rvas.end() || it->second >= id.image_size)
 					return false;
 
 				if (entry.m_on_signature_found)
@@ -210,11 +263,35 @@ namespace rml::memory
 		                 std::unordered_map<std::uint32_t, std::uint32_t>& out_rvas)
 		{
 			std::mutex mutex;
+			std::unordered_map<std::string_view, void*> resolved;
+
+			std::vector<std::string_view> texts;
+			for (const auto& entry : entries)
+			{
+				if (*entry.m_anchor.m_text.c_str())
+					texts.emplace_back(entry.m_anchor.m_text.c_str());
+			}
+			auto references = std::async(std::launch::async, [&texts] {
+				return functions_referencing_strings(texts);
+			});
+
+			const auto record = [&](const signature& entry, const handle result) {
+				const auto rva = static_cast<std::uint32_t>(result.as<std::uintptr_t>() - base);
+				if (entry.m_on_signature_found)
+					entry.m_on_signature_found(result);
+				out_rvas[name_hash(entry)] = rva;
+				resolved.emplace(entry.m_name.c_str(), result.as<void*>());
+				LOG_INFO("Found '{}' RobloxStudioBeta.exe+0x{:X}", entry.m_name.c_str(), rva);
+			};
+
 			std::vector<std::future<bool>> futures;
 			futures.reserve(entries.size());
 
 			for (const auto& entry : entries)
 			{
+				if (entry.anchored())
+					continue;
+
 				futures.emplace_back(std::async(std::launch::async, [&, entry]() -> bool {
 					const auto result = region.scan(entry.m_ida.c_str());
 					if (!result.has_value())
@@ -223,13 +300,8 @@ namespace rml::memory
 						return false;
 					}
 
-					const auto rva = static_cast<std::uint32_t>(result.value().as<std::uintptr_t>() - base);
-
 					std::lock_guard lock(mutex);
-					if (entry.m_on_signature_found)
-						entry.m_on_signature_found(result.value());
-					out_rvas[name_hash(entry)] = rva;
-					LOG_INFO("Found '{}' RobloxStudioBeta.exe+0x{:X}", entry.m_name.c_str(), rva);
+					record(entry, result.value());
 					return true;
 				}));
 			}
@@ -240,6 +312,74 @@ namespace rml::memory
 				future.wait();
 				if (!future.get()) found_all = false;
 			}
+
+			if (!resolve_anchored(entries, texts, references.get(), resolved, record))
+				found_all = false;
+			return found_all;
+		}
+
+		static bool resolve_anchored(std::span<const signature> entries, const std::vector<std::string_view>& texts, const std::vector<std::vector<AnchoredFunction>>& referencing, const std::unordered_map<std::string_view, void*>& resolved, const auto& record)
+		{
+			std::vector<const signature*> pending;
+			for (const auto& entry : entries)
+			{
+				if (entry.anchored())
+					pending.push_back(&entry);
+			}
+
+			bool found_all = true;
+			for (bool progress = true; progress && !pending.empty();)
+			{
+				progress = false;
+				for (auto it = pending.begin(); it != pending.end();)
+				{
+					const auto& entry = **it;
+					const auto& path = entry.m_anchor;
+					std::expected<void*, std::string> origin;
+
+					if (*path.m_text.c_str())
+					{
+						const auto& functions =
+						    referencing[std::ranges::find(texts, std::string_view(path.m_text.c_str())) - texts.begin()];
+						if (functions.size() == 1)
+							origin = functions.front().start;
+						else
+							origin = std::unexpected(
+							    std::format("{} functions reference \"{}\"", functions.size(), path.m_text.c_str()));
+					}
+					else if (const auto found = resolved.find(path.m_origin.c_str()); found != resolved.end())
+					{
+						origin = found->second;
+					}
+					else
+					{
+						++it;
+						continue;
+					}
+
+					const auto target = origin.and_then([&](void* start) {
+						return follow(path, start);
+					});
+					if (target)
+					{
+						record(entry, handle(*target));
+					}
+					else
+					{
+						LOG_INFO("Failed to find '{}': {}", entry.m_name.c_str(), target.error());
+						found_all = false;
+					}
+
+					it = pending.erase(it);
+					progress = true;
+				}
+			}
+
+			for (const auto* entry : pending)
+			{
+				LOG_INFO("Failed to find '{}': '{}' was not found", entry->m_name.c_str(), entry->m_anchor.m_origin.c_str());
+				found_all = false;
+			}
 			return found_all;
 		}
 	};
@@ -247,5 +387,15 @@ namespace rml::memory
 	bool run_batch_cached(const std::span<const signature> entries, range region, const std::uint32_t sigset_hash)
 	{
 		return SignatureCache::run(entries, region, sigset_hash);
+	}
+
+	std::optional<handle> find_cached_signature(const signature& entry, range region, const std::uint32_t sigset_hash)
+	{
+		return SignatureCache::find(entry, region, sigset_hash);
+	}
+
+	std::optional<handle> scan_signature(const signature& entry, range region)
+	{
+		return SignatureCache::scan_one(entry, region);
 	}
 }

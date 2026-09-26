@@ -27,9 +27,15 @@ TEST_CASE("the windows anchors are scanned for in one fast pass")
 	const auto image = image::ImageLoader::load(*path, profile->architecture);
 	REQUIRE(image.has_value());
 
+	std::vector<AnchorSpec> scanned;
 	std::vector<scan::Pattern> patterns;
 	for (const auto& spec : profile->anchors)
+	{
+		if (spec.pattern.empty())
+			continue;
+		scanned.push_back(spec);
 		patterns.push_back(*scan::Pattern::parse(spec.pattern));
+	}
 
 	const auto started = std::chrono::steady_clock::now();
 	const auto hits = scan::Scanner().scan(*image, patterns);
@@ -43,9 +49,9 @@ TEST_CASE("the windows anchors are scanned for in one fast pass")
 	std::size_t missing = 0;
 	std::size_t ambiguous = 0;
 
-	for (std::size_t i = 0; i < profile->anchors.size(); ++i)
+	for (std::size_t i = 0; i < scanned.size(); ++i)
 	{
-		const auto name = to_string(profile->anchors[i].id);
+		const auto name = to_string(scanned[i].id);
 
 		if (hits[i].empty())
 		{
@@ -66,7 +72,7 @@ TEST_CASE("the windows anchors are scanned for in one fast pass")
 
 	MESSAGE(unique, " resolved uniquely, ", missing, " unmatched, ", ambiguous, " ambiguous");
 
-	CHECK(unique == profile->anchors.size() - unresolved_on_this_build.size());
+	CHECK(unique == scanned.size() - unresolved_on_this_build.size());
 }
 
 TEST_CASE("the anchors known to still match keep matching")
@@ -84,7 +90,7 @@ TEST_CASE("the anchors known to still match keep matching")
 
 	std::vector<AnchorSpec> healthy;
 	for (const auto& spec : profile->anchors)
-		if (std::ranges::find(unresolved_on_this_build, spec.id) == unresolved_on_this_build.end())
+		if (!spec.pattern.empty() && std::ranges::find(unresolved_on_this_build, spec.id) == unresolved_on_this_build.end())
 			healthy.push_back(spec);
 
 	std::vector<scan::Pattern> patterns;

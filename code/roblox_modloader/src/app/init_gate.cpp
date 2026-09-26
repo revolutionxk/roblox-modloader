@@ -3,8 +3,9 @@
 #include "RobloxModLoader/hooking/hooking.hpp"
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/internal/hooking/engine_hooks.hpp"
-#include "RobloxModLoader/mod/init_context.hpp"
 #include "RobloxModLoader/memory/all.hpp"
+#include "RobloxModLoader/memory/signature_cache.hpp"
+#include "RobloxModLoader/mod/init_context.hpp"
 #include "RobloxModLoader/platform/memory/host_image.hpp"
 #include "config/config_manager.hpp"
 #include "memory/engine_signatures.hpp"
@@ -44,8 +45,14 @@ namespace rml
 				continue;
 
 			const memory::module image(platform::studio_image_name());
+			if (const auto cached = memory::find_cached_signature(entry, image, hash))
+			{
+				RML_INFO("RBX_GLOBAL_INIT taken from the signature cache");
+				return cached->as<void*>();
+			}
+
 			const auto started = std::chrono::steady_clock::now();
-			const auto hit = image.scan(memory::pattern(std::string_view(entry.m_ida.str)));
+			const auto hit = memory::scan_signature(entry, image);
 			RML_INFO("RBX_GLOBAL_INIT scanned alone in {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count());
 			return hit ? hit->as<void*>() : nullptr;
 		}

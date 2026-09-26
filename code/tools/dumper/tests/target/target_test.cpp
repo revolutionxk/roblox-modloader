@@ -43,7 +43,7 @@ TEST_CASE("the windows target is fully specified")
 
 	for (const auto& spec : profile->anchors)
 	{
-		const bool locatable = !spec.pattern.empty() || !spec.text.empty();
+		const bool locatable = !spec.pattern.empty() || !spec.text.empty() || spec.origin.has_value();
 		CHECK_MESSAGE(locatable, to_string(spec.id));
 
 		if (spec.pattern.empty())

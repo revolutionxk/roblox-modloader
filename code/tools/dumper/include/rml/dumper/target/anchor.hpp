@@ -3,6 +3,7 @@
 #include "rml/dumper/core/types.hpp"
 
 #include <array>
+#include <optional>
 #include <string_view>
 
 namespace rml::dumper::target
@@ -61,11 +62,26 @@ namespace rml::dumper::target
 		return "unknown";
 	}
 
+	enum class Step : std::uint8_t
+	{
+		none,
+		call,
+		call_from_end,
+	};
+
+	struct PathStep
+	{
+		Step step{};
+		std::uint8_t index{};
+	};
+
 	struct AnchorSpec
 	{
 		Anchor id{};
 		std::string_view pattern;
 		std::string_view text;
+		std::optional<Anchor> origin;
+		std::array<PathStep, 2> path{};
 	};
 
 	class AnchorSet

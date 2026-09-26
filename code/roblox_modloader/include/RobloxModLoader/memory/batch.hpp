@@ -64,6 +64,10 @@ namespace rml::memory
 		static inline constexpr uint32_t compute_hash(uint32_t hash)
 		{
 			hash = fnv1a_32(sig.m_ida.c_str(), hash);
+			hash = fnv1a_32(sig.m_anchor.m_text.c_str(), hash);
+			hash = fnv1a_32(sig.m_anchor.m_origin.c_str(), hash);
+			for (std::uint8_t i = 0; i < sig.m_anchor.m_step_count; ++i)
+				hash = (hash ^ ((static_cast<uint32_t>(sig.m_anchor.m_steps[i]) << 8) | sig.m_anchor.m_indices[i])) * FNV_PRIME_32;
 
 			return hash;
 		}
