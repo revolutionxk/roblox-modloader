@@ -134,7 +134,7 @@ struct RobloxPointers
 	functions::object_create_by_name object_create_by_name;
 	functions::build_menu_bar_from_dom build_menu_bar_from_dom;
 
-	functions::signal_disconnect signal_disconnect;
+	functions::connection_disconnect connection_disconnect;
 	functions::signal_slot_free signal_slot_free;
 	functions::signal_mutex_get signal_mutex_get;
 	functions::slots_holder_release slots_holder_release;

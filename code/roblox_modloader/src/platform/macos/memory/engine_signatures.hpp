@@ -725,10 +725,10 @@ namespace rml
 				},
 			},
 			{
-				"SIGNAL_DISCONNECT",
-				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA FF 0B 00 F9 ? ? ? ? F4 03 00 AA",
+				"CONNECTION_DISCONNECT",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 08 00 40 F9 ? ? ? ? 0A FD DF 88 ? ? ? ? E9 03 0A AA 4B 05 00 11 0B FD E9 88 3F 01 0A 6B ? ? ? ? EA 03 09 AA ? ? ? ? ? ? ? ? 13 00 40 F9 ? ? ? ? E0 03 13 AA 0D 00 00 94 E0 03 13 AA FD 7B 41 A9 F4 4F C2 A8",
 				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.signal_disconnect = ptr.as<functions::signal_disconnect>();
+					g_pointers->m_roblox_pointers.connection_disconnect = ptr.as<functions::connection_disconnect>();
 				},
 			},
 			{

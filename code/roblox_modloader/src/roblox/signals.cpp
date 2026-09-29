@@ -19,7 +19,7 @@ namespace rbx::signals
 
 	void connection::disconnect() const
 	{
-		if (auto* slot = m_slot.get(); slot && g_pointers && g_pointers->m_roblox_pointers.signal_disconnect)
-			g_pointers->m_roblox_pointers.signal_disconnect(slot);
+		if (m_slot && g_pointers && g_pointers->m_roblox_pointers.connection_disconnect)
+			g_pointers->m_roblox_pointers.connection_disconnect(this);
 	}
 }

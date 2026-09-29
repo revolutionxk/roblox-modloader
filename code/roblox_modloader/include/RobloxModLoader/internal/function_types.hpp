@@ -25,6 +25,7 @@ namespace rbx::signals
 {
 	struct slot_base;
 	struct slots_holder;
+	class connection;
 }
 
 namespace RBX::Graphics
@@ -76,7 +77,7 @@ namespace functions
 	using object_create_by_name = std::shared_ptr<RBX::Instance> (*)(RBX::EngineContext* context, const RBX::Name& name, RBX::CreatorRole role);
 	using task_defer = int(RML_ENGINE_CALL*)(lua_State* L);
 	using build_menu_bar_from_dom = void*(RML_ENGINE_CALL*)(void* out_menu_bar, void* dom, void* context);
-	using signal_disconnect = void(RML_ENGINE_CALL*)(rbx::signals::slot_base* slot);
+	using connection_disconnect = void(RML_ENGINE_CALL*)(const rbx::signals::connection* connection);
 	using signal_slot_free = void(RML_ENGINE_CALL*)(rbx::signals::slot_base* slot);
 	using signal_mutex_get = std::mutex*(RML_ENGINE_CALL*)();
 	using global_init = void (*)();
