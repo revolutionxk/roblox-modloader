@@ -6,6 +6,8 @@
 #include "texture.hpp"
 #include "types.hpp"
 
+#include "RobloxModLoader/util/layout_assert.hpp"
+
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -20,8 +22,10 @@ namespace RBX::Graphics
 		{
 			std::uint32_t reserved_0;
 			bool reserved_4;
+			std::byte reserved_5[3];
 			std::byte reserved_8[0x30];
 			bool reserved_38;
+			std::byte reserved_39[7];
 		};
 
 		struct FrameTimingDetails
@@ -89,4 +93,11 @@ namespace RBX::Graphics
 		virtual std::shared_ptr<Texture> create_texture_no_crash_impl(Texture::Type type, Texture::Format format, unsigned width, unsigned height, unsigned depth, unsigned mip_levels, unsigned array_length, unsigned samples, Texture::Usage usage, const std::string& name) = 0;
 		virtual std::shared_ptr<Texture> create_texture_with_hardware_buffer_impl(Texture::Type type, Texture::Format format, unsigned width, unsigned height, unsigned depth, unsigned mip_levels, unsigned array_length, unsigned samples, Texture::Usage usage, const std::string& name, void* buffer) = 0;
 	};
+
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(Device::Statistics, reserved_8, 8);
+	RML_ASSERT_OFFSET(Device::Statistics, reserved_38, 0x38);
+	RML_ASSERT_SIZE(Device::Statistics, 0x40);
+	RML_ASSERT_SIZE(Device::VideoMemoryInfo, 24);
+	RML_LAYOUT_DIAGNOSTIC_POP()
 }

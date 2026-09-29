@@ -99,6 +99,8 @@ namespace rbx
 		}
 	};
 
+	static_assert(requires(signals::slots_holder* holder) { intrusive_ptr_release(holder); });
+
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(signal<void()>, 8);
 	RML_LAYOUT_DIAGNOSTIC_POP()

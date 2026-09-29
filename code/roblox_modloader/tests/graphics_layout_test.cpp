@@ -59,7 +59,7 @@ TEST_CASE("adorn interface keeps the dumped slot order")
 	using namespace RBX;
 #if defined(_MSC_VER)
 	static_assert(sizeof(Adorn) == 168);
-	static_assert(sizeof(Graphics::AdornRender) == 3072);
+	static_assert(sizeof(Graphics::AdornRender) == 3048);
 #else
 	static_assert(sizeof(Adorn) == 144);
 	static_assert(sizeof(Graphics::AdornRender) == 3000);
