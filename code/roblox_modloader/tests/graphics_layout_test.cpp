@@ -32,7 +32,7 @@ TEST_CASE("graphics interfaces are pure and keep the dumped slot order")
 	CHECK(rml::memory::virtual_index(&Device::create_shader) == 24);
 	CHECK(rml::memory::virtual_index(&Device::create_texture_impl) == 49);
 	CHECK(rml::memory::virtual_index(&DeviceContext::set_render_state) == 26);
-	CHECK(rml::memory::virtual_index(&DeviceContext::end_sync_profiler_scope_unmapped) == 39);
+	CHECK(rml::memory::virtual_index(&DeviceContext::end_sync_profiler_scope) == 39);
 	CHECK(rml::memory::virtual_index(&Texture::reduce_mip_levels) == 13);
 	CHECK(rml::memory::virtual_index(&Buffer::download_debug) == 7);
 	CHECK(rml::memory::virtual_index(&Shader::reload) == 4);

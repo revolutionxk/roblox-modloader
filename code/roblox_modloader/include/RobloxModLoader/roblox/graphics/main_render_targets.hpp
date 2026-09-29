@@ -22,6 +22,13 @@ namespace RBX::Graphics
 	class MainRenderTargets
 	{
 	public:
+		enum class Mode : std::uint32_t
+		{
+			NoDepth = 0,
+			WithDepth = 1,
+			Reset = 2,
+		};
+
 		struct RTMSAA
 		{
 			std::shared_ptr<Texture> main_color;
@@ -59,7 +66,7 @@ namespace RBX::Graphics
 		TextureRef color_opaque;
 		TextureRef depth_opaque;
 		VisualEngine* visual_engine;
-		std::uint32_t reserved_432;
+		Mode mode;
 		std::uint32_t sample_count;
 		bool memoryless_supported;
 		bool reserved_441;
