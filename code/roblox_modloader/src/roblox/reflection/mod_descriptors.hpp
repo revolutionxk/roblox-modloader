@@ -25,7 +25,7 @@ namespace rml::reflection
 	const PropertyTypeInfo& property_type_info(PropertyType type);
 	const RBX::Reflection::Type* type_singleton(PropertyType type);
 	const RBX::Reflection::Type* void_type_singleton();
-	const void* variant_ops(PropertyType type);
+	const RBX::Reflection::detail::holder* variant_ops(PropertyType type);
 
 	struct ModMember
 	{

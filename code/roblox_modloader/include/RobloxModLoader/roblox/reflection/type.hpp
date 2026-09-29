@@ -3,6 +3,7 @@
 #include "descriptor.hpp"
 #include "member.hpp"
 #include "RobloxModLoader/rml_export.hpp"
+#include "variant_holder.hpp"
 
 #include <cstddef>
 #include <span>
@@ -119,13 +120,17 @@ namespace RBX::Reflection
 
 	class Variant
 	{
+	public:
+		static constexpr std::size_t storage_size = 0x40;
+
+	private:
 		struct Storage
 		{
-			std::byte data[0x40]{};
+			std::byte data[storage_size]{};
 		};
 
 		const Type* m_type{nullptr};
-		const void* m_value_ops{nullptr};
+		const detail::holder* m_value_ops{nullptr};
 		alignas(8) Storage m_storage;
 
 	public:
@@ -170,7 +175,7 @@ namespace RBX::Reflection
 			return reinterpret_cast<const T*>(m_storage.data);
 		}
 
-		[[nodiscard]] const void* value_ops() const noexcept
+		[[nodiscard]] const detail::holder* value_ops() const noexcept
 		{
 			return m_value_ops;
 		}
@@ -180,7 +185,7 @@ namespace RBX::Reflection
 			return m_storage.data;
 		}
 
-		void set_type_and_ops(const Type* type, const void* value_ops) noexcept
+		void set_type_and_ops(const Type* type, const detail::holder* value_ops) noexcept
 		{
 			m_type = type;
 			m_value_ops = value_ops;

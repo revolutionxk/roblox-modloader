@@ -250,7 +250,7 @@ namespace rml::dotnet
 			return index >= 1 && static_cast<uint32_t>(index) <= m_count;
 		}
 
-		[[nodiscard]] const void* borrow_value_ops(const RBX::Reflection::Type* type) const
+		[[nodiscard]] const RBX::Reflection::detail::holder* borrow_value_ops(const RBX::Reflection::Type* type) const
 		{
 			if (m_signature)
 			{
@@ -258,20 +258,13 @@ namespace rml::dotnet
 				{
 					if (arg.type == type && !arg.default_handle.is_void())
 					{
-						if (const void* ops = arg.default_handle.value_ops())
+						if (const auto* ops = arg.default_handle.value_ops())
 							return ops;
 					}
 				}
 			}
 
-			static void (*const destroy_string)(void*) = [](void* storage) {
-				static_cast<std::string*>(storage)->~basic_string();
-			};
-			static void (*const destroy_trivial)(void*) = [](void*) {};
-			static const void* string_ops[3] = {nullptr, nullptr, reinterpret_cast<void*>(destroy_string)};
-			static const void* trivial_ops[3] = {nullptr, nullptr, reinterpret_cast<void*>(destroy_trivial)};
-
-			return type && type->name == "string" ? string_ops : trivial_ops;
+			return type && type->name == "string" ? RBX::Reflection::detail::typed_holder<std::string>::singleton() : TypeMarshaler::trivially_copied_holder();
 		}
 
 		template<typename T>

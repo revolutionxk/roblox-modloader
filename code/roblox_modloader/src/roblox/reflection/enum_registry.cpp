@@ -44,9 +44,9 @@ namespace rml::reflection
 	{
 		if (!self->find_item_by_value(value))
 			return;
-		if (out.value_ops() != VariantOps<int>::table)
+		if (out.value_ops() != RBX::Reflection::detail::typed_holder<int>::singleton())
 			destroy_variant(out);
-		out.set_type_and_ops(self, VariantOps<int>::table);
+		out.set_type_and_ops(self, RBX::Reflection::detail::typed_holder<int>::singleton());
 		*out.try_cast<int>() = value;
 	}
 

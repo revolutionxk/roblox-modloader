@@ -129,26 +129,25 @@ namespace rml::dotnet
 
 	using TupleSharedPtr = std::shared_ptr<const RBX::Reflection::Tuple>;
 
-	static void destroy_string_storage(void* storage)
+	static void copy_trivial_storage(const char* source, char* storage)
 	{
-		static_cast<std::string*>(storage)->~basic_string();
-	}
-	static void destroy_trivial_storage(void*)
-	{
-	}
-	static void destroy_tuple_storage(void* storage)
-	{
-		static_cast<TupleSharedPtr*>(storage)->~shared_ptr();
-	}
-	static void* copy_tuple_storage(void* dst, const void* src)
-	{
-		::new (dst) TupleSharedPtr(*static_cast<const TupleSharedPtr*>(src));
-		return dst;
+		std::memcpy(storage, source, RBX::Reflection::Variant::storage_size);
 	}
 
-	static const void* g_string_ops[3] = {nullptr, nullptr, reinterpret_cast<const void*>(&destroy_string_storage)};
-	static const void* g_trivial_ops[3] = {nullptr, nullptr, reinterpret_cast<const void*>(&destroy_trivial_storage)};
-	static const void* g_tuple_ops[3] = {reinterpret_cast<const void*>(&copy_tuple_storage), reinterpret_cast<const void*>(&copy_tuple_storage), reinterpret_cast<const void*>(&destroy_tuple_storage)};
+	static void move_trivial_storage(char* source, char* storage)
+	{
+		std::memcpy(storage, source, RBX::Reflection::Variant::storage_size);
+	}
+
+	static void destroy_trivial_storage(char*)
+	{
+	}
+
+	const RBX::Reflection::detail::holder* TypeMarshaler::trivially_copied_holder() noexcept
+	{
+		static constexpr RBX::Reflection::detail::holder holder{&copy_trivial_storage, &move_trivial_storage, &destroy_trivial_storage};
+		return &holder;
+	}
 
 	[[nodiscard]] static int tag_to_type_id(const InteropValueTag tag) noexcept
 	{
@@ -168,8 +167,8 @@ namespace rml::dotnet
 	{
 		for (auto& value : tuple->values)
 		{
-			if (const auto* const* ops = static_cast<const void* const*>(value.value_ops()); ops && ops[2])
-				reinterpret_cast<void (*)(void*)>(const_cast<void*>(ops[2]))(value.storage());
+			if (const auto* ops = value.value_ops(); ops && ops->destruct_func)
+				ops->destruct_func(static_cast<char*>(value.storage()));
 		}
 		delete tuple;
 	}
@@ -189,12 +188,12 @@ namespace rml::dotnet
 				continue;
 
 			RBX::Reflection::Variant inner;
-			const void* ops = args[i].tag == InteropValueTag::String ? g_string_ops : g_trivial_ops;
+			const auto* ops = args[i].tag == InteropValueTag::String ? RBX::Reflection::detail::typed_holder<std::string>::singleton() : trivially_copied_holder();
 			if (decode_argument(type, args[i], inner, ops))
 				tuple->values.push_back(std::move(inner));
 		}
 
-		out.set_type_and_ops(tuple_type, g_tuple_ops);
+		out.set_type_and_ops(tuple_type, RBX::Reflection::detail::typed_holder<TupleSharedPtr>::singleton());
 		::new (out.storage()) TupleSharedPtr(std::move(tuple));
 		return true;
 	}
@@ -438,7 +437,7 @@ namespace rml::dotnet
 		return false;
 	}
 
-	bool TypeMarshaler::decode_argument(const RBX::Reflection::Type* type, const InteropVariant& value, RBX::Reflection::Variant& out, const void* value_ops)
+	bool TypeMarshaler::decode_argument(const RBX::Reflection::Type* type, const InteropVariant& value, RBX::Reflection::Variant& out, const RBX::Reflection::detail::holder* value_ops)
 	{
 		if (!type)
 			return false;
