@@ -8,7 +8,7 @@
 
 namespace RBX
 {
-	class DataModel;
+	class TaskSchedulerArbiter;
 
 	struct Stats
 	{
@@ -64,17 +64,17 @@ namespace RBX
 
 		std::shared_ptr<TaskSchedulerJob> self;
 		std::string name;
-		std::shared_ptr<DataModel> data_model;
+		std::shared_ptr<TaskSchedulerArbiter> arbiter;
 
 	private:
 		RML_LAYOUT_GUARD_BEGIN()
 		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, self, 0x8);
 		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, name, 0x18);
 #if defined(RML_WINDOWS)
-		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, data_model, 0x38);
+		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, arbiter, 0x38);
 		RML_ASSERT_LAYOUT_SIZE(TaskSchedulerJob, 0x48);
 #else
-		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, data_model, 0x30);
+		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, arbiter, 0x30);
 		RML_ASSERT_LAYOUT_SIZE(TaskSchedulerJob, 0x40);
 #endif
 		RML_LAYOUT_GUARD_END()

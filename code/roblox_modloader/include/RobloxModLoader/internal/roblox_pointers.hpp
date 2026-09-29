@@ -32,18 +32,10 @@ struct RobloxPointers
 	void* m_rbx_crash;
 	functions::print print;
 
-	void* m_profile_log;
-
-	functions::get_scheduler get_scheduler;
-
-	// Script Context
-	void* resume_waiting_scripts;
 
 	functions::get_string_atom get_string_atom;
 	functions::name_declare name_declare;
 	functions::descriptor_lookup descriptor_lookup;
-	
-	std::uint64_t member_table_offset;
 
 	// Lua Functions
 	functions::luau_execute luau_execute;
@@ -140,7 +132,6 @@ struct RobloxPointers
 	functions::luaA_pseudo2addr luaA_pseudo2addr;
 
 	functions::object_create_by_name object_create_by_name;
-	functions::instance_bridge_push instance_bridge_push;
 	functions::build_menu_bar_from_dom build_menu_bar_from_dom;
 
 	functions::signal_disconnect signal_disconnect;

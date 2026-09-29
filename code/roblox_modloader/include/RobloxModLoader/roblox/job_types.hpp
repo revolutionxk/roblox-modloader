@@ -6,6 +6,7 @@
 
 namespace RBX {
     class TaskScheduler;
+    class DataModelJob;
     struct Stats;
 }
 
@@ -83,7 +84,7 @@ namespace rml {
 
     struct JobExecutionContext {
         JobKind kind;
-        void *job;
+        RBX::DataModelJob *job;
         const RBX::Stats *stats;
         double delta_time;
 

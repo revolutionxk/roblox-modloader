@@ -50,8 +50,8 @@ namespace rml::reflection
 	static RBX::Instance* create_item(RBX::Instance& parent, const char* class_name, const std::string_view name)
 	{
 		const auto& p = g_pointers->m_roblox_pointers;
-		const auto atom = p.get_string_atom ? p.get_string_atom(class_name) : 0;
-		auto created = atom && p.object_create_by_name ? p.object_create_by_name(nullptr, *reinterpret_cast<const RBX::Name*>(atom), RBX::CreatorRole::Engine) : nullptr;
+		const auto* atom = p.get_string_atom ? p.get_string_atom(class_name) : nullptr;
+		auto created = atom && p.object_create_by_name ? p.object_create_by_name(nullptr, *atom, RBX::CreatorRole::Engine) : nullptr;
 		if (!created)
 		{
 			RML_ERROR("could not create a {}", class_name);

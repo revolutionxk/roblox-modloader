@@ -8,14 +8,12 @@
 #include <unordered_map>
 #include <utility>
 
-RBX::TaskScheduler::StepResult rml::Hooks::on_job_step(void** this_ptr, const RBX::Stats& time_metrics)
+RBX::TaskScheduler::StepResult rml::Hooks::on_job_step(RBX::DataModelJob* job, const RBX::Stats& time_metrics)
 {
-	if (!this_ptr || !*this_ptr)
-	{
-		return RBX::TaskScheduler::StepResult::Stepped; // No job to step, return early.
-	}
+	if (!job)
+		return RBX::TaskScheduler::StepResult::Stepped;
 
-	const auto vtable = static_cast<void**>(*this_ptr);
+	const auto vtable = memory::vtable_of(job);
 	const auto detected_kind = [&]() -> rml::JobKind {
 		if (!rml::has_task_scheduler())
 		{
@@ -35,7 +33,7 @@ RBX::TaskScheduler::StepResult rml::Hooks::on_job_step(void** this_ptr, const RB
 		try
 		{
 			const rml::JobExecutionContext context{.kind = detected_kind,
-			    .job = this_ptr,
+			    .job = job,
 			    .stats = &time_metrics,
 			    .delta_time = 0.0};
 
@@ -53,14 +51,10 @@ RBX::TaskScheduler::StepResult rml::Hooks::on_job_step(void** this_ptr, const RB
 
 	if (const auto it = g_hooking->m_jobs_hook.find(detected_kind); it != g_hooking->m_jobs_hook.end() && it->second)
 	{
-		return it->second->get_original<decltype(&on_job_step)>(rml::job_step_slot())(this_ptr, time_metrics);
+		return it->second->get_original<decltype(&on_job_step)>(rml::job_step_slot())(job, time_metrics);
 	}
 
 	LOG_WARN("[hooks::on_job_step] No hook found for job kind {}, returning Stepped", std::to_underlying(detected_kind));
 	return RBX::TaskScheduler::StepResult::Stepped;
 }
 
-void rml::Hooks::on_job_destroy(void** this_ptr)
-{
-	return Hooking::get_original<&Hooks::on_job_destroy>()(this_ptr);
-}
