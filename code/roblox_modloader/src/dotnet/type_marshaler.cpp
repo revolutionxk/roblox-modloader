@@ -6,16 +6,20 @@
 #include "RobloxModLoader/roblox/reflection/property_descriptor.hpp"
 #include "RobloxModLoader/roblox/util/BrickColor.h"
 #include "RobloxModLoader/roblox/util/G3DCore.h"
+#include "RobloxModLoader/roblox/util/color_sequence.hpp"
+#include "RobloxModLoader/roblox/util/number_sequence.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "RobloxModLoader/util/memory.hpp"
 #include "instance_handles.hpp"
 #include "pointers.hpp"
 #include "roblox/reflection/type_index.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <memory>
 #include <new>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -61,13 +65,40 @@ namespace rml::dotnet
 		return 0;
 	}
 
-	[[nodiscard]] static size_t sequence_stride(const RBX::Name& type_name) noexcept
+	[[nodiscard]] static MarshalKind sequence_kind(const RBX::Name& type_name) noexcept
 	{
 		if (type_name == "NumberSequence")
-			return 12;
+			return MarshalKind::NumberSequence;
 		if (type_name == "ColorSequence")
-			return 20;
-		return 0;
+			return MarshalKind::ColorSequence;
+		return MarshalKind::Unsupported;
+	}
+
+	template<typename Sequence>
+	[[nodiscard]] static InteropVariant pack_sequence(const Sequence& sequence)
+	{
+		InteropVariant out{};
+		out.tag = InteropValueTag::Blittable;
+		out.as_instance = 0;
+
+		const auto keypoints = sequence.keypoints.items();
+		if (auto* buffer = static_cast<std::byte*>(std::malloc(sizeof(int32_t) + keypoints.size_bytes())))
+		{
+			*reinterpret_cast<int32_t*>(buffer) = static_cast<int32_t>(keypoints.size());
+			std::memcpy(buffer + sizeof(int32_t), keypoints.data(), keypoints.size_bytes());
+			out.as_instance = reinterpret_cast<uintptr_t>(buffer);
+		}
+		return out;
+	}
+
+	template<typename Sequence>
+	static void set_sequence(RBX::Property property, const std::byte* buffer)
+	{
+		using Keypoint = typename Sequence::Keypoint;
+		const auto count = static_cast<size_t>(std::max(*reinterpret_cast<const int32_t*>(buffer), 0));
+		const std::span keypoints(reinterpret_cast<const Keypoint*>(buffer + sizeof(int32_t)), count);
+		const Sequence sequence{decltype(Sequence::keypoints)(keypoints)};
+		property.set(sequence);
 	}
 
 	[[nodiscard]] static InteropVariant owned_instance_value(std::shared_ptr<RBX::Reflection::DescribedBase> object)
@@ -198,16 +229,18 @@ namespace rml::dotnet
 		case RBX::Reflection::TypeId::Region3: return {MarshalKind::Blittable, kMaxBlittableEngineTypeBytes};
 		case RBX::Reflection::TypeId::Faces: return {MarshalKind::Blittable, 4};
 		case RBX::Reflection::TypeId::Axes: return {MarshalKind::Blittable, 4};
-		case RBX::Reflection::TypeId::NumberSequence: return {MarshalKind::Sequence, 12};
-		case RBX::Reflection::TypeId::ColorSequence: return {MarshalKind::Sequence, 20};
+		case RBX::Reflection::TypeId::NumberSequence: return {MarshalKind::NumberSequence, sizeof(RBX::NumberSequence)};
+		case RBX::Reflection::TypeId::ColorSequence: return {MarshalKind::ColorSequence, sizeof(RBX::ColorSequence)};
 		default: break;
 		}
 
 		if (const auto size = blittable_size(type.name); size != 0)
 			return {MarshalKind::Blittable, size};
 
-		if (const auto stride = sequence_stride(type.name); stride != 0)
-			return {MarshalKind::Sequence, stride};
+		if (const auto kind = sequence_kind(type.name); kind == MarshalKind::NumberSequence)
+			return {kind, sizeof(RBX::NumberSequence)};
+		else if (kind == MarshalKind::ColorSequence)
+			return {kind, sizeof(RBX::ColorSequence)};
 
 		if (type.is_enum)
 			return {MarshalKind::Enum, 0};
@@ -292,8 +325,11 @@ namespace rml::dotnet
 		if (variant.is_void())
 			return null_value();
 
-		if (kind == MarshalKind::Sequence)
-			return pack_sequence(variant.try_cast<std::byte>(), byte_size);
+		if (kind == MarshalKind::NumberSequence)
+			return pack_sequence(*variant.try_cast<RBX::NumberSequence>());
+
+		if (kind == MarshalKind::ColorSequence)
+			return pack_sequence(*variant.try_cast<RBX::ColorSequence>());
 
 		if (kind == MarshalKind::Blittable)
 			return blittable_value(variant.try_cast<std::byte>(), byte_size);
@@ -322,22 +358,17 @@ namespace rml::dotnet
 			return true;
 		}
 
-		if (plan.kind == MarshalKind::Sequence)
+		if (plan.kind == MarshalKind::NumberSequence || plan.kind == MarshalKind::ColorSequence)
 		{
 			if (value.tag != InteropValueTag::Blittable || value.as_instance == 0)
 				return false;
 
 			const auto* buffer = reinterpret_cast<const std::byte*>(value.as_instance);
-			const auto count = *reinterpret_cast<const int32_t*>(buffer);
-			const auto* keys = buffer + sizeof(int32_t);
-
-			engine_vector_header header{};
-			header.begin = keys;
-			header.end = keys + static_cast<size_t>(count < 0 ? 0 : count) * plan.byte_size;
-			header.capacity = header.end;
-
 			RBX::Property property(*descriptor, instance);
-			property.set(*reinterpret_cast<const std::array<std::byte, sizeof(engine_vector_header)>*>(&header));
+			if (plan.kind == MarshalKind::NumberSequence)
+				set_sequence<RBX::NumberSequence>(property, buffer);
+			else
+				set_sequence<RBX::ColorSequence>(property, buffer);
 			return true;
 		}
 

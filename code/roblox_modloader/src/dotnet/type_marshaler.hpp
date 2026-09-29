@@ -28,7 +28,8 @@ namespace rml::dotnet
 		Double,
 		Number,
 		Blittable,
-		Sequence,
+		NumberSequence,
+		ColorSequence,
 	};
 
 	struct MarshalPlan
