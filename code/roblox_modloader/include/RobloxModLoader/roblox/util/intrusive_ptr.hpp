@@ -117,8 +117,11 @@ namespace boost
 
 		~intrusive_ptr()
 		{
-			if (px)
-				intrusive_ptr_release(px);
+			if constexpr (requires(T* target) { intrusive_ptr_release(target); })
+			{
+				if (px)
+					intrusive_ptr_release(px);
+			}
 		}
 
 		[[nodiscard]] T* get() const noexcept

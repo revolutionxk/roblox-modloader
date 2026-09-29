@@ -4,17 +4,12 @@
 
 namespace rml::qt
 {
-	QImage::QImage()
-	{
-		static const auto ctor = detail::gui<void (*)(QImage*)>("QImage::QImage()");
-		if (ctor)
-			ctor(this);
-	}
+	QImage::QImage() = default;
 
 	QImage::~QImage()
 	{
 		static const auto dtor = detail::gui<void (*)(QImage*)>("QImage::~QImage()");
-		if (dtor)
+		if (d && dtor)
 			dtor(this);
 	}
 

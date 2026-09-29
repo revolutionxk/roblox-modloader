@@ -11,12 +11,7 @@
 
 namespace rml::qt
 {
-	QPixmap::QPixmap()
-	{
-		static const auto ctor = detail::gui<void (*)(QPixmap*)>("QPixmap::QPixmap()");
-		if (ctor)
-			ctor(this);
-	}
+	QPixmap::QPixmap() = default;
 
 	QPixmap::QPixmap(const std::string_view file_path)
 	{
@@ -38,7 +33,7 @@ namespace rml::qt
 	QPixmap::QPixmap(const QPixmap& other)
 	{
 		static const auto copy_ctor = detail::gui<void (*)(QPixmap*, const QPixmap*)>("QPixmap::QPixmap(QPixmap const&)");
-		if (copy_ctor)
+		if (other.data && copy_ctor)
 			copy_ctor(this, &other);
 	}
 
@@ -65,7 +60,7 @@ namespace rml::qt
 	QPixmap::~QPixmap()
 	{
 		static const auto dtor = detail::gui<void (*)(QPixmap*)>("QPixmap::~QPixmap()");
-		if (dtor)
+		if (data && dtor)
 			dtor(this);
 	}
 
@@ -109,7 +104,7 @@ namespace rml::qt
 	bool QPixmap::loaded() const
 	{
 		static const auto fn = detail::gui<bool (*)(const QPixmap*)>("QPixmap::isNull() const");
-		return fn && !fn(this);
+		return data && fn && !fn(this);
 	}
 
 	int QPixmap::width() const

@@ -92,7 +92,7 @@ namespace RBX::Graphics
 		std::unique_ptr<GeometryBatch> line3d_aa;
 		std::unique_ptr<GeometryBatch> segmented_cylinders[16];
 		union {
-			LRUCache<unsigned long, std::shared_ptr<GeometryBatch>> custom_batch_cache;
+			LRUCache<std::size_t, std::shared_ptr<GeometryBatch>> custom_batch_cache;
 		};
 		std::shared_ptr<Technique> techniques[Adorn::Pass_Count][Adorn::Material_Count];
 		std::shared_ptr<ShaderProgram> programs[Adorn::Material_Count];
@@ -183,7 +183,7 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, techniques, 1128);
 	RML_ASSERT_OFFSET(AdornRender, programs, 2792);
 	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 3000);
-	RML_ASSERT_SIZE(AdornRender, 3072);
+	RML_ASSERT_SIZE(AdornRender, 3048);
 #else
 	RML_ASSERT_OFFSET(AdornRender, visual_engine, 144);
 	RML_ASSERT_OFFSET(AdornRender, context, 160);
