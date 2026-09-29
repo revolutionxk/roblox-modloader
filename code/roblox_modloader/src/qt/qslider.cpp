@@ -10,7 +10,7 @@ namespace rml::qt
 	QSlider* QSlider::create(const Orientation orientation, QWidget* parent)
 	{
 		static const auto construct = detail::widgets<void* (*)(void*, int, void*)>("QSlider::QSlider(Qt::Orientation, QWidget*)");
-		return detail::heap_construct<QSlider>(detail::WIDGET_INSTANCE_SIZE, construct, static_cast<int>(orientation), parent);
+		return detail::heap_construct<QSlider>(sizeof(QSlider), construct, static_cast<int>(orientation), parent);
 	}
 
 	QtOwned<QSlider> QSlider::create_owned(const Orientation orientation)

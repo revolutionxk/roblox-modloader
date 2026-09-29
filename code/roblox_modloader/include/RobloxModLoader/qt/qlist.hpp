@@ -2,24 +2,35 @@
 
 #include "RobloxModLoader/util/layout_assert.hpp"
 
+#include "RobloxModLoader/rml_export.hpp"
+
+#include <atomic>
 #include <cstddef>
 
-namespace rml::qt::detail
+namespace rml::qt
 {
 	struct QListData
 	{
-		int ref;
-		int alloc;
-		int begin;
-		int end;
-		void* array[1];
-
-		RML_LAYOUT_GUARD_BEGIN()
-			RML_ASSERT_LAYOUT_OFFSET(QListData, begin, sizeof(int) * 2);
-			RML_ASSERT_LAYOUT_OFFSET(QListData, end, sizeof(int) * 3);
-			RML_ASSERT_LAYOUT_OFFSET(QListData, array, sizeof(int) * 4);
-		RML_LAYOUT_GUARD_END()
+		struct Data
+		{
+			std::atomic<int> ref;
+			int alloc;
+			int begin;
+			int end;
+			void* array[1];
+		};
 	};
+
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(QListData::Data, begin, sizeof(int) * 2);
+	RML_ASSERT_OFFSET(QListData::Data, end, sizeof(int) * 3);
+	RML_ASSERT_OFFSET(QListData::Data, array, sizeof(int) * 4);
+	RML_LAYOUT_DIAGNOSTIC_POP()
+
+	namespace detail
+	{
+		RML_EXPORT void release_list_data(QListData::Data* d) noexcept;
+	}
 }
 
 namespace rml::qt
@@ -31,7 +42,7 @@ namespace rml::qt
 		class ConstIterator
 		{
 		public:
-			ConstIterator(const detail::QListData* data, const int index) noexcept :
+			ConstIterator(const QListData::Data* data, const int index) noexcept :
 			    m_data(data), m_index(index)
 			{
 			}
@@ -53,11 +64,20 @@ namespace rml::qt
 			}
 
 		private:
-			const detail::QListData* m_data;
+			const QListData::Data* m_data;
 			int m_index;
 		};
 
+		QListData::Data* d{};
+
 		QList() = default;
+		QList(const QList&) = delete;
+		QList& operator=(const QList&) = delete;
+
+		~QList()
+		{
+			detail::release_list_data(d);
+		}
 
 		[[nodiscard]] int size() const noexcept
 		{
@@ -84,12 +104,5 @@ namespace rml::qt
 			return ConstIterator(d, d ? d->end : 0);
 		}
 
-		[[nodiscard]] void** raw_storage() noexcept
-		{
-			return reinterpret_cast<void**>(&d);
-		}
-
-	private:
-		detail::QListData* d = nullptr;
 	};
 }

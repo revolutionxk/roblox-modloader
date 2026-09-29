@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/qt/qarray_data.hpp"
 #include "RobloxModLoader/rml_export.hpp"
 
 #include <string>
@@ -21,25 +22,14 @@ namespace rml::qt
 
 		QString(const QString&) = delete;
 		QString(QString&& other) noexcept :
-		    m_storage(std::exchange(other.m_storage, nullptr))
+		    d(std::exchange(other.d, nullptr))
 		{
 		}
 
 		QString& operator=(const QString&) = delete;
 
-		[[nodiscard]] const void* data() const
-		{
-			return &m_storage;
-		}
-
-		[[nodiscard]] void* storage()
-		{
-			return &m_storage;
-		}
-
 		[[nodiscard]] std::string to_utf8() const;
 
-	private:
-		void* m_storage = nullptr;
+		QArrayData* d{};
 	};
 }

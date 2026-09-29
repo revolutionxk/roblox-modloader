@@ -8,7 +8,7 @@ namespace rml::qt
 	QMessageBox* QMessageBox::create(QWidget* parent)
 	{
 		static const auto construct = detail::widgets<void* (*)(void*, void*)>("QMessageBox::QMessageBox(QWidget*)");
-		return detail::heap_construct<QMessageBox>(detail::WIDGET_INSTANCE_SIZE, construct, parent);
+		return detail::heap_construct<QMessageBox>(sizeof(QMessageBox), construct, parent);
 	}
 
 	QtOwned<QMessageBox> QMessageBox::create_owned()
@@ -26,7 +26,7 @@ namespace rml::qt
 	{
 		static const auto fn = detail::widgets<void (*)(void*, const void*)>("QMessageBox::setText(QString const&)");
 		if (fn)
-			fn(this, text.data());
+			fn(this, &text);
 	}
 
 	void QMessageBox::setIcon(const Icon icon)

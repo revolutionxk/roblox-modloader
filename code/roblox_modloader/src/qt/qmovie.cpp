@@ -12,13 +12,13 @@ namespace rml::qt
 	QMovie* QMovie::create(const QString& file_name, QObject* parent)
 	{
 		static const auto construct = detail::gui<void (*)(void*, void*)>("QMovie::QMovie(QObject*)");
-		auto* const movie = detail::heap_construct<QMovie>(detail::WIDGET_INSTANCE_SIZE, construct, parent);
+		auto* const movie = detail::heap_construct<QMovie>(sizeof(QMovie), construct, parent);
 		if (!movie)
 			return nullptr;
 
 		static const auto set_file_name = detail::gui<void (*)(void*, const void*)>("QMovie::setFileName(QString const&)");
 		if (set_file_name)
-			set_file_name(movie, file_name.data());
+			set_file_name(movie, &file_name);
 
 		return movie;
 	}
@@ -63,11 +63,8 @@ namespace rml::qt
 		static void* const fn = detail::gui_export("QMovie::currentPixmap() const");
 
 		QPixmap result;
-		if (!fn)
-			return result;
-
-		memory::call_returning_member(fn, result.m_storage, static_cast<const void*>(this));
-		result.set_owned(true);
+		if (fn)
+			memory::call_returning_member(fn, result, this);
 		return result;
 	}
 
