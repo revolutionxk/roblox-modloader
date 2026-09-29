@@ -394,9 +394,7 @@ namespace rml::dotnet
 
 			try
 			{
-				const auto atom = g_pointers->m_roblox_pointers.get_string_atom(class_name);
-
-				const auto* name = reinterpret_cast<const RBX::Name*>(atom);
+				const auto* name = g_pointers->m_roblox_pointers.get_string_atom(class_name);
 				auto instance = g_pointers->m_roblox_pointers.object_create_by_name(nullptr, *name, static_cast<RBX::CreatorRole>(creator_role));
 				if (!instance)
 				{

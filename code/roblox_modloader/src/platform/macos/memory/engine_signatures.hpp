@@ -200,13 +200,6 @@ namespace rml
 				},
 			},
 			{
-				"MEMBER_TABLE_OFFSET",
-				"FF 43 01 D1 F6 57 02 A9 F4 4F 03 A9 FD 7B 04 A9 FD 03 01 91 F4 03 01 AA F3 03 00 AA 21 10 40 F9",
-				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.member_table_offset = (*ptr.add(0x70).as<const std::uint32_t*>() >> 10) & 0xFFF;
-				},
-			},
-			{
 				"OBJECT_CREATE_BY_NAME",
 				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F5 03 00 AA F3 03 08 AA E0 03 01 AA ? ? ? ? ? ? ? ? F6 03 00 AA 9F 06 00 71 ? ? ? ? ? ? ? ? 9F 06 00 71 ? ? ? ? C8 02 40 F9 08 05 40 F9 E0 03 16 AA 00 01 3F D6 ? ? ? ? ? ? ? ? 9F 0E 00 71 ? ? ? ? 9F 0A 00 71 ? ? ? ? C8 02 40 F9 08 09 40 F9 E0 03 16 AA 00 01 3F D6 ? ? ? ? C8 02 40 F9 09 01 40 F9 E8 03 00 91 E0 03 16 AA E1 03 15 AA E2 03 14 AA 20 01 3F D6 E0 03 00 91",
 				[](const memory::handle ptr) {

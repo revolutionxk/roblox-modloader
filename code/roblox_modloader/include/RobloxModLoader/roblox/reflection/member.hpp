@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RobloxModLoader/roblox/util/array_view.hpp"
+#include "RobloxModLoader/roblox/util/split_hash_table.hpp"
 #include "RobloxModLoader/roblox/security/script_permissions.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "descriptor.hpp"
@@ -26,24 +27,28 @@ namespace RBX::Reflection
 		}
 	};
 
+	struct DescriptorEntry
+	{
+		Descriptor* descriptor;
+		std::uint32_t kind;
+		std::uint32_t reserved_c;
+	};
+
+	struct DescriptorEntryGetKey;
+
+	using MemberTable = RBX::details::SplitHashTable<const Name*, DescriptorEntry, static_cast<SplitHashPolicy>(9), 0, RBX::details::DefaultHash<const Name*>, RBX::details::DefaultEqualTo<const Name*>, DescriptorEntryGetKey>;
+
 	template<typename MemberDescriptorType>
 	class MemberDescriptorContainer
 	{
 	public:
-		struct Entry
-		{
-			MemberDescriptorType* descriptor;
-			std::uint32_t kind;
-			std::uint32_t reserved_c;
-		};
-
 		struct ConstIterator
 		{
-			const Entry* ptr;
+			const DescriptorEntry* ptr;
 
 			MemberDescriptorType* operator*() const noexcept
 			{
-				return ptr->descriptor;
+				return static_cast<MemberDescriptorType*>(ptr->descriptor);
 			}
 			ConstIterator& operator++() noexcept
 			{
@@ -79,7 +84,7 @@ namespace RBX::Reflection
 		};
 
 		std::vector<RBX::ArrayView<const MemberDescriptorType*>> views;
-		const Entry* finalized_data;
+		const DescriptorEntry* finalized_data;
 		std::size_t finalized_size;
 		std::uint64_t total;
 		MemberDescriptorContainer* base_container;
@@ -151,7 +156,8 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(MemberDescriptorContainer<ClassDescriptor>::Entry, 0x10);
+	RML_ASSERT_SIZE(DescriptorEntry, 0x10);
+	RML_ASSERT_SIZE(MemberTable, 0x28);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, finalized_data, 0x18);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, total, 0x28);
 	RML_ASSERT_OFFSET(MemberDescriptorContainer<ClassDescriptor>, base_container, 0x30);
