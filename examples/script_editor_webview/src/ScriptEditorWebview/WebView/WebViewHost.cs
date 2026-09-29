@@ -10,6 +10,7 @@ internal sealed class WebViewHost(GuiDispatcher gui) : IDisposable
     private const string VirtualHost = "rml.scripteditor";
 
     private CoreWebView2Controller? _controller;
+    private Rectangle _lastBounds;
     private bool _disposed;
     private IntPtr _parentHwnd;
     private string _webRootPath = string.Empty;
@@ -107,6 +108,16 @@ internal sealed class WebViewHost(GuiDispatcher gui) : IDisposable
         }
 
         _controller = controller;
+
+        if (!Directory.Exists(_webRootPath))
+        {
+            ScriptEditorWebviewMod.Logger.Error(
+                $"web assets missing at '{_webRootPath}' — they must sit at the mod root, beside 'dotnet/'");
+            controller.Close();
+            _controller = null;
+            return;
+        }
+
         _webView = controller.CoreWebView2;
 
         _webView.WebMessageReceived += OnWebMessageReceived;
@@ -183,7 +194,13 @@ internal sealed class WebViewHost(GuiDispatcher gui) : IDisposable
         {
             if (!IsReady || _controller is null || _parentHwnd == IntPtr.Zero) return;
 
-            _controller.Bounds = ClientRect(_parentHwnd);
+            // Reassigning Bounds relays out the whole web view; at the reconcile tick rate that is a
+            // resize storm, so only a real geometry change is worth one.
+            var bounds = ClientRect(_parentHwnd);
+            if (bounds == _lastBounds) return;
+
+            _lastBounds = bounds;
+            _controller.Bounds = bounds;
             Win32.RaiseChildWindows(_parentHwnd, "Chrome_WidgetWin");
         });
     }
