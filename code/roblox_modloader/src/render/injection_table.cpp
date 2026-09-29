@@ -18,12 +18,6 @@ RML_LOG_SCOPE("Render");
 
 namespace rml::render::detail
 {
-	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	static constexpr std::size_t k_group_offset = offsetof(RBX::Graphics::RenderQueue, groups);
-	RML_LAYOUT_DIAGNOSTIC_POP()
-	static constexpr std::size_t k_group_size = sizeof(RBX::Graphics::RenderQueueGroup);
-	static constexpr std::size_t k_group_count = std::extent_v<decltype(RBX::Graphics::RenderQueue::groups)>;
-
 	InjectionTable& InjectionTable::instance()
 	{
 		static InjectionTable table;
@@ -141,14 +135,15 @@ namespace rml::render::detail
 
 	std::optional<QueueGroup> InjectionTable::group_of(const RBX::Graphics::SceneManager& scene, const void* group) const
 	{
-		const auto address = reinterpret_cast<std::uintptr_t>(group);
 		const auto in_queue = [&](const RBX::Graphics::RenderQueue* queue) -> std::optional<QueueGroup> {
 			if (!queue)
 				return std::nullopt;
-			const auto first = reinterpret_cast<std::uintptr_t>(queue) + k_group_offset;
-			if (address < first || address >= first + k_group_size * k_group_count || (address - first) % k_group_size != 0)
-				return std::nullopt;
-			return group_of(static_cast<std::uint32_t>((address - first) / k_group_size));
+			for (std::uint32_t index = 0; index < std::size(queue->groups); ++index)
+			{
+				if (&queue->groups[index] == group)
+					return group_of(index);
+			}
+			return std::nullopt;
 		};
 
 		if (const auto found = in_queue(scene.render_queue.get()))

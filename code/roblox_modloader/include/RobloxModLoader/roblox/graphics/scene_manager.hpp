@@ -330,7 +330,7 @@ namespace RBX::Graphics
 
 		bool can_read_main_rt_depth() const
 		{
-			return main_render_targets && main_render_targets->reserved_432 == 1;
+			return main_render_targets && main_render_targets->mode == MainRenderTargets::Mode::WithDepth;
 		}
 
 		Texture* get_main_depth() const
