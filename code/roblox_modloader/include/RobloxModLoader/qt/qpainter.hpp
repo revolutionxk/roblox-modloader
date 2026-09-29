@@ -1,15 +1,17 @@
 #pragma once
 
-#include "RobloxModLoader/qt/qt_value_type.hpp"
 #include "RobloxModLoader/rml_export.hpp"
+#include "RobloxModLoader/util/layout_assert.hpp"
 
 namespace rml::qt
 {
+	class QPainterPrivate;
+	class QPaintDevice;
 	class QPixmap;
 	class QRect;
 	class QWidget;
 
-	class RML_EXPORT QPainter : public detail::QtValueType<16>
+	class RML_EXPORT QPainter
 	{
 	public:
 		enum RenderHint
@@ -19,8 +21,9 @@ namespace rml::qt
 			SmoothPixmapTransform = 0x04,
 		};
 
-		explicit QPainter(const QPixmap& target);
-		explicit QPainter(const QWidget& target);
+		QPainterPrivate* d_ptr{};
+
+		explicit QPainter(const QPaintDevice& target);
 		~QPainter();
 
 		QPainter(const QPainter&) = delete;
@@ -31,4 +34,6 @@ namespace rml::qt
 		void draw_pixmap(int x, int y, const QPixmap& pixmap);
 		void draw_pixmap(const QRect& target, const QPixmap& pixmap);
 	};
+
+	RML_ASSERT_SIZE(QPainter, sizeof(void*));
 }

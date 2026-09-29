@@ -78,12 +78,7 @@ namespace RBX::Reflection
 		std::uint16_t functionality;
 		std::uint16_t reserved_after_functionality;
 		ClassDescriptors derived_classes;
-		std::uint32_t member_table_count;
-		std::uint32_t reserved_1dc;
-		std::uint64_t reserved_1e0;
-		void* member_table;
-		std::uint64_t reserved_1f0;
-		void* arena;
+		MemberTable member_table;
 				std::byte reserved_tail[48];
 
 		unsigned replicate_type() const
@@ -245,19 +240,19 @@ namespace RBX::Reflection
 		T* find_descriptor(const char* name) const
 		{
 			const auto* pointers = get_roblox_pointers();
-			if (!pointers || !pointers->get_string_atom || !pointers->descriptor_lookup || !pointers->member_table_offset)
+			if (!pointers || !pointers->get_string_atom || !pointers->descriptor_lookup)
 			{
 				return nullptr;
 			}
 
-			auto atom = pointers->get_string_atom(name);
+			const auto* atom = pointers->get_string_atom(name);
 			if (!atom)
 			{
 				return nullptr;
 			}
 
-			const auto desc = pointers->descriptor_lookup(reinterpret_cast<uint64_t>(this) + pointers->member_table_offset, &atom);
-			return desc && *desc ? reinterpret_cast<T*>(*desc) : nullptr;
+			const auto* entry = pointers->descriptor_lookup(&member_table, &atom);
+			return entry && entry->descriptor ? static_cast<T*>(entry->descriptor) : nullptr;
 		}
 
 		PropertyDescriptor* find_property(const char* name) const
@@ -316,9 +311,7 @@ namespace RBX::Reflection
 			RML_ASSERT_OFFSET(ClassDescriptor, base, 0x1B0);
 			RML_ASSERT_OFFSET(ClassDescriptor, functionality, 0x1BC);
 			RML_ASSERT_OFFSET(ClassDescriptor, derived_classes, 0x1C0);
-			RML_ASSERT_OFFSET(ClassDescriptor, member_table_count, 0x1D8);
-			RML_ASSERT_OFFSET(ClassDescriptor, member_table, 0x1E8);
-			RML_ASSERT_OFFSET(ClassDescriptor, arena, 0x1F8);
+			RML_ASSERT_OFFSET(ClassDescriptor, member_table, 0x1D8);
 			RML_LAYOUT_DIAGNOSTIC_POP()
 		RML_LAYOUT_GUARD_END()
 	};

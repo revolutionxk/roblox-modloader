@@ -25,10 +25,10 @@ namespace RBX
 
 		std::vector<std::shared_ptr<Instance>> services;
 		std::map<const Name*, std::shared_ptr<Instance>> service_by_name;
-		boost::intrusive_ptr<rbx::signals::slots_holder> service_added_slots;
-		boost::intrusive_ptr<rbx::signals::slots_holder> service_removing_slots;
-		boost::intrusive_ptr<rbx::signals::slots_holder> close_slots;
-		boost::intrusive_ptr<rbx::signals::slots_holder> closing_slots;
+		rbx::signal<void(std::shared_ptr<Instance>)> service_added_signal;
+		rbx::signal<void(std::shared_ptr<Instance>)> service_removing_signal;
+		rbx::signal<void()> close_signal;
+		rbx::signal<void()> closing_signal;
 	};
 
 	template<typename Derived, typename Base>
@@ -40,10 +40,10 @@ namespace RBX
 	RML_ASSERT_OFFSET(ServiceProvider, services, 0xC8);
 	RML_ASSERT_OFFSET(ServiceProvider, service_by_name, 0xE0);
 #if defined(RML_WINDOWS)
-	RML_ASSERT_OFFSET(ServiceProvider, service_added_slots, 0xF0);
+	RML_ASSERT_OFFSET(ServiceProvider, service_added_signal, 0xF0);
 	RML_ASSERT_SIZE(ServiceProvider, 0x110);
 #else
-	RML_ASSERT_OFFSET(ServiceProvider, service_added_slots, 0xF8);
+	RML_ASSERT_OFFSET(ServiceProvider, service_added_signal, 0xF8);
 	RML_ASSERT_SIZE(ServiceProvider, 0x118);
 #endif
 	RML_LAYOUT_DIAGNOSTIC_POP()

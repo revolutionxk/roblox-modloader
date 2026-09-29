@@ -32,8 +32,6 @@ namespace RBX::Reflection
 		class Arguments
 		{
 		public:
-			uint64_t return_value;
-
 			virtual size_t size() const = 0;
 
 			virtual bool get_varint(int index, Variant& value) const = 0;
@@ -111,8 +109,6 @@ namespace RBX::Reflection
 		template<std::size_t>
 		using arg_slot = void*;
 
-		static constexpr std::size_t engine_return_bytes = 64;
-
 		class EngineCallable
 		{
 		};
@@ -125,8 +121,17 @@ namespace RBX::Reflection
 			return member;
 		}
 
+	public:
+		static constexpr std::size_t engine_return_bytes = 64;
+
+		struct ReturnStorage
+		{
+			alignas(16) std::byte bytes[engine_return_bytes];
+		};
+
+	protected:
 		template<std::size_t... I>
-		std::uint64_t invoke_fixed(FunctionDescriptor::Arguments& arguments, const bool indirect_result, std::index_sequence<I...>) const
+		std::uint64_t invoke_fixed(FunctionDescriptor::Arguments& arguments, const bool indirect_result, ReturnStorage& result, std::index_sequence<I...>) const
 		{
 			auto* const self = reinterpret_cast<EngineCallable*>(m_instance);
 
@@ -143,8 +148,10 @@ namespace RBX::Reflection
 
 			const Slot value = (self->*load_member_pointer<IndirectMember>())(arguments.get(static_cast<int>(I) + 1)...);
 
-			std::memcpy(&arguments.return_value, value.m_storage, engine_return_bytes);
-			return arguments.return_value;
+			std::memcpy(result.bytes, value.m_storage, engine_return_bytes);
+			std::uint64_t first{};
+			std::memcpy(&first, result.bytes, sizeof(first));
+			return first;
 		}
 
 	public:
@@ -168,18 +175,18 @@ namespace RBX::Reflection
 			return m_descriptor;
 		}
 
-		uint64_t invoke(FunctionDescriptor::Arguments& arguments, const bool indirect_result) const
+		uint64_t invoke(FunctionDescriptor::Arguments& arguments, const bool indirect_result, ReturnStorage& result) const
 		{
 			switch (arguments.size())
 			{
-			case 0: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<0>{});
-			case 1: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<1>{});
-			case 2: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<2>{});
-			case 3: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<3>{});
-			case 4: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<4>{});
-			case 5: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<5>{});
-			case 6: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<6>{});
-			case 7: return invoke_fixed(arguments, indirect_result, std::make_index_sequence<7>{});
+			case 0: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<0>{});
+			case 1: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<1>{});
+			case 2: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<2>{});
+			case 3: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<3>{});
+			case 4: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<4>{});
+			case 5: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<5>{});
+			case 6: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<6>{});
+			case 7: return invoke_fixed(arguments, indirect_result, result, std::make_index_sequence<7>{});
 			default: throw std::runtime_error("Too many arguments");
 			}
 		}

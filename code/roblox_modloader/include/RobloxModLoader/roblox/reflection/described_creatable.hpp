@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RobloxModLoader/hooking/vtable_index.hpp"
+#include "RobloxModLoader/memory/vtable.hpp"
 #include "RobloxModLoader/rml_export.hpp"
 #include "RobloxModLoader/roblox/instance.hpp"
 #include "RobloxModLoader/roblox/reflection/property_accessor.hpp"
@@ -31,7 +31,7 @@ namespace rml::reflection
 	{
 		static std::size_t value()
 		{
-			return vtable_index_of(&RBX::Instance::post_equality_check_name_callback_for_subclass) + 1;
+			return memory::virtual_index(&RBX::Instance::post_equality_check_name_callback_for_subclass) + 1;
 		}
 	};
 
@@ -68,7 +68,7 @@ namespace rml::reflection
 
 		bool ask_set_parent(const RBX::Instance* parent) const override
 		{
-			const auto slot = rml::vtable_index_of(&RBX::Instance::ask_set_parent, parent);
+			const auto slot = rml::memory::virtual_index(&RBX::Instance::ask_set_parent);
 			if (!engine_base_overrides(this, slot))
 				return true;
 			const auto function = reinterpret_cast<bool (*)(const Derived*, const RBX::Instance*)>(engine_virtual(this, slot));
@@ -95,7 +95,7 @@ namespace rml::reflection
 		Ret call_engine_base(Ret (Class::*method)(Params...), Args&&... args)
 		{
 			static_assert(std::is_void_v<Ret> || std::is_scalar_v<Ret>, "engine base calls return void or a scalar");
-			const auto slot = rml::vtable_index_of(method, args...);
+			const auto slot = rml::memory::virtual_index(method);
 			const auto function = reinterpret_cast<Ret (*)(Derived*, Params...)>(engine_virtual(this, slot));
 			return function(static_cast<Derived*>(this), std::forward<Args>(args)...);
 		}

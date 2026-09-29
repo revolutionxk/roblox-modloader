@@ -38,7 +38,7 @@ namespace rml::luau::vm
 	{
 		const auto* call = static_cast<IdentityWrite*>(ctx);
 
-		if (auto* extra_space = static_cast<RBX::Luau::RobloxExtraSpace*>(call->L->userdata))
+		if (auto* extra_space = static_cast<RobloxExtraSpace*>(call->L->userdata))
 		{
 			extra_space->context.identity = call->identity;
 			extra_space->capabilities = call->capabilities;

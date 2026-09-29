@@ -200,13 +200,6 @@ namespace rml
 				},
 			},
 			{
-				"MEMBER_TABLE_OFFSET",
-				"FF 43 01 D1 F6 57 02 A9 F4 4F 03 A9 FD 7B 04 A9 FD 03 01 91 F4 03 01 AA F3 03 00 AA 21 10 40 F9",
-				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.member_table_offset = (*ptr.add(0x70).as<const std::uint32_t*>() >> 10) & 0xFFF;
-				},
-			},
-			{
 				"OBJECT_CREATE_BY_NAME",
 				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F5 03 00 AA F3 03 08 AA E0 03 01 AA ? ? ? ? ? ? ? ? F6 03 00 AA 9F 06 00 71 ? ? ? ? ? ? ? ? 9F 06 00 71 ? ? ? ? C8 02 40 F9 08 05 40 F9 E0 03 16 AA 00 01 3F D6 ? ? ? ? ? ? ? ? 9F 0E 00 71 ? ? ? ? 9F 0A 00 71 ? ? ? ? C8 02 40 F9 08 09 40 F9 E0 03 16 AA 00 01 3F D6 ? ? ? ? C8 02 40 F9 09 01 40 F9 E8 03 00 91 E0 03 16 AA E1 03 15 AA E2 03 14 AA 20 01 3F D6 E0 03 00 91",
 				[](const memory::handle ptr) {
@@ -732,10 +725,10 @@ namespace rml
 				},
 			},
 			{
-				"SIGNAL_DISCONNECT",
-				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA FF 0B 00 F9 ? ? ? ? F4 03 00 AA",
+				"CONNECTION_DISCONNECT",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 08 00 40 F9 ? ? ? ? 0A FD DF 88 ? ? ? ? E9 03 0A AA 4B 05 00 11 0B FD E9 88 3F 01 0A 6B ? ? ? ? EA 03 09 AA ? ? ? ? ? ? ? ? 13 00 40 F9 ? ? ? ? E0 03 13 AA 0D 00 00 94 E0 03 13 AA FD 7B 41 A9 F4 4F C2 A8",
 				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.signal_disconnect = ptr.as<functions::signal_disconnect>();
+					g_pointers->m_roblox_pointers.connection_disconnect = ptr.as<functions::connection_disconnect>();
 				},
 			},
 			{

@@ -392,9 +392,7 @@ namespace rml::luau
 		}
 
 		auto* frame = access::frame_at(state->ci, -static_cast<int>(level));
-		const auto stack_size = (reinterpret_cast<std::byte*>(frame->top) -
-		                         reinterpret_cast<std::byte*>(frame->base)) /
-		                        static_cast<std::ptrdiff_t>(access::tvalue_size);
+		const auto stack_size = frame->top - frame->base;
 
 		if (access::closure_in(frame->func)->isC != 0)
 		{
@@ -437,9 +435,7 @@ namespace rml::luau
 		}
 
 		auto* frame = access::frame_at(state->ci, -static_cast<int>(level));
-		const auto frame_size = static_cast<int>((reinterpret_cast<std::byte*>(frame->top) -
-		                                          reinterpret_cast<std::byte*>(frame->base)) /
-		                                         static_cast<std::ptrdiff_t>(access::tvalue_size));
+		const auto frame_size = static_cast<int>(frame->top - frame->base);
 
 		if (access::closure_in(frame->func)->isC != 0)
 		{
@@ -500,7 +496,7 @@ namespace rml::luau
 			luaL_argerror(L, 1, "Lua function expected.");
 		}
 
-		auto* raw = clvalue(luaA_toobject(L, -1));
+		auto* raw = access::closure_in(access::value(luaA_toobject(L, -1)));
 		auto* closure = access::closure(raw);
 		const auto* value = access::value(luaA_toobject(L, 3));
 		auto* upvalues = access::upvalues_of(closure);
@@ -550,7 +546,7 @@ namespace rml::luau
 
 		const int index = luaL_checkinteger(L, 2);
 
-		const auto* closure = access::closure(clvalue(luaA_toobject(L, -1)));
+		const auto* closure = access::closure_in(access::value(luaA_toobject(L, -1)));
 		const auto* upvalues = access::upvalues_of(closure);
 
 		if (!index)
@@ -596,7 +592,7 @@ namespace rml::luau
 			lua_pushvalue(L, 1);
 		}
 
-		const auto* closure = access::closure(clvalue(luaA_toobject(L, -1)));
+		const auto* closure = access::closure_in(access::value(luaA_toobject(L, -1)));
 		const auto* upvalues = access::upvalues_of(closure);
 		auto* state = access::state(L);
 

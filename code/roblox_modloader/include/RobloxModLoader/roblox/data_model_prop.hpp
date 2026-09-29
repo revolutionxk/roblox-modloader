@@ -1,6 +1,6 @@
 #pragma once
 
-#include "slots_holder.hpp"
+#include "signals.hpp"
 #include "workspace.hpp"
 
 #include "RobloxModLoader/util/layout_assert.hpp"
@@ -21,8 +21,8 @@ namespace RBX
 		std::string universe_id_string;
 		std::string job_id;
 		std::shared_ptr<Workspace> workspace;
-		boost::intrusive_ptr<rbx::signals::slots_holder> loaded_slots;
-		boost::intrusive_ptr<rbx::signals::slots_holder> graphics_quality_slots;
+		rbx::signal<void()> loaded_signal;
+		rbx::signal<void(bool)> graphics_quality_signal;
 
 	private:
 		std::string reserved_string;

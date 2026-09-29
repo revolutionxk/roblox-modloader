@@ -7,13 +7,12 @@
 #include "render/injection_dispatch.hpp"
 #include "roblox/graphics/graphics_registry.hpp"
 
-void rml::Hooks::scene_manager_render_scene(void* self, RBX::Graphics::DeviceContext* context, RBX::Graphics::Framebuffer* target, const void* camera, RBX::ArrayView<RBX::Graphics::Framebuffer*> extra, std::uint32_t capture_mode)
+void rml::Hooks::scene_manager_render_scene(RBX::Graphics::SceneManager* scene_manager, RBX::Graphics::DeviceContext* context, RBX::Graphics::Framebuffer* target, const RBX::Graphics::RenderCamera* camera, RBX::ArrayView<RBX::Graphics::Framebuffer*> extra, std::uint32_t capture_mode)
 {
-	auto* scene_manager = static_cast<RBX::Graphics::SceneManager*>(self);
 	graphics::GraphicsRegistry::instance().set_scene_manager(scene_manager);
 
 	auto& dispatch = render::detail::InjectionDispatch::instance();
-	const bool active = dispatch.begin_view(*scene_manager, context, target, static_cast<const RBX::Graphics::RenderCamera*>(camera), capture_mode);
+	const bool active = dispatch.begin_view(*scene_manager, context, target, camera, capture_mode);
 	const bool engine_clouds = scene_manager->clouds_enabled;
 	const bool force = active && !engine_clouds && dispatch.plans_clouds_path();
 	if (force)
@@ -22,7 +21,7 @@ void rml::Hooks::scene_manager_render_scene(void* self, RBX::Graphics::DeviceCon
 		scene_manager->clouds_enabled = true;
 	}
 
-	Hooking::get_original<&Hooks::scene_manager_render_scene>()(self, context, target, camera, extra, capture_mode);
+	Hooking::get_original<&Hooks::scene_manager_render_scene>()(scene_manager, context, target, camera, extra, capture_mode);
 
 	if (force)
 		scene_manager->clouds_enabled = engine_clouds;

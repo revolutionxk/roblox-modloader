@@ -19,14 +19,11 @@ namespace rml::luau::access
 		return static_cast<const GcHeader*>(object);
 	}
 
+	static_assert(sizeof(TValue) == tvalue_size);
+	static_assert(sizeof(CallInfo) == callinfo_size);
+
 	inline constexpr std::uint8_t white_bits = 3;
 	inline constexpr std::uint8_t black_bit = 4;
-	inline constexpr std::size_t userdata_payload = 0x10;
-
-	[[nodiscard]] inline void* object_behind_payload(void* payload)
-	{
-		return reinterpret_cast<std::byte*>(payload) - userdata_payload;
-	}
 
 	[[nodiscard]] inline bool swept_away(const GlobalState* collector, const void* object)
 	{
@@ -54,23 +51,22 @@ namespace rml::luau::access
 
 	[[nodiscard]] inline const TValue* value_at(const TValue* first, const int index)
 	{
-		return reinterpret_cast<const TValue*>(reinterpret_cast<const std::byte*>(first) + index * tvalue_size);
+		return first + index;
 	}
 
 	[[nodiscard]] inline TValue* value_at(TValue* first, const int index)
 	{
-		return reinterpret_cast<TValue*>(reinterpret_cast<std::byte*>(first) + index * tvalue_size);
+		return first + index;
 	}
 
 	[[nodiscard]] inline CallInfo* frame_at(CallInfo* first, const int index)
 	{
-		return reinterpret_cast<CallInfo*>(reinterpret_cast<std::byte*>(first) + index * callinfo_size);
+		return first + index;
 	}
 
 	[[nodiscard]] inline std::ptrdiff_t frames_between(const CallInfo* from, const CallInfo* to)
 	{
-		return (reinterpret_cast<const std::byte*>(from) - reinterpret_cast<const std::byte*>(to)) /
-		       static_cast<std::ptrdiff_t>(callinfo_size);
+		return from - to;
 	}
 
 	[[nodiscard]] inline Closure* closure_in(const TValue* slot)
@@ -88,7 +84,7 @@ namespace rml::luau::access
 
 	inline void copy_value(TValue* destination, const TValue* source)
 	{
-		std::memcpy(destination, source, tvalue_size);
+		*destination = *source;
 	}
 
 	inline void advance_top(LuaState* thread)

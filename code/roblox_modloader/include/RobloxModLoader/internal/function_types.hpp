@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RobloxModLoader/internal/engine_abi.hpp"
-#include "RobloxModLoader/roblox/reflection/array_view.hpp"
+#include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "RobloxModLoader/roblox/reflection/creatable.hpp"
 #include "RobloxModLoader/roblox/reflection/descriptor.hpp"
 #include "RobloxModLoader/roblox/reflection/property_descriptor.hpp"
@@ -13,6 +13,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace RBX::Security
@@ -20,9 +21,11 @@ namespace RBX::Security
 	enum class Identity : std::uint64_t;
 }
 
-namespace RBX::Signals
+namespace rbx::signals
 {
-	struct Signal;
+	struct slot_base;
+	struct slots_holder;
+	class connection;
 }
 
 namespace RBX::Graphics
@@ -30,6 +33,7 @@ namespace RBX::Graphics
 	class DeviceContext;
 	class Framebuffer;
 	class RenderCamera;
+	class SceneManager;
 	class VisualEngine;
 	struct GlobalShaderData;
 }
@@ -38,6 +42,7 @@ namespace RBX
 {
 	class Instance;
 	class Name;
+	class ScriptContext;
 }
 
 namespace RBX::Reflection
@@ -52,11 +57,10 @@ namespace RBX::Reflection
 
 namespace functions
 {
-	using get_string_atom = uintptr_t (*)(const char* name);
+	using get_string_atom = const RBX::Name* (*)(const char* name);
 	using name_declare = const RBX::Name* (*)(const char* name);
-	using slots_holder_release = void (*)(RBX::Signals::Signal* holder);
-	using descriptor_lookup = uintptr_t* (*)(uintptr_t class_descriptor_hash, uintptr_t* member_descriptor_hash);
-	using get_scheduler = uintptr_t (*)();
+	using slots_holder_release = void (*)(rbx::signals::slots_holder* holder);
+	using descriptor_lookup = const RBX::Reflection::DescriptorEntry* (*)(const RBX::Reflection::MemberTable* table, const RBX::Name* const* name);
 	using print = void(RML_ENGINE_CALL*)(RBX::MessageType level, const char* fmt, ...);
 	using luaH_new = void*(RML_ENGINE_CALL*)(void* L, int32_t narray, int32_t nhash);
 	using freeblock = void(RML_ENGINE_CALL*)(lua_State* L, int32_t sizeClass, void* block);
@@ -69,14 +73,13 @@ namespace functions
 	using luaD_rawrunprotected = int(RML_ENGINE_CALL*)(lua_State* L, void (*PFunc)(lua_State*, void*), void* ud);
 	using lua_newthread = lua_State*(RML_ENGINE_CALL*)(lua_State * L);
 	using luaD_throw = void(RML_ENGINE_CALL*)(lua_State* L, int errcode);
-	using get_global_state = lua_State*(RML_ENGINE_CALL*)(void* script_context, const RBX::Security::Identity* identity, const uint64_t* script);
+	using get_global_state = lua_State*(RML_ENGINE_CALL*)(RBX::ScriptContext* script_context, const RBX::Security::Identity* identity, const uint64_t* script);
 	using object_create_by_name = std::shared_ptr<RBX::Instance> (*)(RBX::EngineContext* context, const RBX::Name& name, RBX::CreatorRole role);
-	using instance_bridge_push = void(RML_ENGINE_CALL*)(lua_State* L, uintptr_t instance);
 	using task_defer = int(RML_ENGINE_CALL*)(lua_State* L);
 	using build_menu_bar_from_dom = void*(RML_ENGINE_CALL*)(void* out_menu_bar, void* dom, void* context);
-	using signal_disconnect = void(RML_ENGINE_CALL*)(void* slot);
-	using signal_slot_free = void(RML_ENGINE_CALL*)(void* slot);
-	using signal_mutex_get = void*(RML_ENGINE_CALL*)();
+	using connection_disconnect = void(RML_ENGINE_CALL*)(const rbx::signals::connection* connection);
+	using signal_slot_free = void(RML_ENGINE_CALL*)(rbx::signals::slot_base* slot);
+	using signal_mutex_get = std::mutex*(RML_ENGINE_CALL*)();
 	using global_init = void (*)();
 	using class_descriptor_ctor = void (*)(void* self, void* base, const char* name, std::uint32_t instance_id, std::uint64_t stable_id, bool a6, bool a7, const void* attributes, RBX::Security::Permissions protection, const std::uint32_t* memory_category, RBX::ArrayView<const RBX::Reflection::PropertyDescriptor*> properties, RBX::ArrayView<const RBX::Reflection::EventDescriptor*> events, RBX::ArrayView<const RBX::Reflection::FunctionDescriptor*> functions, RBX::ArrayView<const RBX::Reflection::YieldFunctionDescriptor*> yield_functions, RBX::ArrayView<const RBX::Reflection::CallbackDescriptor*> callbacks);
 	using class_descriptor_all_classes = std::vector<RBX::Reflection::ClassDescriptor*>* (*)();
@@ -87,14 +90,14 @@ namespace functions
 	using function_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, RBX::Security::Permissions protection, RBX::Reflection::Descriptor::Attributes attributes);
 	using event_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, RBX::Security::Permissions protection, const RBX::Reflection::Descriptor::Attributes* attributes);
 	using visual_engine_begin_render = RBX::Graphics::DeviceContext* (*)(RBX::Graphics::VisualEngine* self);
-	using scene_manager_render_scene = void (*)(void* self, RBX::Graphics::DeviceContext* context, RBX::Graphics::Framebuffer* target, const void* camera, RBX::ArrayView<RBX::Graphics::Framebuffer*> extra, std::uint32_t capture_mode);
+	using scene_manager_render_scene = void (*)(RBX::Graphics::SceneManager* self, RBX::Graphics::DeviceContext* context, RBX::Graphics::Framebuffer* target, const RBX::Graphics::RenderCamera* camera, RBX::ArrayView<RBX::Graphics::Framebuffer*> extra, std::uint32_t capture_mode);
 	using clouds_update = void (*)(void* clouds, RBX::Graphics::DeviceContext* context, void* view_info, const RBX::Graphics::RenderCamera* camera, RBX::Graphics::Framebuffer* main_framebuffer, RBX::Graphics::GlobalShaderData* globals, const void* camera_change, void* stats);
 	using clouds_composite = void (*)(void* clouds, RBX::Graphics::DeviceContext* context, const void* camera, RBX::Graphics::GlobalShaderData* globals, void* stats);
 	using clouds_composite_clouds = void (*)(void* clouds, RBX::Graphics::DeviceContext* context, RBX::Graphics::GlobalShaderData* globals, void* stats);
 	using render_objects_clipped = void (*)(RBX::Graphics::DeviceContext* context, void* instance_glob, const void* view, void* group, void* stats, std::uint32_t tracker, const void* tokens, void* clip, bool first, bool second);
 	using dispatch_scene_dispatch = void (*)(void* self, const void* context, const void* view, std::uint32_t pass, std::uint32_t id, const void* query);
-	using scene_manager_render_sky = void (*)(void* self, RBX::Graphics::DeviceContext* context, const RBX::Graphics::RenderCamera* camera, bool first, bool second, int face);
-	using scene_manager_render_ui = void (*)(void* self, RBX::Graphics::DeviceContext* context, const RBX::Graphics::RenderCamera* camera, void* stats, bool rotate, int debug_mode, bool capture);
+	using scene_manager_render_sky = void (*)(RBX::Graphics::SceneManager* self, RBX::Graphics::DeviceContext* context, const RBX::Graphics::RenderCamera* camera, bool first, bool second, int face);
+	using scene_manager_render_ui = void (*)(RBX::Graphics::SceneManager* self, RBX::Graphics::DeviceContext* context, const RBX::Graphics::RenderCamera* camera, void* stats, bool rotate, int debug_mode, bool capture);
 	using reflection_metadata_get_singleton = void (*)();
 	using reflection_metadata_load = void* (*)(void* self, const void* path);
 	using enum_descriptor_ctor = void (*)(void* self, const char* name);

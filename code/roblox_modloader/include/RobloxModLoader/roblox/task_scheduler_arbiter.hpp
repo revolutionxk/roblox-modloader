@@ -1,18 +1,10 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/rsl/mutex.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
 #include <cstdint>
-
-namespace RSL
-{
-	class Mutex
-	{
-	public:
-		void* handle;
-	};
-}
 
 namespace RBX
 {

@@ -81,17 +81,17 @@ namespace rml::reflection
 		return infos[static_cast<std::size_t>(type)];
 	}
 
-	const void* variant_ops(const PropertyType type)
+	const RBX::Reflection::detail::holder* variant_ops(const PropertyType type)
 	{
 		switch (type)
 		{
-		case PropertyType::Bool: return VariantOps<bool>::table;
-		case PropertyType::Int: return VariantOps<int>::table;
-		case PropertyType::Float: return VariantOps<float>::table;
-		case PropertyType::Double: return VariantOps<double>::table;
-		case PropertyType::String: return VariantOps<std::string>::table;
-		case PropertyType::Color3: return VariantOps<G3D::Color3>::table;
-		case PropertyType::Vector3: return VariantOps<G3D::Vector3>::table;
+		case PropertyType::Bool: return RBX::Reflection::detail::typed_holder<bool>::singleton();
+		case PropertyType::Int: return RBX::Reflection::detail::typed_holder<int>::singleton();
+		case PropertyType::Float: return RBX::Reflection::detail::typed_holder<float>::singleton();
+		case PropertyType::Double: return RBX::Reflection::detail::typed_holder<double>::singleton();
+		case PropertyType::String: return RBX::Reflection::detail::typed_holder<std::string>::singleton();
+		case PropertyType::Color3: return RBX::Reflection::detail::typed_holder<G3D::Color3>::singleton();
+		case PropertyType::Vector3: return RBX::Reflection::detail::typed_holder<G3D::Vector3>::singleton();
 		}
 		return nullptr;
 	}
@@ -346,8 +346,8 @@ namespace rml::reflection
 
 		auto& event = *reinterpret_cast<RBX::Reflection::EventDesc*>(storage);
 		event.signal = static_cast<decltype(event.signal)>(member_offset);
-		std::construct_at(reinterpret_cast<std::vector<SignatureDescriptor::Argument>*>(&event.signature.m_arguments), std::move(items));
-		std::construct_at(reinterpret_cast<std::vector<SignatureDescriptor::Result>*>(&event.signature.m_result_types), std::vector<SignatureDescriptor::Result>{{void_type, nullptr, nullptr}});
+		std::construct_at(&event.signature.arguments, std::move(items));
+		std::construct_at(&event.signature.result_types, std::vector<SignatureDescriptor::Result>{{void_type, nullptr, nullptr}});
 
 		return member;
 	}
@@ -356,12 +356,12 @@ namespace rml::reflection
 	{
 		RBX::Reflection::Variant variant;
 		const auto engine_type = type_singleton(type);
-		const auto ops = static_cast<const void* const*>(variant_ops(type));
+		const auto* ops = variant_ops(type);
 		if (!engine_type || !ops)
 			return variant;
 
 		variant.set_type_and_ops(engine_type, ops);
-		reinterpret_cast<void (*)(const char*, char*)>(const_cast<void*>(ops[0]))(static_cast<const char*>(value), static_cast<char*>(variant.storage()));
+		ops->construct_func(static_cast<const char*>(value), static_cast<char*>(variant.storage()));
 		return variant;
 	}
 
@@ -370,9 +370,8 @@ namespace rml::reflection
 		if (variant.is_void())
 			return;
 
-		const auto ops = static_cast<const void* const*>(variant.value_ops());
-		if (ops && ops[2])
-			reinterpret_cast<void (*)(char*)>(const_cast<void*>(ops[2]))(static_cast<char*>(variant.storage()));
+		if (const auto* ops = variant.value_ops(); ops && ops->destruct_func)
+			ops->destruct_func(static_cast<char*>(variant.storage()));
 		variant.set_type_and_ops(nullptr, nullptr);
 	}
 }

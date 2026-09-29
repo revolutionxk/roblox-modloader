@@ -6,10 +6,11 @@
 #include "RobloxModLoader/roblox/graphics/render_queue.hpp"
 #include "RobloxModLoader/roblox/graphics/shader.hpp"
 #include "RobloxModLoader/roblox/graphics/texture.hpp"
+#include "RobloxModLoader/roblox/util/lru_cache.hpp"
+#include "RobloxModLoader/roblox/util/split_hash_table.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
-#include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -54,8 +55,6 @@ namespace RBX::Graphics
 	class AdornRender : public Adorn
 	{
 	public:
-		static constexpr std::size_t k_unit_batches = 58;
-
 		VisualEngine* visual_engine;
 		const DataModel* data_model;
 		union {
@@ -80,12 +79,25 @@ namespace RBX::Graphics
 			std::vector<AdornMesh> meshes[Adorn::Pass_Count];
 		};
 		std::byte reserved_512[24];
-		std::unique_ptr<GeometryBatch> unit_batches[k_unit_batches];
-		std::byte custom_batch_cache[sizeof(void*) + sizeof(std::list<int>) + sizeof(std::unordered_map<int, int>) + sizeof(std::size_t)];
+		std::unique_ptr<GeometryBatch> reserved_batch_0;
+		std::unique_ptr<GeometryBatch> reserved_batch_1;
+		std::unique_ptr<GeometryBatch> box;
+		std::unique_ptr<GeometryBatch> cylinder;
+		std::unique_ptr<GeometryBatch> sphere;
+		std::unique_ptr<GeometryBatch> spherical_annulus;
+		std::unique_ptr<GeometryBatch> cone;
+		std::unique_ptr<GeometryBatch> capped_cone;
+		std::unique_ptr<GeometryBatch> reserved_batches_8[32];
+		std::unique_ptr<GeometryBatch> reserved_batch_40;
+		std::unique_ptr<GeometryBatch> line3d_aa;
+		std::unique_ptr<GeometryBatch> segmented_cylinders[16];
+		union {
+			LRUCache<std::size_t, std::shared_ptr<GeometryBatch>> custom_batch_cache;
+		};
 		std::shared_ptr<Technique> techniques[Adorn::Pass_Count][Adorn::Material_Count];
 		std::shared_ptr<ShaderProgram> programs[Adorn::Material_Count];
 		void* font_subsystem;
-		std::byte texture_cache[sizeof(std::unordered_map<int, int>)];
+		SplitHashMap<Content, TextureRef, static_cast<SplitHashPolicy>(10)> texture_cache;
 
 		VertexStreamerMigrationLayer* get_vertex_streamer() const
 		{
@@ -94,22 +106,22 @@ namespace RBX::Graphics
 
 		const GeometryBatch* unit_box() const
 		{
-			return unit_batches[2].get();
+			return box.get();
 		}
 
 		const GeometryBatch* unit_cylinder() const
 		{
-			return unit_batches[3].get();
+			return cylinder.get();
 		}
 
 		const GeometryBatch* unit_sphere() const
 		{
-			return unit_batches[4].get();
+			return sphere.get();
 		}
 
 		const GeometryBatch* unit_cone(const bool cap) const
 		{
-			return unit_batches[cap ? 7 : 6].get();
+			return (cap ? capped_cone : cone).get();
 		}
 
 		Technique* get_technique(const Adorn::Pass pass, const Adorn::Material material) const
@@ -163,12 +175,15 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 304);
 	RML_ASSERT_OFFSET(AdornRender, viewport_width, 324);
 	RML_ASSERT_OFFSET(AdornRender, meshes, 352);
-	RML_ASSERT_OFFSET(AdornRender, unit_batches, 568);
+	RML_ASSERT_OFFSET(AdornRender, reserved_batch_0, 568);
+	RML_ASSERT_OFFSET(AdornRender, box, 584);
+	RML_ASSERT_OFFSET(AdornRender, line3d_aa, 896);
+	RML_ASSERT_OFFSET(AdornRender, segmented_cylinders, 904);
 	RML_ASSERT_OFFSET(AdornRender, custom_batch_cache, 1032);
 	RML_ASSERT_OFFSET(AdornRender, techniques, 1128);
 	RML_ASSERT_OFFSET(AdornRender, programs, 2792);
 	RML_ASSERT_OFFSET(AdornRender, font_subsystem, 3000);
-	RML_ASSERT_SIZE(AdornRender, 3072);
+	RML_ASSERT_SIZE(AdornRender, 3048);
 #else
 	RML_ASSERT_OFFSET(AdornRender, visual_engine, 144);
 	RML_ASSERT_OFFSET(AdornRender, context, 160);
@@ -179,7 +194,10 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 272);
 	RML_ASSERT_OFFSET(AdornRender, viewport_width, 292);
 	RML_ASSERT_OFFSET(AdornRender, meshes, 320);
-	RML_ASSERT_OFFSET(AdornRender, unit_batches, 536);
+	RML_ASSERT_OFFSET(AdornRender, reserved_batch_0, 536);
+	RML_ASSERT_OFFSET(AdornRender, box, 552);
+	RML_ASSERT_OFFSET(AdornRender, line3d_aa, 864);
+	RML_ASSERT_OFFSET(AdornRender, segmented_cylinders, 872);
 	RML_ASSERT_OFFSET(AdornRender, custom_batch_cache, 1000);
 	RML_ASSERT_OFFSET(AdornRender, techniques, 1080);
 	RML_ASSERT_OFFSET(AdornRender, programs, 2744);
