@@ -125,8 +125,7 @@ namespace rml::assets
 			return std::unexpected("temporary id factory startup returned no instance");
 
 		functions.factory = handle->instance;
-		if (!functions.factory->name || std::string_view(functions.factory->name) != k_factory_name
-		    || functions.factory->name_length != k_factory_name.size())
+		if (!functions.factory->name.data || functions.factory->name.view() != k_factory_name)
 			return std::unexpected("temporary id factory instance failed validation");
 
 		RML_INFO("ContentProviderTemporaryIdFactory at 0x{:X} (startup 0x{:X}, registerTemporaryIdForFile 0x{:X}, {} file ids, {} buffer ids)",

@@ -3,27 +3,23 @@
 #include "RobloxModLoader/internal/common.hpp"
 #include "pointers.hpp"
 
-namespace RBX::Signals
+namespace rbx::signals
 {
-	void Connection::Deleter::operator()(Slot* slot) const noexcept
+	void intrusive_weak_ptr_free(slot_base* slot) noexcept
 	{
 		if (g_pointers && g_pointers->m_roblox_pointers.signal_slot_free)
 			g_pointers->m_roblox_pointers.signal_slot_free(slot);
 	}
 
-	void Connection::disconnect() const
-	{
-		Slot* slot = m_slot.get();
-		if (!slot)
-			return;
-
-		if (g_pointers && g_pointers->m_roblox_pointers.signal_disconnect)
-			g_pointers->m_roblox_pointers.signal_disconnect(slot);
-	}
-
-	void release_holder(Signal* holder) noexcept
+	void intrusive_ptr_release(slots_holder* holder) noexcept
 	{
 		if (holder && g_pointers && g_pointers->m_roblox_pointers.slots_holder_release)
 			g_pointers->m_roblox_pointers.slots_holder_release(holder);
+	}
+
+	void connection::disconnect() const
+	{
+		if (auto* slot = m_slot.get(); slot && g_pointers && g_pointers->m_roblox_pointers.signal_disconnect)
+			g_pointers->m_roblox_pointers.signal_disconnect(slot);
 	}
 }

@@ -12,7 +12,7 @@
 #include "RobloxModLoader/platform/memory/host_image.hpp"
 #include "RobloxModLoader/roblox/reflection/described_creatable.hpp"
 #include "RobloxModLoader/mod/init_context.hpp"
-#include "RobloxModLoader/roblox/reflection/array_view.hpp"
+#include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "app/init_gate.hpp"
 #include "pointers.hpp"
 
@@ -219,7 +219,7 @@ namespace rml::reflection
 		for (const auto* current = &container; current; current = current->base_container)
 		{
 			for (const auto& view : current->views)
-				counted += view.size();
+				counted += view.size;
 		}
 		return counted == container.total;
 	}

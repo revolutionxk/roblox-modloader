@@ -6,10 +6,11 @@
 #include "RobloxModLoader/roblox/graphics/render_queue.hpp"
 #include "RobloxModLoader/roblox/graphics/shader.hpp"
 #include "RobloxModLoader/roblox/graphics/texture.hpp"
+#include "RobloxModLoader/roblox/util/lru_cache.hpp"
+#include "RobloxModLoader/roblox/util/split_hash_table.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
-#include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -81,11 +82,13 @@ namespace RBX::Graphics
 		};
 		std::byte reserved_512[24];
 		std::unique_ptr<GeometryBatch> unit_batches[k_unit_batches];
-		std::byte custom_batch_cache[sizeof(void*) + sizeof(std::list<int>) + sizeof(std::unordered_map<int, int>) + sizeof(std::size_t)];
+		union {
+			LRUCache<unsigned long, std::shared_ptr<GeometryBatch>> custom_batch_cache;
+		};
 		std::shared_ptr<Technique> techniques[Adorn::Pass_Count][Adorn::Material_Count];
 		std::shared_ptr<ShaderProgram> programs[Adorn::Material_Count];
 		void* font_subsystem;
-		std::byte texture_cache[sizeof(std::unordered_map<int, int>)];
+		SplitHashMap<Content, TextureRef, static_cast<SplitHashPolicy>(10)> texture_cache;
 
 		VertexStreamerMigrationLayer* get_vertex_streamer() const
 		{

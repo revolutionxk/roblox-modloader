@@ -3,7 +3,7 @@
 #include "time.hpp"
 #include "reflection/object.hpp"
 #include "security/script_permissions.hpp"
-#include "slots_holder.hpp"
+#include "signals.hpp"
 
 #include "RobloxModLoader/internal/engine_abi.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
@@ -145,11 +145,11 @@ namespace RBX
 		};
 		union
 		{
-			boost::intrusive_ptr<rbx::signals::slots_holder> ancestry_changed_slots;
+			rbx::signal<void(std::shared_ptr<Instance>, std::shared_ptr<Instance>)> ancestry_changed_signal;
 		};
 		union
 		{
-			boost::intrusive_ptr<rbx::signals::slots_holder> property_changed_slots;
+			rbx::signal<void(const Reflection::PropertyDescriptor*)> property_changed_signal;
 		};
 		EngineContext* engine_context;
 
@@ -168,8 +168,8 @@ namespace RBX
 	RML_ASSERT_OFFSET(Object, guid, 0x28);
 	RML_ASSERT_OFFSET(Object, components, 0x38);
 	RML_ASSERT_OFFSET(Object, attributes_and_tags, 0x40);
-	RML_ASSERT_OFFSET(Object, ancestry_changed_slots, 0x48);
-	RML_ASSERT_OFFSET(Object, property_changed_slots, 0x50);
+	RML_ASSERT_OFFSET(Object, ancestry_changed_signal, 0x48);
+	RML_ASSERT_OFFSET(Object, property_changed_signal, 0x50);
 	RML_ASSERT_OFFSET(Object, engine_context, 0x58);
 	RML_ASSERT_SIZE(Object, 0x60);
 	RML_LAYOUT_DIAGNOSTIC_POP()

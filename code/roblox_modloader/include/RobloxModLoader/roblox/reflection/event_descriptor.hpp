@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <vector>
 
 namespace RBX::Reflection
@@ -33,6 +34,11 @@ namespace RBX::Reflection
 		{
 			return EventArguments();
 		}
+	};
+
+	struct GenericSlotFunctor
+	{
+		std::shared_ptr<GenericSlotWrapper> wrapper;
 	};
 
 	class Event;
@@ -66,7 +72,7 @@ namespace RBX::Reflection
 			return is_scriptable();
 		}
 
-		virtual Signals::Connection connect_generic(EventSource* source, std::shared_ptr<GenericSlotWrapper> wrapper) const = 0;
+		virtual rbx::signals::connection connect_generic(EventSource* source, std::shared_ptr<GenericSlotWrapper> wrapper) const = 0;
 		virtual bool is_scriptable() const = 0;
 		virtual bool is_broadcast() const = 0;
 		virtual int get_send_mode() const = 0;
@@ -75,8 +81,8 @@ namespace RBX::Reflection
 		virtual bool has_event_connections(EventSource* source) const = 0;
 		virtual void disconnect_all(EventSource* source) const = 0;
 
-		[[nodiscard]] Signals::Signal* get_signal(EventSource* source) const;
-		[[nodiscard]] std::vector<Signals::Connection> snapshot_connections(EventSource* source) const;
+		[[nodiscard]] rbx::signals::slots_holder* get_signal(EventSource* source) const;
+		[[nodiscard]] std::vector<rbx::signals::connection> snapshot_connections(EventSource* source) const;
 
 	};
 

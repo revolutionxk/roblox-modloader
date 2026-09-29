@@ -94,7 +94,7 @@ namespace rml::dotnet
 			if (!m_signature)
 				return;
 
-			const auto sig_args = m_signature->arguments();
+			const auto& sig_args = m_signature->arguments;
 			if (sig_args.size() == 1 && sig_args[0].type && sig_args[0].type->type_id == RBX::Reflection::TypeId::Tuple)
 				m_tuple_type = sig_args[0].type;
 		}
@@ -118,7 +118,7 @@ namespace rml::dotnet
 			if (!is_valid(index) || !m_signature)
 				return false;
 
-			const auto sig_args = m_signature->arguments();
+			const auto& sig_args = m_signature->arguments;
 			if (static_cast<size_t>(index - 1) >= sig_args.size())
 				return false;
 
@@ -254,7 +254,7 @@ namespace rml::dotnet
 		{
 			if (m_signature)
 			{
-				for (const auto& arg : m_signature->arguments())
+				for (const auto& arg : m_signature->arguments)
 				{
 					if (arg.type == type && !arg.default_handle.is_void())
 					{

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/rsl/condition.hpp"
+#include "RobloxModLoader/roblox/rsl/thread.hpp"
+#include "RobloxModLoader/roblox/util/dynamic_bitset.hpp"
 #include "RobloxModLoader/roblox/graphics/global_shader_data.hpp"
 #include "RobloxModLoader/roblox/graphics/main_render_targets.hpp"
 #include "RobloxModLoader/roblox/util/G3DCore.h"
@@ -11,12 +14,6 @@
 #include <memory>
 #include <vector>
 
-namespace RSL
-{
-	struct Thread;
-	struct Condition;
-	struct Arena;
-}
 
 namespace RBX
 {
@@ -162,8 +159,8 @@ namespace RBX::Graphics
 		float reserved_56;
 		std::uint32_t reserved_60;
 		std::unique_ptr<CullableScene> cullable_scene;
-		std::byte cull_job_thread[8];
-		std::byte cull_job_fence[8];
+		RSL::Thread cull_job_thread;
+		RSL::Condition cull_job_fence;
 		std::atomic<std::uint32_t> cull_job_state;
 		std::byte reserved_92[28];
 		std::vector<CullableSceneNode*> render_nodes;
@@ -174,8 +171,14 @@ namespace RBX::Graphics
 		std::unique_ptr<RenderQueue> performance_overlay_render_queue;
 		std::byte reserved_248[32];
 		std::unique_ptr<RenderQueue> render_queues_280[5];
-		std::byte cull_arena_container_320[40];
-		std::byte cull_arena_container_360[40];
+		dynamic_bitset cull_visibility_320;
+		std::uint64_t reserved_344;
+		std::uint32_t reserved_352;
+		std::uint32_t reserved_356;
+		dynamic_bitset cull_visibility_360;
+		std::uint64_t reserved_384;
+		std::uint32_t reserved_392;
+		std::uint32_t reserved_396;
 		std::unique_ptr<MainView> main_view;
 		std::unique_ptr<EnvMapView> env_map_view;
 		std::byte reserved_416[16];
@@ -370,7 +373,8 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(SceneManager, render_queue, 144);
 	RML_ASSERT_OFFSET(SceneManager, performance_overlay_render_queue, 240);
 	RML_ASSERT_OFFSET(SceneManager, render_queues_280, 280);
-	RML_ASSERT_OFFSET(SceneManager, cull_arena_container_320, 320);
+	RML_ASSERT_OFFSET(SceneManager, cull_visibility_320, 320);
+	RML_ASSERT_OFFSET(SceneManager, cull_visibility_360, 360);
 	RML_ASSERT_OFFSET(SceneManager, main_view, 400);
 	RML_ASSERT_OFFSET(SceneManager, forced_bloom, 432);
 	RML_ASSERT_OFFSET(SceneManager, sky_enabled, 435);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RobloxModLoader/roblox/reflection/array_view.hpp"
+#include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "RobloxModLoader/roblox/security/script_permissions.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "descriptor.hpp"

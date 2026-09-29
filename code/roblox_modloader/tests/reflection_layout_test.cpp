@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "RobloxModLoader/roblox/reflection/array_view.hpp"
+#include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "RobloxModLoader/roblox/reflection/creatable.hpp"
 
 #include <type_traits>

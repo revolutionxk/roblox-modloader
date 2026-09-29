@@ -346,8 +346,8 @@ namespace rml::reflection
 
 		auto& event = *reinterpret_cast<RBX::Reflection::EventDesc*>(storage);
 		event.signal = static_cast<decltype(event.signal)>(member_offset);
-		std::construct_at(reinterpret_cast<std::vector<SignatureDescriptor::Argument>*>(&event.signature.m_arguments), std::move(items));
-		std::construct_at(reinterpret_cast<std::vector<SignatureDescriptor::Result>*>(&event.signature.m_result_types), std::vector<SignatureDescriptor::Result>{{void_type, nullptr, nullptr}});
+		std::construct_at(&event.signature.arguments, std::move(items));
+		std::construct_at(&event.signature.result_types, std::vector<SignatureDescriptor::Result>{{void_type, nullptr, nullptr}});
 
 		return member;
 	}

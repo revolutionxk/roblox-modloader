@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/rsl/array_view.hpp"
 #include "RobloxModLoader/roblox/signals.hpp"
 #include "RobloxModLoader/roblox/util/Extents.h"
 #include "RobloxModLoader/roblox/util/G3DCore.h"
@@ -14,16 +15,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-
-namespace RSL
-{
-	template<typename T>
-	struct ArrayView
-	{
-		const T* data;
-		std::size_t size;
-	};
-}
 
 namespace RBX
 {

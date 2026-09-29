@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <span>
+#include <vector>
 #include <string>
 #include <unordered_map>
 
@@ -235,53 +236,17 @@ namespace RBX::Reflection
 			const ClassDescriptor* class_descriptor;
 		};
 
-		template<typename T>
-		struct StdVector
-		{
-			T* m_begin{nullptr};
-			T* m_end{nullptr};
-			T* m_capacity{nullptr};
-
-			[[nodiscard]] bool empty() const noexcept
-			{
-				return m_begin == m_end;
-			}
-			[[nodiscard]] std::size_t size() const noexcept
-			{
-				return static_cast<std::size_t>(m_end - m_begin);
-			}
-			[[nodiscard]] T& front() const
-			{
-				return *m_begin;
-			}
-			[[nodiscard]] std::span<T> span() const noexcept
-			{
-				return {m_begin, m_end};
-			}
-		};
-
-		StdVector<Argument> m_arguments;
-		StdVector<Result> m_result_types;
-
-		[[nodiscard]] std::span<const Argument> arguments() const noexcept
-		{
-			return m_arguments.span();
-		}
-
-		[[nodiscard]] std::span<const Result> result_types() const noexcept
-		{
-			return m_result_types.span();
-		}
+		std::vector<Argument> arguments;
+		std::vector<Result> result_types;
 
 		[[nodiscard]] const Type* first_result_type() const noexcept
 		{
-			return m_result_types.empty() ? nullptr : m_result_types.front().type;
+			return result_types.empty() ? nullptr : result_types.front().type;
 		}
 	};
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(SignatureDescriptor::Argument, 0x70);
 	RML_ASSERT_SIZE(SignatureDescriptor::Result, 0x18);
-	RML_ASSERT_SIZE(SignatureDescriptor::StdVector<void*>, 0x18);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 	static_assert(sizeof(SignatureDescriptor) == 0x30);
 }

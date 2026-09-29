@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RobloxModLoader/roblox/job.hpp"
-#include "RobloxModLoader/roblox/reflection/array_view.hpp"
+#include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "RobloxModLoader/roblox/task_scheduler.hpp"
 
 #include <cstdint>
