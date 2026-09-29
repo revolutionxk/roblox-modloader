@@ -3,6 +3,7 @@
 #include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/qt/qarray_data.hpp"
 #include "RobloxModLoader/qt/qlist.hpp"
+#include "RobloxModLoader/qt/qbytearray.hpp"
 #include "RobloxModLoader/qt/qstring.hpp"
 #include "RobloxModLoader/qt/qt_module.hpp"
 #include "RobloxModLoader/qt/qwidget.hpp"
@@ -25,7 +26,7 @@ namespace rml::qt
 		if (!fn)
 			return;
 		const QString style(css);
-		fn(this, style.data());
+		fn(this, &style);
 	}
 
 	std::string QApplication::style_sheet() const
@@ -33,22 +34,18 @@ namespace rml::qt
 		static void* const get = detail::widgets_export("QApplication::styleSheet() const");
 		static void* const to_utf8 = detail::core_export("QString::toUtf8() const");
 		
-		static const auto const_data = detail::core_optional<const char* (*)(const void* self)>("QByteArray::constData() const");
+		static const auto const_data = detail::core_optional<const char* (*)(const QByteArray* self)>("QByteArray::constData() const");
 
 		if (!get || !to_utf8)
 			return {};
 
-		void* qstring = nullptr;
-		void* qbytearray = nullptr;
-		memory::call_returning_member(get, qstring, static_cast<const void*>(this));
-		memory::call_returning_member(to_utf8, qbytearray, static_cast<const void*>(&qstring));
+		QString text;
+		QByteArray bytes;
+		memory::call_returning_member(get, text, this);
+		memory::call_returning_member(to_utf8, bytes, static_cast<const QString*>(&text));
 
-		const char* const utf8 = const_data ? const_data(&qbytearray) : detail::array_data_begin(qbytearray);
-		std::string result = utf8 ? utf8 : "";
-
-		detail::destroy_qbytearray(qbytearray);
-		detail::destroy_qstring(qstring);
-		return result;
+		const char* const utf8 = const_data ? const_data(&bytes) : bytes.d ? bytes.d->data() : nullptr;
+		return utf8 ? utf8 : "";
 	}
 
 	std::vector<QWidget*> QApplication::all_widgets()
@@ -60,7 +57,7 @@ namespace rml::qt
 			return widgets;
 
 		QList<QWidget*> list;
-		memory::call_returning(fn, *list.raw_storage());
+		memory::call_returning(fn, list);
 
 		widgets.reserve(static_cast<std::size_t>(list.size()));
 		for (QWidget* widget : list)

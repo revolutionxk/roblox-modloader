@@ -10,7 +10,7 @@ namespace rml::qt
 	QTimer* QTimer::create(QObject* parent)
 	{
 		static const auto construct = detail::core<void (*)(void*, void*)>("QTimer::QTimer(QObject*)");
-		return detail::heap_construct<QTimer>(detail::WIDGET_INSTANCE_SIZE, construct, parent);
+		return detail::heap_construct<QTimer>(sizeof(QTimer), construct, parent);
 	}
 
 	QtOwned<QTimer> QTimer::create_owned()

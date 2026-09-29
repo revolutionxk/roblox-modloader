@@ -10,7 +10,7 @@
 namespace rml::memory
 {
 	template<typename T>
-	concept IndirectlyReturnable = std::is_trivially_copyable_v<T>;
+	concept IndirectlyReturnable = std::is_object_v<T> && !std::is_array_v<T>;
 
 	template<typename... T>
 	concept ForeignArguments = (std::is_trivially_copyable_v<T> && ...);
@@ -50,7 +50,7 @@ namespace rml::memory
 			using Slot = detail::IndirectResult<sizeof(Result)>;
 
 			const Slot value = reinterpret_cast<Slot (*)(Args...)>(fn)(args...);
-			std::memcpy(std::addressof(result), value.m_storage, sizeof(Result));
+			std::memcpy(static_cast<void*>(std::addressof(result)), value.m_storage, sizeof(Result));
 		}
 	}
 
@@ -70,7 +70,7 @@ namespace rml::memory
 			using Slot = detail::IndirectResult<sizeof(Result)>;
 
 			const Slot value = reinterpret_cast<Slot (*)(Self, Args...)>(fn)(self, args...);
-			std::memcpy(std::addressof(result), value.m_storage, sizeof(Result));
+			std::memcpy(static_cast<void*>(std::addressof(result)), value.m_storage, sizeof(Result));
 		}
 	}
 }

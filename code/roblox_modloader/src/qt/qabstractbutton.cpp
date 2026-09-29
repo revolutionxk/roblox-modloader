@@ -14,7 +14,7 @@ namespace rml::qt
 		if (fn)
 		{
 			const QString value(text);
-			fn(this, value.data());
+			fn(this, &value);
 		}
 	}
 
