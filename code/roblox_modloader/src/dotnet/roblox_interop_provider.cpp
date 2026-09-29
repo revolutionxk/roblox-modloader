@@ -102,11 +102,12 @@ namespace rml::dotnet
 		const auto type = descriptor.get_signature().first_result_type();
 		const bool indirect_result = TypeMarshaler::returns_indirectly(type);
 
-		const auto ret = function.invoke(arguments, indirect_result);
+		RBX::Function::ReturnStorage result{};
+		const auto ret = function.invoke(arguments, indirect_result, result);
 		if constexpr (platform::abi::callee_destroys_arguments)
 			arguments.hand_over_by_value_arguments();
 
-		TypeMarshaler::encode_return_value(type, ret, reinterpret_cast<uintptr_t>(&arguments.return_value), out);
+		TypeMarshaler::encode_return_value(type, ret, result.bytes, out);
 	}
 
 	RBX::Reflection::EventArguments build_event_fire_args(const RBX::Reflection::EventDescriptor* descriptor, const InteropVariant* args, const uint32_t arg_count)

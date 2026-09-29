@@ -18,13 +18,6 @@
 
 namespace rml::dotnet
 {
-	inline constexpr std::size_t kEngineReturnSlotTailBytes = 56;
-
-	static_assert(sizeof(uint64_t) + kEngineReturnSlotTailBytes >= TypeMarshaler::kMaxBlittableEngineTypeBytes,
-	    "EngineReturnSlot tail must leave enough contiguous room after Arguments::return_value for the largest blittable engine return type");
-
-	using EngineReturnSlot = std::array<std::byte, kEngineReturnSlotTailBytes>;
-
 	template<class T>
 	class ByValueArguments
 	{
@@ -70,7 +63,6 @@ namespace rml::dotnet
 
 	class DotNetArguments final : public RBX::Reflection::FunctionDescriptor::Arguments
 	{
-		alignas(16) EngineReturnSlot m_return_slot{};
 		const InteropVariant* m_args;
 		uint32_t m_count;
 
@@ -89,8 +81,6 @@ namespace rml::dotnet
 		    m_count(count),
 		    m_signature(signature)
 		{
-			return_value = 0;
-
 			if (!m_signature)
 				return;
 
@@ -278,12 +268,6 @@ namespace rml::dotnet
 			out = *ptr;
 			return true;
 		}
-
-		RML_LAYOUT_GUARD_BEGIN()
-			RML_ASSERT_LAYOUT_OFFSET(DotNetArguments, m_return_slot,
-			    offsetof(RBX::Reflection::FunctionDescriptor::Arguments, return_value) +
-			        sizeof(RBX::Reflection::FunctionDescriptor::Arguments::return_value));
-		RML_LAYOUT_GUARD_END()
 	};
 
 } // namespace rml::dotnet
