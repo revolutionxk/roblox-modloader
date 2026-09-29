@@ -31,6 +31,8 @@ namespace rml::memory
 	{
 #if defined(RML_WINDOWS)
 		const auto* thunk = *reinterpret_cast<const unsigned char* const*>(&pmf);
+		if (thunk && thunk[0] == 0xE9)
+			thunk += 5 + *reinterpret_cast<const std::int32_t*>(thunk + 1);
 		if (!thunk || thunk[0] != 0x48 || thunk[1] != 0x8B || thunk[2] != 0x01)
 			return static_cast<std::size_t>(-1);
 

@@ -61,21 +61,21 @@ namespace rml::reflection
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
 		entry->layout.destroy(self);
-		return reinterpret_cast<void* (*)(void*, unsigned int)>(entry->engine_vtable[0])(self, flags);
+		return reinterpret_cast<void* (*)(void*, unsigned int)>(entry->engine_vtable[platform::abi::scalar_deleting_destructor_slot])(self, flags);
 	}
 #else
 	static void mod_complete_dtor(void* self)
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
 		entry->layout.destroy(self);
-		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[0])(self);
+		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[platform::abi::complete_destructor_slot])(self);
 	}
 
 	static void mod_deleting_dtor(void* self)
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
 		entry->layout.destroy(self);
-		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[1])(self);
+		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[platform::abi::deleting_destructor_slot])(self);
 	}
 #endif
 
@@ -474,10 +474,10 @@ namespace rml::reflection
 			auto& vtable = entry.vtable = memory::VtableCopy(entry.engine_vtable, engine_vtable_slots(entry.engine_vtable));
 
 #if defined(RML_WINDOWS)
-			vtable.set(0, reinterpret_cast<void*>(&mod_scalar_deleting_dtor));
+			vtable.set(platform::abi::scalar_deleting_destructor_slot, reinterpret_cast<void*>(&mod_scalar_deleting_dtor));
 #else
-			vtable.set(0, reinterpret_cast<void*>(&mod_complete_dtor));
-			vtable.set(1, reinterpret_cast<void*>(&mod_deleting_dtor));
+			vtable.set(platform::abi::complete_destructor_slot, reinterpret_cast<void*>(&mod_complete_dtor));
+			vtable.set(platform::abi::deleting_destructor_slot, reinterpret_cast<void*>(&mod_deleting_dtor));
 #endif
 
 			std::size_t merged = 0;
