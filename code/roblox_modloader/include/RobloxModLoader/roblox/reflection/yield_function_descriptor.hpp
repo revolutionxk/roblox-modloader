@@ -7,10 +7,13 @@
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
+#include <memory>
+#include <string>
 
 namespace RBX::Reflection
 {
 	class YieldFunction;
+	class YieldFunctionState;
 
 	class YieldFunctionDescriptor : public MemberDescriptor
 	{
@@ -18,16 +21,10 @@ namespace RBX::Reflection
 		typedef YieldFunction ConstMember;
 		typedef YieldFunction Member;
 
-		struct Context
-		{
-			void* state;
-			void* control_block;
-		};
+		using ResumeCallback = void (*)(YieldFunctionState* state, const Variant& result);
+		using ErrorCallback = void (*)(const std::shared_ptr<YieldFunctionState>& state, std::string message);
 
-		using ResumeCallback = void (*)(void* continuation, Variant* result);
-		using ErrorCallback = void (*)(void* continuation, Variant* message);
-
-		virtual void execute(DescribedBase* instance, FunctionDescriptor::Arguments& arguments, Context context, ResumeCallback resume, ErrorCallback error) const = 0;
+		virtual void execute(DescribedBase* instance, FunctionDescriptor::Arguments& arguments, const std::shared_ptr<YieldFunctionState>& state, ResumeCallback resume, ErrorCallback error) const = 0;
 
 		[[nodiscard]] const SignatureDescriptor& get_signature() const
 		{
