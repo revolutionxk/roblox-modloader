@@ -63,7 +63,7 @@ namespace rml::render::detail
 				auto texture = m_device.create_texture_impl(Texture::Type::Type_2D, desc.colors[i], desc.width, desc.height, 1, 1, 1, 1, k_target_usage, std::format("{}.color{}", name, i));
 				if (!texture)
 					return nullptr;
-				attachments.push_back(Renderbuffer{texture, 0, 0, 0});
+				attachments.push_back(Renderbuffer{texture});
 				colors.push_back(std::move(texture));
 			}
 
@@ -74,7 +74,7 @@ namespace rml::render::detail
 				depth = m_device.create_texture_impl(Texture::Type::Type_2D, *desc.depth, desc.width, desc.height, 1, 1, 1, 1, k_target_usage, name + ".depth");
 				if (!depth)
 					return nullptr;
-				depth_attachment = Renderbuffer{depth, 0, 0, 0};
+				depth_attachment = Renderbuffer{depth};
 			}
 
 			auto framebuffer = m_device.create_framebuffer_impl(attachments, depth_attachment, name);

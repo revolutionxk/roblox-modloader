@@ -73,13 +73,21 @@ namespace RBX::Graphics
 
 		std::uint8_t cull_mode;
 		std::uint8_t fill_mode;
-		std::uint8_t reserved_2;
+
+	private:
+		[[maybe_unused]] std::uint8_t reserved_2;
+
+	public:
 		std::uint8_t depth_clip_mode;
 		std::int32_t depth_bias;
 
 		static RasterizerState make(const CullMode cull, const std::int32_t bias = 0, const FillMode fill = Fill_Solid)
 		{
-			return {static_cast<std::uint8_t>(cull), static_cast<std::uint8_t>(fill), 0, 0, bias};
+			RasterizerState state{};
+			state.cull_mode = cull;
+			state.fill_mode = fill;
+			state.depth_bias = bias;
+			return state;
 		}
 	};
 
@@ -106,14 +114,12 @@ namespace RBX::Graphics
 			Color_All = Color_R | Color_G | Color_B | Color_A
 		};
 
-		std::uint8_t color_mask;
-		std::uint8_t reserved_1[3];
+		std::uint32_t color_mask;
 		std::uint8_t src_rgb;
 		std::uint8_t dst_rgb;
 		std::uint8_t src_alpha;
 		std::uint8_t dst_alpha;
 		std::uint8_t alpha_to_coverage;
-		std::uint8_t reserved_9[3];
 
 		static BlendState make(const Factor src, const Factor dst, const std::uint8_t mask = Color_All)
 		{
@@ -122,7 +128,7 @@ namespace RBX::Graphics
 
 		static BlendState make(const Factor src_rgb, const Factor dst_rgb, const Factor src_alpha, const Factor dst_alpha, const std::uint8_t mask = Color_All)
 		{
-			return {mask, {0, 0, 0}, static_cast<std::uint8_t>(src_rgb), static_cast<std::uint8_t>(dst_rgb), static_cast<std::uint8_t>(src_alpha), static_cast<std::uint8_t>(dst_alpha), 0, {0, 0, 0}};
+			return {mask, static_cast<std::uint8_t>(src_rgb), static_cast<std::uint8_t>(dst_rgb), static_cast<std::uint8_t>(src_alpha), static_cast<std::uint8_t>(dst_alpha), 0};
 		}
 
 		static BlendState opaque()
@@ -170,11 +176,10 @@ namespace RBX::Graphics
 		std::uint8_t function;
 		std::uint8_t write;
 		std::uint8_t stencil_mode;
-		std::uint8_t reserved_3;
 
 		static DepthState make(const Function function, const bool write, const StencilMode stencil = Stencil_None)
 		{
-			return {static_cast<std::uint8_t>(function), static_cast<std::uint8_t>(write), static_cast<std::uint8_t>(stencil), 0};
+			return {static_cast<std::uint8_t>(function), static_cast<std::uint8_t>(write), static_cast<std::uint8_t>(stencil)};
 		}
 	};
 
@@ -183,7 +188,7 @@ namespace RBX::Graphics
 	RML_ASSERT_SIZE(SamplerState, 16);
 	RML_ASSERT_SIZE(RasterizerState, 8);
 	RML_ASSERT_SIZE(BlendState, 12);
-	RML_ASSERT_SIZE(DepthState, 4);
+	RML_ASSERT_SIZE(DepthState, 3);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	struct PassClear
@@ -200,7 +205,11 @@ namespace RBX::Graphics
 		};
 
 		std::uint32_t mask;
-		std::uint32_t reserved_4[2];
+
+	private:
+		[[maybe_unused]] std::uint32_t reserved_4[2];
+
+	public:
 		float color[4][4];
 		float depth;
 		std::uint32_t stencil;

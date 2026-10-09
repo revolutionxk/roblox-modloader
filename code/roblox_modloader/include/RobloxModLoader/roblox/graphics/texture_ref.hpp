@@ -26,20 +26,41 @@ namespace RBX::Graphics
 	{
 		std::uint32_t width;
 		std::uint32_t height;
-		std::uint32_t reserved_8;
-		std::uint32_t reserved_12;
-		std::uint32_t reserved_16;
-		std::uint32_t reserved_20;
-		std::uint16_t reserved_24;
-		std::uint8_t reserved_26;
-		std::uint8_t reserved_27;
-		std::uint32_t reserved_28;
-		std::shared_ptr<ColorBlock> color_block;
-		std::int32_t reserved_48;
-		std::int32_t reserved_52;
-		std::uint32_t alpha_max;
-		std::uint8_t reserved_60[28];
 
+	private:
+		std::uint32_t reserved_8;
+		std::uint32_t reserved_c;
+		std::uint32_t reserved_10;
+		std::uint32_t reserved_14;
+		std::uint16_t reserved_18;
+		std::uint8_t reserved_1a;
+		std::uint8_t reserved_1b;
+		std::uint32_t reserved_1c;
+
+	public:
+		std::shared_ptr<ColorBlock> color_block;
+
+	private:
+		std::int32_t reserved_30;
+		std::int32_t reserved_34;
+
+	public:
+		std::uint32_t alpha_max;
+
+	private:
+		std::uint64_t reserved_40[2];
+		std::uint32_t reserved_50;
+		std::uint16_t reserved_54;
+		std::uint8_t reserved_56;
+
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_OFFSET(ImageInfo, reserved_1b, 0x1B);
+		RML_ASSERT_OFFSET(ImageInfo, reserved_30, 0x30);
+		RML_ASSERT_OFFSET(ImageInfo, reserved_40, 0x40);
+		RML_ASSERT_OFFSET(ImageInfo, reserved_56, 0x56);
+		RML_LAYOUT_GUARD_END()
+
+	public:
 		bool has_alpha() const
 		{
 			return alpha_max != 255;
@@ -57,14 +78,15 @@ namespace RBX::Graphics
 	public:
 		std::shared_ptr<Texture> texture;
 		std::shared_ptr<Texture> texture_override;
-		void* reserved_32;
-		void* reserved_40;
+
+	private:
+		std::weak_ptr<void> reserved_20;
+
+	public:
 		float lod_min;
 		float lod_max;
 		ImageInfo info;
 		TextureLoadStatus status;
-		std::uint8_t reserved_145;
-		std::uint8_t reserved_146[6];
 
 		const std::shared_ptr<Texture>& get_texture() const
 		{
@@ -100,6 +122,10 @@ namespace RBX::Graphics
 
 	private:
 		TextureRefData() = delete;
+
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_OFFSET(TextureRefData, reserved_20, 0x20);
+		RML_LAYOUT_GUARD_END()
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()

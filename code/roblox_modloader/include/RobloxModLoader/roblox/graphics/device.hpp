@@ -20,12 +20,29 @@ namespace RBX::Graphics
 	public:
 		struct Statistics
 		{
-			std::uint32_t reserved_0;
-			bool reserved_4;
-			std::byte reserved_5[3];
-			std::byte reserved_8[0x30];
-			bool reserved_38;
-			std::byte reserved_39[7];
+		private:
+			[[maybe_unused]] float reserved_0;
+			[[maybe_unused]] bool reserved_4;
+
+		public:
+			double display_interval_ms;
+			double vsync_gap_ms;
+			double frame_target_ms;
+			double screen_max_fps;
+
+		private:
+			[[maybe_unused]] double reserved_28;
+
+		public:
+			std::uint32_t frames_within_target;
+			std::uint32_t frames_missed;
+			bool vsync_stats_valid;
+
+		private:
+			RML_LAYOUT_GUARD_BEGIN()
+			RML_ASSERT_OFFSET(Statistics, reserved_4, 0x4);
+			RML_ASSERT_OFFSET(Statistics, reserved_28, 0x28);
+			RML_LAYOUT_GUARD_END()
 		};
 
 		struct FrameTimingDetails
@@ -68,8 +85,13 @@ namespace RBX::Graphics
 		virtual std::shared_ptr<ShaderProgram> create_shader_program(const std::shared_ptr<Shader>* shaders, std::size_t count, const std::string& name) = 0;
 		virtual std::shared_ptr<Buffer> create_buffer(Buffer::Type type, unsigned size, unsigned element_size, Buffer::Usage usage, const std::string& name) = 0;
 		virtual const DeviceCaps& get_caps() const = 0;
-		virtual void reserved_28() = 0;
+		virtual void set_display_maximum_refresh_rate(double rate) = 0;
 		virtual Statistics get_statistics() const = 0;
+
+	private:
+		virtual void reserved_30() = 0;
+
+	public:
 		virtual void set_frame_timing_details(FrameTimingDetails details) = 0;
 		virtual double consume_drawable_wait_stats() = 0;
 		virtual void suspend() = 0;
@@ -95,8 +117,8 @@ namespace RBX::Graphics
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_OFFSET(Device::Statistics, reserved_8, 8);
-	RML_ASSERT_OFFSET(Device::Statistics, reserved_38, 0x38);
+	RML_ASSERT_OFFSET(Device::Statistics, display_interval_ms, 0x8);
+	RML_ASSERT_OFFSET(Device::Statistics, vsync_stats_valid, 0x38);
 	RML_ASSERT_SIZE(Device::Statistics, 0x40);
 	RML_ASSERT_SIZE(Device::VideoMemoryInfo, 24);
 	RML_LAYOUT_DIAGNOSTIC_POP()

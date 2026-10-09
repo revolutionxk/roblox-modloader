@@ -233,7 +233,7 @@ namespace clouds
 		const float seed_z = static_cast<float>((seed >> 16) % 100019u) * 1.91f;
 		const RBX::Color3 albedo = linear(settings.color);
 		const RBX::Vector4& sky_ambient = globals.ambient_color;
-		const RBX::Vector4& fog = globals.fog_color;
+		const RBX::Vector4& fog = globals.fog_color_global_force_field_time;
 		const float ambient = settings.ambient_intensity;
 		const float sun_scale = settings.sun_intensity;
 		const float ms = 0.1f + 0.75f * settings.multi_scattering;

@@ -57,14 +57,13 @@ namespace RBX::Graphics
 		union {
 			std::unordered_map<std::string, unsigned> shader_flags;
 		};
-		bool reserved_200;
-		std::byte reserved_201[7];
+		bool shaders_changed;
 		union {
 			std::string pack_name;
 		};
-		std::uint64_t reserved_232;
-		bool reserved_240;
-		std::byte reserved_241[15];
+		std::int64_t pack_last_write_time;
+		bool pack_reload_pending;
+		double pack_reload_time;
 		union {
 			std::unique_ptr<FW::FileWatcher> file_watcher;
 		};
@@ -75,7 +74,6 @@ namespace RBX::Graphics
 			std::string key_scratch;
 		};
 		bool deferred_loading;
-		std::byte reserved_313[7];
 
 		~ShaderManager() override
 		{

@@ -36,7 +36,6 @@ namespace RBX::Graphics
 	struct AdornMesh : Renderable
 	{
 		Adorn::Material material;
-		std::uint32_t reserved_12;
 		const GeometryBatch* batch;
 		float view_depth;
 		float radius;
@@ -45,7 +44,6 @@ namespace RBX::Graphics
 		Color4 color;
 		Matrix3 rotation;
 		Vector3 translation;
-		float reserved_116;
 		std::shared_ptr<Texture> texture;
 
 	private:
@@ -66,29 +64,29 @@ namespace RBX::Graphics
 		};
 		float viewport_height_at_submit;
 		CoordinateFrame object_to_world;
-		std::uint32_t reserved_252;
 		std::shared_ptr<Texture> current_texture;
 		std::shared_ptr<VertexLayout> vertex_layout;
 		bool texture_dirty;
 		std::uint8_t texture_flags;
-		std::uint16_t reserved_290;
 		float viewport_width;
 		float viewport_height;
-		std::byte reserved_300[20];
+		Rect2DValue gui_clip_rect;
 		union {
 			std::vector<AdornMesh> meshes[Adorn::Pass_Count];
 		};
-		std::byte reserved_512[24];
-		std::unique_ptr<GeometryBatch> reserved_batch_0;
-		std::unique_ptr<GeometryBatch> reserved_batch_1;
+
+	private:
+		[[maybe_unused]] std::uint64_t reserved_200[3];
+
+	public:
+		std::unique_ptr<GeometryBatch> quads[2];
 		std::unique_ptr<GeometryBatch> box;
 		std::unique_ptr<GeometryBatch> cylinder;
 		std::unique_ptr<GeometryBatch> sphere;
 		std::unique_ptr<GeometryBatch> spherical_annulus;
 		std::unique_ptr<GeometryBatch> cone;
 		std::unique_ptr<GeometryBatch> capped_cone;
-		std::unique_ptr<GeometryBatch> reserved_batches_8[32];
-		std::unique_ptr<GeometryBatch> reserved_batch_40;
+		std::unique_ptr<GeometryBatch> pyramids[33];
 		std::unique_ptr<GeometryBatch> line3d_aa;
 		std::unique_ptr<GeometryBatch> segmented_cylinders[16];
 		union {
@@ -175,7 +173,7 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 304);
 	RML_ASSERT_OFFSET(AdornRender, viewport_width, 324);
 	RML_ASSERT_OFFSET(AdornRender, meshes, 352);
-	RML_ASSERT_OFFSET(AdornRender, reserved_batch_0, 568);
+	RML_ASSERT_OFFSET(AdornRender, quads, 568);
 	RML_ASSERT_OFFSET(AdornRender, box, 584);
 	RML_ASSERT_OFFSET(AdornRender, line3d_aa, 896);
 	RML_ASSERT_OFFSET(AdornRender, segmented_cylinders, 904);
@@ -194,7 +192,7 @@ namespace RBX::Graphics
 	RML_ASSERT_OFFSET(AdornRender, vertex_layout, 272);
 	RML_ASSERT_OFFSET(AdornRender, viewport_width, 292);
 	RML_ASSERT_OFFSET(AdornRender, meshes, 320);
-	RML_ASSERT_OFFSET(AdornRender, reserved_batch_0, 536);
+	RML_ASSERT_OFFSET(AdornRender, quads, 536);
 	RML_ASSERT_OFFSET(AdornRender, box, 552);
 	RML_ASSERT_OFFSET(AdornRender, line3d_aa, 864);
 	RML_ASSERT_OFFSET(AdornRender, segmented_cylinders, 872);

@@ -11,23 +11,47 @@ namespace RBX::Graphics
 	class Device;
 	class IShaderManager;
 	class SceneManager;
+	class SoftwareOcclusion;
+
+	struct SoftwareOcclusionDeleter
+	{
+		void operator()(SoftwareOcclusion* occlusion) const;
+	};
 
 	class VisualEngine
 	{
-	public:
+	private:
 #if defined(RML_WINDOWS)
-		std::byte reserved_0[0xD8];
+		[[maybe_unused]] std::byte reserved_0[0xD8];
 #else
-		std::byte reserved_0[0x108];
+		[[maybe_unused]] std::byte reserved_0[0x108];
 #endif
+
+	public:
 		Device* device;
-		std::byte reserved_after_device[0xAB8];
+
+	private:
+		[[maybe_unused]] std::byte reserved_after_device[0xAB8];
+
+	public:
 		union {
 			std::unique_ptr<IShaderManager> shader_manager;
 		};
-		std::byte reserved_bd0[0x10];
+
+	private:
+		union {
+			[[maybe_unused]] std::shared_ptr<SoftwareOcclusion> reserved_software_occlusion_shared;
+		};
+
+	public:
 		IShaderManager* external_shader_manager;
-		std::byte reserved_be8[0x8];
+
+	private:
+		union {
+			[[maybe_unused]] std::unique_ptr<SoftwareOcclusion, SoftwareOcclusionDeleter> reserved_software_occlusion;
+		};
+
+	public:
 		union {
 			std::unique_ptr<SceneManager> scene_manager;
 		};

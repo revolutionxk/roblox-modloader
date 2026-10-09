@@ -146,18 +146,25 @@ namespace rml::render::detail
 			return std::nullopt;
 		};
 
-		if (const auto found = in_queue(scene.render_queue.get()))
-			return found;
-		if (const auto found = in_queue(scene.capture_render_queue.get()))
-			return found;
-		if (const auto found = in_queue(scene.performance_overlay_render_queue.get()))
-			return found;
-		for (const auto& queue : scene.render_queues_176)
+		const RBX::Graphics::RenderQueue* queues[] = {
+		    scene.render_queue.get(),
+		    scene.player_gui_render_queue.get(),
+		    scene.capture_render_queue.get(),
+		    scene.shadow_render_queue.get(),
+		    scene.gui_render_queue.get(),
+		    scene.gui_prepass_render_queue.get(),
+		    scene.env_map_render_queue.get(),
+		    scene.terrain_feedback_render_queue.get(),
+		    scene.highlight_render_queues[0].get(),
+		    scene.highlight_render_queues[1].get(),
+		    scene.performance_overlay_render_queue.get(),
+		};
+		for (const auto* queue : queues)
 		{
-			if (const auto found = in_queue(queue.get()))
+			if (const auto found = in_queue(queue))
 				return found;
 		}
-		for (const auto& queue : scene.render_queues_280)
+		for (const auto& queue : scene.studio_selection_render_queues)
 		{
 			if (const auto found = in_queue(queue.get()))
 				return found;

@@ -69,8 +69,8 @@ namespace RBX::Graphics
 		Mode mode;
 		std::uint32_t sample_count;
 		bool memoryless_supported;
-		bool reserved_441;
-		bool reserved_442;
+		bool gbuffer_failed;
+		bool msaa_failed;
 
 		Texture* main_color() const
 		{
