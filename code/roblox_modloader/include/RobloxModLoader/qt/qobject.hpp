@@ -42,8 +42,8 @@ namespace rml::qt
 
 	private:
 		RML_LAYOUT_GUARD_BEGIN()
-			RML_ASSERT_LAYOUT_OFFSET(QObject, d_ptr, sizeof(void*));
-			RML_ASSERT_LAYOUT_SIZE(QObject, sizeof(void*) * 2);
+		RML_ASSERT_LAYOUT_OFFSET(QObject, d_ptr, sizeof(void*));
+		RML_ASSERT_LAYOUT_SIZE(QObject, sizeof(void*) * 2);
 		RML_LAYOUT_GUARD_END()
 	};
 }
