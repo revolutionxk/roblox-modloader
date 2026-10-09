@@ -29,6 +29,11 @@ namespace RBX::Reflection
 		typedef Function ConstMember;
 		typedef Function Member;
 
+		struct Attributes : Descriptor::Attributes
+		{
+			bool is_no_mutation{false};
+		};
+
 		class Arguments
 		{
 		public:
@@ -70,16 +75,27 @@ namespace RBX::Reflection
 			return kind;
 		}
 
+		bool is_no_mutation;
 		SignatureDescriptor signature;
 		Kind kind;
-		std::uint32_t reserved_7c;
-	};
 
-	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(FunctionDescriptor, 0x80);
-	RML_ASSERT_OFFSET(FunctionDescriptor, signature, 0x48);
-	RML_ASSERT_OFFSET(FunctionDescriptor, kind, 0x78);
-	RML_LAYOUT_DIAGNOSTIC_POP()
+	private:
+		RML_LAYOUT_GUARD_BEGIN()
+#if defined(RML_WINDOWS)
+		RML_ASSERT_SIZE(FunctionDescriptor, 0x90);
+		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0x10);
+		RML_ASSERT_OFFSET(FunctionDescriptor, is_no_mutation, 0x50);
+		RML_ASSERT_OFFSET(FunctionDescriptor, signature, 0x58);
+		RML_ASSERT_OFFSET(FunctionDescriptor, kind, 0x88);
+#else
+		RML_ASSERT_SIZE(FunctionDescriptor, 0x88);
+		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0xC);
+		RML_ASSERT_OFFSET(FunctionDescriptor, is_no_mutation, 0x4C);
+		RML_ASSERT_OFFSET(FunctionDescriptor, signature, 0x50);
+		RML_ASSERT_OFFSET(FunctionDescriptor, kind, 0x80);
+#endif
+		RML_LAYOUT_GUARD_END()
+	};
 
 	class BoundFunctionDescriptor : public FunctionDescriptor
 	{
@@ -95,9 +111,15 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(BoundFunctionDescriptor, 0x90);
-	RML_ASSERT_OFFSET(BoundFunctionDescriptor, invoke_func_ptr, 0x80);
-	RML_ASSERT_OFFSET(BoundFunctionDescriptor, bound_this_delta, 0x88);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_SIZE(BoundFunctionDescriptor, 0xA0);
+	RML_ASSERT_OFFSET(BoundFunctionDescriptor, invoke_func_ptr, 0x90);
+	RML_ASSERT_OFFSET(BoundFunctionDescriptor, bound_this_delta, 0x98);
+#else
+	RML_ASSERT_SIZE(BoundFunctionDescriptor, 0x98);
+	RML_ASSERT_OFFSET(BoundFunctionDescriptor, invoke_func_ptr, 0x88);
+	RML_ASSERT_OFFSET(BoundFunctionDescriptor, bound_this_delta, 0x90);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	class Function

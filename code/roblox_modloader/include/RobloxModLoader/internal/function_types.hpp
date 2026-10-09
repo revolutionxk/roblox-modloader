@@ -4,6 +4,7 @@
 #include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "RobloxModLoader/roblox/reflection/creatable.hpp"
 #include "RobloxModLoader/roblox/reflection/descriptor.hpp"
+#include "RobloxModLoader/roblox/reflection/function_descriptor.hpp"
 #include "RobloxModLoader/roblox/reflection/property_descriptor.hpp"
 #include "RobloxModLoader/roblox/security/script_permissions.hpp"
 #include "RobloxModLoader/roblox/util/standard_out.hpp"
@@ -60,7 +61,7 @@ namespace functions
 	using get_string_atom = const RBX::Name* (*)(const char* name);
 	using name_declare = const RBX::Name* (*)(const char* name);
 	using slots_holder_release = void (*)(rbx::signals::slots_holder* holder);
-	using descriptor_lookup = const RBX::Reflection::DescriptorEntry* (*)(const RBX::Reflection::MemberTable* table, const RBX::Name* const* name);
+	using member_table_find = RBX::Reflection::MemberTable::FindResult (*)(const RBX::Reflection::MemberTable* table, const RBX::Name* const* name, int mode);
 	using print = void(RML_ENGINE_CALL*)(RBX::MessageType level, const char* fmt, ...);
 	using luaH_new = void*(RML_ENGINE_CALL*)(void* L, int32_t narray, int32_t nhash);
 	using freeblock = void(RML_ENGINE_CALL*)(lua_State* L, int32_t sizeClass, void* block);
@@ -81,14 +82,14 @@ namespace functions
 	using signal_slot_free = void(RML_ENGINE_CALL*)(rbx::signals::slot_base* slot);
 	using signal_mutex_get = std::mutex*(RML_ENGINE_CALL*)();
 	using global_init = void (*)();
-	using class_descriptor_ctor = void (*)(void* self, void* base, const char* name, std::uint32_t instance_id, std::uint64_t stable_id, bool a6, bool a7, const void* attributes, RBX::Security::Permissions protection, const std::uint32_t* memory_category, RBX::ArrayView<const RBX::Reflection::PropertyDescriptor*> properties, RBX::ArrayView<const RBX::Reflection::EventDescriptor*> events, RBX::ArrayView<const RBX::Reflection::FunctionDescriptor*> functions, RBX::ArrayView<const RBX::Reflection::YieldFunctionDescriptor*> yield_functions, RBX::ArrayView<const RBX::Reflection::CallbackDescriptor*> callbacks);
+	using class_descriptor_ctor = void (*)(void* self, void* base, const char* name, std::uint32_t instance_id, std::uint64_t stable_id, bool a6, bool a7, const void* attributes, RBX::Security::Protection protection, const std::uint32_t* memory_category, RBX::ArrayView<const RBX::Reflection::PropertyDescriptor*> properties, RBX::ArrayView<const RBX::Reflection::EventDescriptor*> events, RBX::ArrayView<const RBX::Reflection::FunctionDescriptor*> functions, RBX::ArrayView<const RBX::Reflection::YieldFunctionDescriptor*> yield_functions, RBX::ArrayView<const RBX::Reflection::CallbackDescriptor*> callbacks);
 	using class_descriptor_all_classes = std::vector<RBX::Reflection::ClassDescriptor*>* (*)();
 	using creatable_get_creator = const RBX::ICreator* (*)(const RBX::Name* name);
 	using instance_ctor = void (*)(void* self, const RBX::ForceConstructionInCreatable* force, const char* name);
 	using create_instance_impl = std::shared_ptr<RBX::Instance> (*)(std::uint32_t stable_id, std::size_t size, std::size_t align, std::uint32_t memory_category, void* (*construct)(void* memory, const void* args), const void* args);
-	using property_descriptor_ctor = void (*)(void* self, void* class_descriptor, const RBX::Reflection::Type* type, const char* name, const char* category, const RBX::Reflection::PropertyDescriptor::Attributes* attributes, RBX::Security::Permissions protection_get, RBX::Security::Permissions protection_set, bool is_enum);
-	using function_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, RBX::Security::Permissions protection, RBX::Reflection::Descriptor::Attributes attributes);
-	using event_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, RBX::Security::Permissions protection, const RBX::Reflection::Descriptor::Attributes* attributes);
+	using property_descriptor_ctor = void (*)(void* self, void* class_descriptor, const RBX::Reflection::Type* type, const char* name, const char* category, const RBX::Reflection::PropertyDescriptor::Attributes* attributes, RBX::Security::Protection protection_get, RBX::Security::Protection protection_set, bool is_enum);
+	using function_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, RBX::Security::Protection protection, RBX::Reflection::FunctionDescriptor::Attributes attributes);
+	using event_descriptor_ctor = void (*)(void* self, void* class_descriptor, const char* name, RBX::Security::Protection protection, const RBX::Reflection::Descriptor::Attributes* attributes);
 	using visual_engine_begin_render = RBX::Graphics::DeviceContext* (*)(RBX::Graphics::VisualEngine* self);
 	using scene_manager_render_scene = void (*)(RBX::Graphics::SceneManager* self, RBX::Graphics::DeviceContext* context, RBX::Graphics::Framebuffer* target, const RBX::Graphics::RenderCamera* camera, RBX::ArrayView<RBX::Graphics::Framebuffer*> extra, std::uint32_t capture_mode);
 	using clouds_update = void (*)(void* clouds, RBX::Graphics::DeviceContext* context, void* view_info, const RBX::Graphics::RenderCamera* camera, RBX::Graphics::Framebuffer* main_framebuffer, RBX::Graphics::GlobalShaderData* globals, const void* camera_change, void* stats);
@@ -100,7 +101,7 @@ namespace functions
 	using scene_manager_render_ui = void (*)(RBX::Graphics::SceneManager* self, RBX::Graphics::DeviceContext* context, const RBX::Graphics::RenderCamera* camera, void* stats, bool rotate, int debug_mode, bool capture);
 	using reflection_metadata_get_singleton = void (*)();
 	using reflection_metadata_load = void* (*)(void* self, const void* path);
-	using enum_descriptor_ctor = void (*)(void* self, const char* name);
+	using enum_descriptor_ctor = void (*)(void* self, const char* name, const RBX::Reflection::Descriptor::Attributes* attributes);
 	using enum_item_ctor = void (*)(void* self, const char* name, RBX::Reflection::Descriptor::Attributes attributes, int value, const RBX::Reflection::EnumDescriptor* owner);
 	using enum_descriptor_lookup = const RBX::Reflection::EnumDescriptor* (*)(const char* name);
 

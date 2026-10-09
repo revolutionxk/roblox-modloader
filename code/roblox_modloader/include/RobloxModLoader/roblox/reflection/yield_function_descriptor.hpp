@@ -21,6 +21,11 @@ namespace RBX::Reflection
 		typedef YieldFunction ConstMember;
 		typedef YieldFunction Member;
 
+		struct Attributes : Descriptor::Attributes
+		{
+			bool is_no_mutation{false};
+		};
+
 		using ResumeCallback = void (*)(YieldFunctionState* state, const Variant& result);
 		using ErrorCallback = void (*)(const std::shared_ptr<YieldFunctionState>& state, std::string message);
 
@@ -31,11 +36,22 @@ namespace RBX::Reflection
 			return signature;
 		}
 
+		bool is_no_mutation;
 		SignatureDescriptor signature;
-	};
 
-	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(YieldFunctionDescriptor, 0x78);
-	RML_ASSERT_OFFSET(YieldFunctionDescriptor, signature, 0x48);
-	RML_LAYOUT_DIAGNOSTIC_POP()
+	private:
+		RML_LAYOUT_GUARD_BEGIN()
+#if defined(RML_WINDOWS)
+		RML_ASSERT_SIZE(YieldFunctionDescriptor, 0x88);
+		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0x10);
+		RML_ASSERT_OFFSET(YieldFunctionDescriptor, is_no_mutation, 0x50);
+		RML_ASSERT_OFFSET(YieldFunctionDescriptor, signature, 0x58);
+#else
+		RML_ASSERT_SIZE(YieldFunctionDescriptor, 0x80);
+		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0xC);
+		RML_ASSERT_OFFSET(YieldFunctionDescriptor, is_no_mutation, 0x4C);
+		RML_ASSERT_OFFSET(YieldFunctionDescriptor, signature, 0x50);
+#endif
+		RML_LAYOUT_GUARD_END()
+	};
 }

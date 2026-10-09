@@ -2,6 +2,7 @@
 
 #include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "RobloxModLoader/roblox/util/split_hash_table.hpp"
+#include "RobloxModLoader/roblox/util/string_view.hpp"
 #include "RobloxModLoader/roblox/security/script_permissions.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "descriptor.hpp"
@@ -31,12 +32,13 @@ namespace RBX::Reflection
 	{
 		Descriptor* descriptor;
 		std::uint32_t kind;
-		std::uint32_t reserved_c;
 	};
 
 	struct DescriptorEntryGetKey;
+	struct DescriptorEntryGetKeyStringView;
 
 	using MemberTable = RBX::details::SplitHashTable<const Name*, DescriptorEntry, static_cast<SplitHashPolicy>(9), 0, RBX::details::DefaultHash<const Name*>, RBX::details::DefaultEqualTo<const Name*>, DescriptorEntryGetKey>;
+	using StringMemberTable = RBX::details::SplitHashTable<StringView, DescriptorEntry, static_cast<SplitHashPolicy>(33), 0, RBX::details::DefaultHash<StringView>, RBX::details::DefaultEqualTo<StringView>, DescriptorEntryGetKeyStringView>;
 
 	template<typename MemberDescriptorType>
 	class MemberDescriptorContainer
@@ -90,7 +92,6 @@ namespace RBX::Reflection
 		MemberDescriptorContainer* base_container;
 		void* owner;
 		std::uint8_t finalized;
-		std::byte reserved_41[7];
 
 		DescriptorView get_descriptor_view() const noexcept
 		{
@@ -173,19 +174,30 @@ namespace RBX::Reflection
 
 		const Name& category;
 		const ClassDescriptor& owner;
-		const Security::Permissions security;
-		std::uint64_t reserved_40;
+		const Security::Protection security;
+		std::uint8_t thread_safety;
+		std::uint8_t aurora_access;
+		bool simulation_access;
 
+	private:
+		[[maybe_unused]] std::uint32_t reserved_44;
+		[[maybe_unused]] std::uint32_t reserved_48;
+
+	public:
 		MemberDescriptor() = delete;
 
 	protected:
 		virtual ~MemberDescriptor() = default;
-	};
 
-	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(MemberDescriptor, 0x48);
-	RML_ASSERT_REFERENCE_OFFSET(MemberDescriptor, category, 0x28);
-	RML_ASSERT_REFERENCE_OFFSET(MemberDescriptor, owner, 0x30);
-	RML_ASSERT_OFFSET(MemberDescriptor, security, 0x38);
-	RML_LAYOUT_DIAGNOSTIC_POP()
+	private:
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_SIZE(MemberDescriptor, 0x50);
+		RML_ASSERT_REFERENCE_OFFSET(MemberDescriptor, category, 0x28);
+		RML_ASSERT_REFERENCE_OFFSET(MemberDescriptor, owner, 0x30);
+		RML_ASSERT_OFFSET(MemberDescriptor, security, 0x38);
+		RML_ASSERT_OFFSET(MemberDescriptor, thread_safety, 0x40);
+		RML_ASSERT_OFFSET(MemberDescriptor, reserved_44, 0x44);
+		RML_ASSERT_OFFSET(MemberDescriptor, reserved_48, 0x48);
+		RML_LAYOUT_GUARD_END()
+	};
 }

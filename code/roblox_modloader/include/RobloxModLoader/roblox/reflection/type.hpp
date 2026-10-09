@@ -38,9 +38,12 @@ namespace RBX::Reflection
 		const bool is_float;
 		const bool is_number;
 		const bool is_enum;
-		const bool reserved_37;
-		const bool reserved_38;
 
+	private:
+		[[maybe_unused]] const bool reserved_37;
+		[[maybe_unused]] const bool reserved_38;
+
+	public:
 		Type() = delete;
 
 		virtual std::string to_string(const VariantData* data) const = 0;
@@ -224,8 +227,8 @@ namespace RBX::Reflection
 		{
 			const Name* name;
 			const Type* type;
+			const Name* alias;
 			const ClassDescriptor* class_descriptor;
-			const void* reserved_18;
 			const Variant default_handle;
 
 			[[nodiscard]] bool has_default_value() const noexcept
@@ -237,7 +240,7 @@ namespace RBX::Reflection
 		struct Result
 		{
 			const Type* type;
-			const std::string* name;
+			const Name* alias;
 			const ClassDescriptor* class_descriptor;
 		};
 
@@ -250,6 +253,8 @@ namespace RBX::Reflection
 		}
 	};
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(SignatureDescriptor::Argument, class_descriptor, 0x18);
+	RML_ASSERT_OFFSET(SignatureDescriptor::Argument, default_handle, 0x20);
 	RML_ASSERT_SIZE(SignatureDescriptor::Argument, 0x70);
 	RML_ASSERT_SIZE(SignatureDescriptor::Result, 0x18);
 	RML_LAYOUT_DIAGNOSTIC_POP()

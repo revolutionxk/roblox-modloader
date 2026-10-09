@@ -149,7 +149,7 @@ namespace rml::reflection
 			if (!member)
 				return std::unexpected(member.error());
 			if (property.hints.deprecated)
-				reinterpret_cast<RBX::Reflection::Descriptor*>(member->storage.get())->attributes.is_deprecated = true;
+				reinterpret_cast<RBX::Reflection::Descriptor*>(member->storage.get())->is_deprecated = true;
 			entry.property_table.push_back(reinterpret_cast<const RBX::Reflection::PropertyDescriptor*>(member->storage.get()));
 			entry.member_storage.push_back(std::move(member->storage));
 			entry.accessors.push_back(property.accessor);
@@ -348,7 +348,7 @@ namespace rml::reflection
 
 		static const RBX::Reflection::ClassDescriptor::Attributes attributes(RBX::Reflection::ClassDescriptor::PERSISTENT_LOCAL);
 		const auto& p = g_pointers->m_roblox_pointers;
-		p.class_descriptor_ctor(entry.storage.get(), base, entry.name.c_str(), 0, 0, false, false, &attributes, RBX::Security::Permissions::None, nullptr,
+		p.class_descriptor_ctor(entry.storage.get(), base, entry.name.c_str(), 0, 0, false, false, &attributes, RBX::Security::Protection{}, nullptr,
 		    RBX::ArrayView<const RBX::Reflection::PropertyDescriptor*>{entry.property_table},
 		    RBX::ArrayView<const RBX::Reflection::EventDescriptor*>{entry.event_table},
 		    RBX::ArrayView<const RBX::Reflection::FunctionDescriptor*>{entry.function_table},

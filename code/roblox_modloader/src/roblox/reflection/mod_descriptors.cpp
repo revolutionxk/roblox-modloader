@@ -160,7 +160,7 @@ namespace rml::reflection
 		using Descriptor = RBX::Reflection::TypedPropertyDescriptor<V>;
 		auto member = allocate_member<Descriptor>();
 		auto* storage = member.storage.get();
-		g_pointers->m_roblox_pointers.property_descriptor_ctor(storage, owner_storage, engine_type, name.c_str(), category.c_str(), &property_attributes(), RBX::Security::Permissions::None, RBX::Security::Permissions::None, false);
+		g_pointers->m_roblox_pointers.property_descriptor_ctor(storage, owner_storage, engine_type, name.c_str(), category.c_str(), &property_attributes(), RBX::Security::Protection{}, RBX::Security::Protection{}, false);
 		memory::set_vtable(storage, vtable);
 		reinterpret_cast<Descriptor*>(storage)->get_set.reset(static_cast<typename Descriptor::GetSet*>(accessor));
 		return member;
@@ -281,7 +281,7 @@ namespace rml::reflection
 
 		auto member = allocate_member<ModEnumProperty>();
 		auto* storage = member.storage.get();
-		p.property_descriptor_ctor(storage, owner_storage, &enumeration, name.c_str(), category.c_str(), &property_attributes(), RBX::Security::Permissions::None, RBX::Security::Permissions::None, true);
+		p.property_descriptor_ctor(storage, owner_storage, &enumeration, name.c_str(), category.c_str(), &property_attributes(), RBX::Security::Protection{}, RBX::Security::Protection{}, true);
 		memory::set_vtable(storage, vtable);
 
 		auto& property = *reinterpret_cast<ModEnumProperty*>(storage);
@@ -299,7 +299,7 @@ namespace rml::reflection
 
 		auto member = allocate_member<RBX::Reflection::FunctionDescriptor>();
 		auto* storage = member.storage.get();
-		p.function_descriptor_ctor(storage, owner_storage, name.c_str(), RBX::Security::Permissions::None, RBX::Reflection::Descriptor::Attributes{});
+		p.function_descriptor_ctor(storage, owner_storage, name.c_str(), RBX::Security::Protection{}, RBX::Reflection::FunctionDescriptor::Attributes{});
 		memory::set_vtable(storage, function_carrier_vtable());
 
 		{
@@ -341,7 +341,7 @@ namespace rml::reflection
 		auto member = allocate_member<RBX::Reflection::EventDesc>();
 		auto* storage = member.storage.get();
 		static const RBX::Reflection::Descriptor::Attributes attributes;
-		p.event_descriptor_ctor(storage, owner_storage, name.c_str(), RBX::Security::Permissions::None, &attributes);
+		p.event_descriptor_ctor(storage, owner_storage, name.c_str(), RBX::Security::Protection{}, &attributes);
 		memory::set_vtable(storage, static_cast<void* const*>(vtable));
 
 		auto& event = *reinterpret_cast<RBX::Reflection::EventDesc*>(storage);

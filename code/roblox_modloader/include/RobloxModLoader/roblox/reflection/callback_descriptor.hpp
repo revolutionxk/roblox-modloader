@@ -32,8 +32,8 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(CallbackDescriptor, 0x80);
-	RML_ASSERT_OFFSET(CallbackDescriptor, signature, 0x48);
-	RML_ASSERT_OFFSET(CallbackDescriptor, async_flag, 0x78);
+	RML_ASSERT_SIZE(CallbackDescriptor, 0x88);
+	RML_ASSERT_OFFSET(CallbackDescriptor, signature, 0x50);
+	RML_ASSERT_OFFSET(CallbackDescriptor, async_flag, 0x80);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

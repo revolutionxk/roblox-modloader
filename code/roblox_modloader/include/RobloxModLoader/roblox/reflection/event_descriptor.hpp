@@ -87,8 +87,8 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(EventDescriptor, 0x78);
-	RML_ASSERT_OFFSET(EventDescriptor, signature, 0x48);
+	RML_ASSERT_SIZE(EventDescriptor, 0x80);
+	RML_ASSERT_OFFSET(EventDescriptor, signature, 0x50);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 	
 	class EventDesc : public EventDescriptor
@@ -102,6 +102,6 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_OFFSET(EventDesc, signal, 0x78);
+	RML_ASSERT_OFFSET(EventDesc, signal, 0x80);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }
