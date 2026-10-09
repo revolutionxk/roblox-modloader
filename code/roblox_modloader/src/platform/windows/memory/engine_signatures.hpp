@@ -27,7 +27,7 @@ namespace rml
 		    // Lua Functions
 		    {
 		        "LUA_LOAD",
-		        "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9",
+		        "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9 4D 8B",
 		        [](const memory::handle ptr) {
 			        g_pointers->m_roblox_pointers.luau_load = ptr.as<functions::luau_load>();
 		        },
@@ -89,10 +89,10 @@ namespace rml
 			        g_pointers->m_roblox_pointers.object_create_by_name = ptr.as<functions::object_create_by_name>();
 		        },
 		    },
-		    {"DESCRIPTOR_LOOKUP",
+		    {"MEMBER_TABLE_FIND",
 		        "48 83 EC 18 ? ? ? 4C 8B D9 75",
 		        [](const memory::handle ptr) {
-			        g_pointers->m_roblox_pointers.descriptor_lookup = ptr.as<functions::descriptor_lookup>();
+			        g_pointers->m_roblox_pointers.member_table_find = ptr.as<functions::member_table_find>();
 		        }
 		    },
 	    {"GET_STRING_ATOM",

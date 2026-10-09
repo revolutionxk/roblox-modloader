@@ -35,7 +35,7 @@ struct RobloxPointers
 
 	functions::get_string_atom get_string_atom;
 	functions::name_declare name_declare;
-	functions::descriptor_lookup descriptor_lookup;
+	functions::member_table_find member_table_find;
 
 	// Lua Functions
 	functions::luau_execute luau_execute;

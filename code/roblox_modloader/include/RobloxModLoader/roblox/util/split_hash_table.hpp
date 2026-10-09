@@ -25,6 +25,17 @@ namespace RBX
 		class SplitHashTable
 		{
 		public:
+			struct FindResult
+			{
+				std::uint32_t slot;
+				bool not_found;
+			};
+
+			[[nodiscard]] const Item* item_at(const FindResult result) const
+			{
+				return result.not_found ? nullptr : &items[table[result.slot] & index_mask];
+			}
+
 			std::uint32_t size;
 			std::uint32_t capacity;
 			std::uint32_t* table;

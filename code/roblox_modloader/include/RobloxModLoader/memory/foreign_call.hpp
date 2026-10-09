@@ -54,6 +54,22 @@ namespace rml::memory
 		}
 	}
 
+	template<typename Result, typename Self, typename... Args>
+	    requires ForeignArguments<Result, Self, Args...>
+	Result call_member(void* fn, Self self, Args... args)
+	{
+		if constexpr (platform::abi::returns_via_hidden_pointer)
+		{
+			Result result{};
+			reinterpret_cast<void (*)(Self, Result*, Args...)>(fn)(self, std::addressof(result), args...);
+			return result;
+		}
+		else
+		{
+			return reinterpret_cast<Result (*)(Self, Args...)>(fn)(self, args...);
+		}
+	}
+
 	template<IndirectlyReturnable Result, typename Self, typename... Args>
 	    requires ForeignArguments<Self, Args...>
 	void call_returning_member(void* fn, Result& result, Self self, Args... args)
