@@ -1,18 +1,10 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/rsl/mutex.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
 #include <cstdint>
-
-namespace RSL
-{
-	class Mutex
-	{
-	public:
-		void* handle;
-	};
-}
 
 namespace RBX
 {
@@ -37,23 +29,31 @@ namespace RBX
 
 		RSL::Mutex mutex;
 		std::int32_t job_count;
-
-	private:
-		std::byte reserved_14[0x4];
-
-	public:
 		std::uint64_t current_job_index;
 		void* job_slots;
 		std::int32_t job_slot_capacity;
 
 	private:
-		std::byte reserved_2c[0x14C];
+		[[maybe_unused]] std::uint64_t reserved_30[0x28];
+		[[maybe_unused]] bool reserved_170;
+		[[maybe_unused]] std::uint64_t reserved_178;
+		[[maybe_unused]] double reserved_180[2];
+		[[maybe_unused]] double reserved_190;
+		[[maybe_unused]] std::uint64_t reserved_198[3];
+		[[maybe_unused]] bool reserved_1b0;
 
 	public:
-		std::uint64_t frame_budget;
+		double last_step_time;
 
 	private:
-		std::byte reserved_180[0x68];
+		[[maybe_unused]] std::uint64_t reserved_1c0[5];
+
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_OFFSET(TaskSchedulerArbiter, reserved_30, 0x30);
+		RML_ASSERT_OFFSET(TaskSchedulerArbiter, reserved_178, 0x178);
+		RML_ASSERT_OFFSET(TaskSchedulerArbiter, reserved_1b0, 0x1B0);
+		RML_ASSERT_OFFSET(TaskSchedulerArbiter, reserved_1c0, 0x1C0);
+		RML_LAYOUT_GUARD_END()
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
@@ -62,7 +62,7 @@ namespace RBX
 	RML_ASSERT_OFFSET(TaskSchedulerArbiter, current_job_index, 0x18);
 	RML_ASSERT_OFFSET(TaskSchedulerArbiter, job_slots, 0x20);
 	RML_ASSERT_OFFSET(TaskSchedulerArbiter, job_slot_capacity, 0x28);
-	RML_ASSERT_OFFSET(TaskSchedulerArbiter, frame_budget, 0x178);
+	RML_ASSERT_OFFSET(TaskSchedulerArbiter, last_step_time, 0x1B8);
 	RML_ASSERT_SIZE(TaskSchedulerArbiter, 0x1E8);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

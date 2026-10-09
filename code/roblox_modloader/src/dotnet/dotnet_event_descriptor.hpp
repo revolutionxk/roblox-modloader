@@ -75,6 +75,6 @@ namespace rml::dotnet
 	struct ManagedEventConnection
 	{
 		std::shared_ptr<RBX::Reflection::GenericSlotWrapper> slot;
-		RBX::Signals::Connection connection;
+		rbx::signals::connection connection;
 	};
 }

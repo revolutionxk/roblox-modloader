@@ -7,21 +7,15 @@ namespace rml::qt
 {
 	QIcon::QIcon(const QString& path)
 	{
-		static const auto ctor = detail::gui<void (*)(void*, const void*)>("QIcon::QIcon(QString const&)");
-		if (!ctor)
-			return;
-
-		ctor(m_storage, path.data());
-		set_owned(true);
+		static const auto ctor = detail::gui<void (*)(QIcon*, const QString*)>("QIcon::QIcon(QString const&)");
+		if (ctor)
+			ctor(this, &path);
 	}
 
 	QIcon::~QIcon()
 	{
-		if (!owned())
-			return;
-
-		static const auto dtor = detail::gui<void (*)(void*)>("QIcon::~QIcon()");
-		if (dtor)
-			dtor(m_storage);
+		static const auto dtor = detail::gui<void (*)(QIcon*)>("QIcon::~QIcon()");
+		if (d && dtor)
+			dtor(this);
 	}
 }

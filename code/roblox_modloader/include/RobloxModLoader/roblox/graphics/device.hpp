@@ -6,6 +6,8 @@
 #include "texture.hpp"
 #include "types.hpp"
 
+#include "RobloxModLoader/util/layout_assert.hpp"
+
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -15,6 +17,46 @@ namespace RBX::Graphics
 {
 	class Device
 	{
+	public:
+		struct Statistics
+		{
+		private:
+			[[maybe_unused]] float reserved_0;
+			[[maybe_unused]] bool reserved_4;
+
+		public:
+			double display_interval_ms;
+			double vsync_gap_ms;
+			double frame_target_ms;
+			double screen_max_fps;
+
+		private:
+			[[maybe_unused]] double reserved_28;
+
+		public:
+			std::uint32_t frames_within_target;
+			std::uint32_t frames_missed;
+			bool vsync_stats_valid;
+
+		private:
+			RML_LAYOUT_GUARD_BEGIN()
+			RML_ASSERT_OFFSET(Statistics, reserved_4, 0x4);
+			RML_ASSERT_OFFSET(Statistics, reserved_28, 0x28);
+			RML_LAYOUT_GUARD_END()
+		};
+
+		struct FrameTimingDetails
+		{
+			double target_fps;
+		};
+
+		struct VideoMemoryInfo
+		{
+			std::uint64_t allocated_mb;
+			std::uint64_t budget_mb;
+			std::uint64_t available_mb;
+		};
+
 	public:
 		virtual ~Device() = default;
 		virtual void add_window(void* handle) = 0;
@@ -43,10 +85,15 @@ namespace RBX::Graphics
 		virtual std::shared_ptr<ShaderProgram> create_shader_program(const std::shared_ptr<Shader>* shaders, std::size_t count, const std::string& name) = 0;
 		virtual std::shared_ptr<Buffer> create_buffer(Buffer::Type type, unsigned size, unsigned element_size, Buffer::Usage usage, const std::string& name) = 0;
 		virtual const DeviceCaps& get_caps() const = 0;
-		virtual void unmapped_28() = 0;
-		virtual void get_statistics_unmapped() const = 0;
-		virtual void set_frame_timing_details_unmapped(std::uint64_t details) = 0;
-		virtual void consume_drawable_wait_stats_unmapped() = 0;
+		virtual void set_display_maximum_refresh_rate(double rate) = 0;
+		virtual Statistics get_statistics() const = 0;
+
+	private:
+		virtual void reserved_30() = 0;
+
+	public:
+		virtual void set_frame_timing_details(FrameTimingDetails details) = 0;
+		virtual double consume_drawable_wait_stats() = 0;
 		virtual void suspend() = 0;
 		virtual void resume() = 0;
 		virtual void set_thread_context() = 0;
@@ -55,7 +102,7 @@ namespace RBX::Graphics
 		virtual void update_window_handle(void* handle) = 0;
 		virtual void reset_pipeline_cache() = 0;
 		virtual std::size_t get_device_memory_alloc_size(std::size_t* out) const = 0;
-		virtual void get_video_memory_info_unmapped() const = 0;
+		virtual VideoMemoryInfo get_video_memory_info() const = 0;
 		virtual void* get_physical_device_pointer() const = 0;
 		virtual void* get_main_window_handle() const = 0;
 		virtual void query_hardware_information(ClientSessionMapFieldContainer& out) = 0;
@@ -68,4 +115,11 @@ namespace RBX::Graphics
 		virtual std::shared_ptr<Texture> create_texture_no_crash_impl(Texture::Type type, Texture::Format format, unsigned width, unsigned height, unsigned depth, unsigned mip_levels, unsigned array_length, unsigned samples, Texture::Usage usage, const std::string& name) = 0;
 		virtual std::shared_ptr<Texture> create_texture_with_hardware_buffer_impl(Texture::Type type, Texture::Format format, unsigned width, unsigned height, unsigned depth, unsigned mip_levels, unsigned array_length, unsigned samples, Texture::Usage usage, const std::string& name, void* buffer) = 0;
 	};
+
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(Device::Statistics, display_interval_ms, 0x8);
+	RML_ASSERT_OFFSET(Device::Statistics, vsync_stats_valid, 0x38);
+	RML_ASSERT_SIZE(Device::Statistics, 0x40);
+	RML_ASSERT_SIZE(Device::VideoMemoryInfo, 24);
+	RML_LAYOUT_DIAGNOSTIC_POP()
 }

@@ -27,7 +27,7 @@ namespace rml
 		    // Lua Functions
 		    {
 		        "LUA_LOAD",
-		        "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9",
+		        "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9 4D 8B",
 		        [](const memory::handle ptr) {
 			        g_pointers->m_roblox_pointers.luau_load = ptr.as<functions::luau_load>();
 		        },
@@ -83,38 +83,18 @@ namespace rml
 			        g_pointers->m_roblox_pointers.lua_setfield = ptr.as<functions::lua_setfield>();
 		        }},
 		    {
-		        "PROFILE_LOG",
-		        "40 55 56 57 41 56 48 83 EC ? 48 8B 05",
-		        [](const memory::handle ptr) {
-			        g_pointers->m_roblox_pointers.m_profile_log = ptr.as<void*>();
-		        },
-		    },
-		    {
 		        "OBJECT_CREATE_BY_NAME",
 		        "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 41 56 48 83 EC ? 41 8B F9 48 8B EA",
 		        [](const memory::handle ptr) {
 			        g_pointers->m_roblox_pointers.object_create_by_name = ptr.as<functions::object_create_by_name>();
 		        },
 		    },
-		    {
-		        "INSTANCE_BRIDGE_PUSH",
-		        "48 89 5C 24 ? 57 48 83 EC ? 48 8B FA 48 8B D9 E8 ? ? ? ? 48 8B CB 84 C0 74 ? 48 8B D7",
-		        [](const memory::handle ptr) {
-			        g_pointers->m_roblox_pointers.instance_bridge_push = ptr.as<functions::instance_bridge_push>();
-		        },
-		    },
-		    {"DESCRIPTOR_LOOKUP",
+		    {"MEMBER_TABLE_FIND",
 		        "48 83 EC 18 ? ? ? 4C 8B D9 75",
 		        [](const memory::handle ptr) {
-			        g_pointers->m_roblox_pointers.descriptor_lookup = ptr.as<functions::descriptor_lookup>();
+			        g_pointers->m_roblox_pointers.member_table_find = ptr.as<functions::member_table_find>();
 		        }
 		    },
-		    {"MEMBER_TABLE_OFFSET",
-	        "48 8B 4B ? E8 ? ? ? ? 48 8D 8F ? ? ? ? 48 89 44 24 ? 48 8D 54 24 ? E8",
-	        [](const memory::handle ptr) {
-		        g_pointers->m_roblox_pointers.member_table_offset = *ptr.add(12).as<std::uint32_t*>();
-	        }
-	    },
 	    {"GET_STRING_ATOM",
 		        "48 89 5C 24 ? 57 48 83 EC 20 48 8B 1D ? ? ? ? 48 8B F9 48 85 DB",
 		        [](const memory::handle ptr) {
@@ -127,11 +107,16 @@ namespace rml
 			        g_pointers->m_roblox_pointers.build_menu_bar_from_dom = ptr.as<functions::build_menu_bar_from_dom>();
 		        }
 		    },
-		    {"SIGNAL_DISCONNECT",
+		    {"SIGNAL_MUTEX_GET",
 		        "48 89 5C 24 ? 57 48 83 EC 30 48 8B F9 33 DB 48 89 5C 24 ? E8 ? ? ? ? 48 89 44 24 ? 88 5C 24 ? 48 8B C8 E8 ? ? ? ? 85 C0 0F 85",
 		        [](const memory::handle ptr) {
-			        g_pointers->m_roblox_pointers.signal_disconnect = ptr.as<functions::signal_disconnect>();
 			        g_pointers->m_roblox_pointers.signal_mutex_get = ptr.add(21).rip().as<functions::signal_mutex_get>();
+		        }
+		    },
+		    {"CONNECTION_DISCONNECT",
+		        "40 53 56 57 48 83 EC 30 48 8B D9 48 8B 11 33 FF 48 85 D2 74 ? 8B 02 90 85 C0 74 ? 8D 48 01 F0 0F B1 0A 75 ? 48 8B 1B EB ? 48 8B DF 48 89 5C 24 ? BE FF FF FF FF 48 85 DB 0F 84",
+		        [](const memory::handle ptr) {
+			        g_pointers->m_roblox_pointers.connection_disconnect = ptr.as<functions::connection_disconnect>();
 		        }
 		    },
 		    {"VISUAL_ENGINE_BEGIN_RENDER",

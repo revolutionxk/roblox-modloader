@@ -7,7 +7,7 @@ namespace rml::qt
 	QDialog* QDialog::create(QWidget* parent)
 	{
 		static const auto construct = detail::widgets<void* (*)(void*, void*, int)>("QDialog::QDialog(QWidget*, QFlags<Qt::WindowType>)");
-		return detail::heap_construct<QDialog>(detail::WIDGET_INSTANCE_SIZE, construct, parent, 0);
+		return detail::heap_construct<QDialog>(sizeof(QDialog), construct, parent, 0);
 	}
 
 	QtOwned<QDialog> QDialog::create_owned()

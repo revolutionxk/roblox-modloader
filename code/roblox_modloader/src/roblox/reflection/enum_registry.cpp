@@ -44,9 +44,9 @@ namespace rml::reflection
 	{
 		if (!self->find_item_by_value(value))
 			return;
-		if (out.value_ops() != VariantOps<int>::table)
+		if (out.value_ops() != RBX::Reflection::detail::typed_holder<int>::singleton())
 			destroy_variant(out);
-		out.set_type_and_ops(self, VariantOps<int>::table);
+		out.set_type_and_ops(self, RBX::Reflection::detail::typed_holder<int>::singleton());
 		*out.try_cast<int>() = value;
 	}
 
@@ -168,7 +168,8 @@ namespace rml::reflection
 
 		const auto& p = g_pointers->m_roblox_pointers;
 		auto& storage = *m_enums.emplace_back(std::make_unique<ModEnum>());
-		p.enum_descriptor_ctor(storage.descriptor.data(), spec.name.c_str());
+		static const RBX::Reflection::Descriptor::Attributes attributes;
+		p.enum_descriptor_ctor(storage.descriptor.data(), spec.name.c_str(), &attributes);
 		auto& descriptor = *reinterpret_cast<EnumDescriptor*>(storage.descriptor.data());
 
 		const auto count = spec.items.size();
@@ -187,7 +188,7 @@ namespace rml::reflection
 		if (!dense)
 		{
 			for (std::size_t i = 0; i < count; ++i)
-				storage.by_value.push_back({spec.items[i].value, static_cast<std::uint16_t>(i), 0});
+				storage.by_value.push_back({spec.items[i].value, static_cast<std::uint16_t>(i)});
 			std::ranges::sort(storage.by_value, {}, &EnumDescriptor::ValueEntry::value);
 		}
 

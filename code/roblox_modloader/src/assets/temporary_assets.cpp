@@ -24,11 +24,6 @@ namespace rml::assets
 	static constexpr std::string_view k_temporary_id_format = "rbxtemp://%lld";
 	static constexpr std::size_t k_startup_chain_depth = 4;
 
-	struct ContentIdBits
-	{
-		alignas(RBX::ContentId) std::byte bytes[sizeof(RBX::ContentId)];
-	};
-
 	struct EngineFunctions
 	{
 		FactoryHandle* (*startup)();
@@ -125,8 +120,7 @@ namespace rml::assets
 			return std::unexpected("temporary id factory startup returned no instance");
 
 		functions.factory = handle->instance;
-		if (!functions.factory->name || std::string_view(functions.factory->name) != k_factory_name
-		    || functions.factory->name_length != k_factory_name.size())
+		if (!functions.factory->name.data || functions.factory->name.view() != k_factory_name)
 			return std::unexpected("temporary id factory instance failed validation");
 
 		RML_INFO("ContentProviderTemporaryIdFactory at 0x{:X} (startup 0x{:X}, registerTemporaryIdForFile 0x{:X}, {} file ids, {} buffer ids)",
@@ -169,11 +163,8 @@ namespace rml::assets
 		const std::string native = absolute.string();
 		const auto before = functions->factory->files.size();
 
-		ContentIdBits bits{};
-		memory::call_returning_member<ContentIdBits>(functions->register_temporary_id_for_file, bits, functions->factory, &native);
-
 		RBX::ContentId id;
-		std::memcpy(static_cast<void*>(&id), bits.bytes, sizeof(bits));
+		memory::call_returning_member(functions->register_temporary_id_for_file, id, functions->factory, &native);
 
 		if (!id.is_temporary() || functions->factory->files.size() != before + 1)
 			return std::unexpected(std::format("registerTemporaryIdForFile returned '{}' ({} -> {} file ids)",

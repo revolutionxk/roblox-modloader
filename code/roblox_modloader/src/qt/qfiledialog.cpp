@@ -17,14 +17,7 @@ namespace rml::qt
 		const QString filter_str(filter);
 
 		QString result;
-		memory::call_returning<void*>(fn,
-		    *static_cast<void**>(result.storage()),
-		    static_cast<void*>(parent),
-		    caption_str.data(),
-		    dir_str.data(),
-		    filter_str.data(),
-		    static_cast<void*>(nullptr),
-		    0);
+		memory::call_returning(fn, result, static_cast<void*>(parent), &caption_str, &dir_str, &filter_str, static_cast<QString*>(nullptr), 0);
 		return result.to_utf8();
 	}
 }

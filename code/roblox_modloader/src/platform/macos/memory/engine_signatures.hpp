@@ -33,7 +33,7 @@ namespace rml
 			},
 			{
 				"CLASS_DESCRIPTOR_ALL_CLASSES",
-				"FF C3 00 D1 FD 7B 02 A9 FD 83 00 91 ? ? ? ? ? ? ? ? E8 07 00 F9 ? ? ? ? ? ? ? ? 08 C1 BF F8 1F 05 00 B1 ? ? ? ? E8 23 00 91 A8 83 1F F8 A8 23 00 D1 E8 0B 00 F9 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? E1 43 00 91 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? FD 7B 42 A9",
+				memory::from("CLASS_DESCRIPTOR_CTOR").call(9),
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.class_descriptor_all_classes = ptr.as<functions::class_descriptor_all_classes>();
 				},
@@ -110,7 +110,7 @@ namespace rml
 			},
 			{
 				"SCENE_MANAGER_RENDER_SKY",
-				"08 B8 41 B9 1F 05 00 71 ? ? ? ? ? ? ? ? 00 1C 43 F9 ? ? ? ?",
+				"08 C0 41 B9 1F 05 00 71 ? ? ? ? ? ? ? ? 00 20 43 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.scene_manager_render_sky = ptr.as<functions::scene_manager_render_sky>();
 				},
@@ -138,7 +138,7 @@ namespace rml
 			},
 			{
 				"ENUM_DESCRIPTOR_CTOR",
-				"FF 83 01 D1 F8 5F 02 A9 F6 57 03 A9 F4 4F 04 A9 FD 7B 05 A9 FD 43 01 91 F3 03 00 AA ? ? ? ? ? ? ? ? 23 04 80 52",
+				"FF 83 01 D1 F8 5F 02 A9 F6 57 03 A9 F4 4F 04 A9 FD 7B 05 A9 FD 43 01 91 F3 03 00 AA E2 03 00 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.enum_descriptor_ctor = ptr.as<functions::enum_descriptor_ctor>();
 				},
@@ -152,7 +152,7 @@ namespace rml
 			},
 			{
 				"ENUM_DESCRIPTOR_LOOKUP",
-				"FF 83 00 D1 FD 7B 01 A9 FD 43 00 91 E0 07 00 F9 ? ? ? ? ? ? ? ? 00 20 1B 91",
+				"FF 83 00 D1 FD 7B 01 A9 FD 43 00 91 E0 07 00 F9 ? ? ? ? ? ? ? ? ? ? ? ? E1 23 00 91 ? ? ? ? ? ? ? ? 00 0C 40 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.enum_descriptor_lookup = ptr.as<functions::enum_descriptor_lookup>();
 				},
@@ -173,7 +173,8 @@ namespace rml
 			},
 			{
 				"EVENT_DESCRIPTOR_CTOR",
-				"FD 7B BF A9 FD 03 00 91 E5 03 03 AA ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? 08 00 00 F9 00 E4 00 6F 00 80 84 3C 00 80 85 3C 00 80 86 3C FD 7B C1 A8 C0 03 5F D6 1F 09 00 B9",
+				"FD 7B BF A9 FD 03 00 91 E5 03 03 AA",
+				memory::referencing("Signals"),
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.event_descriptor_ctor = ptr.as<functions::event_descriptor_ctor>();
 				},
@@ -193,17 +194,10 @@ namespace rml
 				},
 			},
 			{
-				"DESCRIPTOR_LOOKUP",
+				"MEMBER_TABLE_FIND",
 				"FF 43 01 D1 F6 57 02 A9 F4 4F 03 A9 FD 7B 04 A9 FD 03 01 91 F4 03 01 AA F3 03 00 AA 21 10 40 F9",
 				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.descriptor_lookup = ptr.add(0x78).bl().as<functions::descriptor_lookup>();
-				},
-			},
-			{
-				"MEMBER_TABLE_OFFSET",
-				"FF 43 01 D1 F6 57 02 A9 F4 4F 03 A9 FD 7B 04 A9 FD 03 01 91 F4 03 01 AA F3 03 00 AA 21 10 40 F9",
-				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.member_table_offset = (*ptr.add(0x70).as<const std::uint32_t*>() >> 10) & 0xFFF;
+					g_pointers->m_roblox_pointers.member_table_find = ptr.add(0x78).bl().add(0x1C).bl().as<functions::member_table_find>();
 				},
 			},
 			{
@@ -425,7 +419,7 @@ namespace rml
 			},
 			{
 				"LUA_GETTABLE",
-				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F4 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 9F 06 00 71 ? ? ? ? 68 0A 40 F9 08 51 34 8B 09 41 00 D1 68 16 40 F9 ? ? ? ? ? ? ? ? 3F 01 08 EB 21 31 8A 9A",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F4 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 9F 06 00 71 ? ? ? ? 68 26 42 A9 29 51 34 8B 29 41 00 D1 ? ? ? ? ? ? ? ? 3F 01 08 EB 21 31 8A 9A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_gettable = ptr.as<functions::lua_gettable>();
 				},
@@ -439,7 +433,7 @@ namespace rml
 			},
 			{
 				"LUA_GETUPVALUE",
-				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 16 40 F9 08 41 00 91 69 06 40 F9 29 01 40 F9 1F 01 09 EB ? ? ? ? E0 03 13 AA 21 00 80 52 ? ? ? ? ? ? ? ? BF 06 00 71 ? ? ? ? 68 0A 40 F9 08 51 35 8B 08 41 00 D1 69 16 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A",
+				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 12 40 F9 08 41 00 91 69 06 40 F9 29 05 40 F9 1F 01 09 EB ? ? ? ? E0 03 13 AA 21 00 80 52 ? ? ? ? ? ? ? ? BF 06 00 71 ? ? ? ? 69 22 42 A9 08 51 35 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_getupvalue = ptr.as<functions::lua_getupvalue>();
 				},
@@ -467,7 +461,7 @@ namespace rml
 			},
 			{
 				"LUA_ISUSERDATA",
-				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 08 08 40 F9 08 51 21 8B 08 41 00 D1 09 14 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 14 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 25 00 71 04 19 42 7A",
+				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 09 20 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 10 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 25 00 71 04 19 42 7A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_isuserdata = ptr.as<functions::lua_isuserdata>();
 				},
@@ -579,7 +573,7 @@ namespace rml
 			},
 			{
 				"LUA_RAWITER",
-				"F6 57 BD A9 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 16 40 F9 08 81 00 91",
+				"F6 57 BD A9 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 12 40 F9 08 81 00 91",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_rawiter = ptr.as<functions::lua_rawiter>();
 				},
@@ -642,7 +636,7 @@ namespace rml
 			},
 			{
 				"LUA_SETSAFEENV",
-				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 02 AA 3F 04 00 71 ? ? ? ? 08 08 40 F9 08 51 21 8B 08 41 00 D1 09 14 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 14 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 00 40 F9 7F 02 00 71",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 02 AA 3F 04 00 71 ? ? ? ? 09 20 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 10 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 00 40 F9 7F 02 00 71",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_setsafeenv = ptr.as<functions::lua_setsafeenv>();
 				},
@@ -663,7 +657,7 @@ namespace rml
 			},
 			{
 				"LUA_SETUPVALUE",
-				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F3 03 00 AA 3F 04 00 71 ? ? ? ? 68 0A 40 F9 08 51 21 8B 08 41 00 D1 69 16 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 15 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 68 16 40 F9 15 D1 21 8B ? ? ? ? E0 03 13 AA ? ? ? ? F5 03 00 AA E2 23 00 91",
+				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F3 03 00 AA 3F 04 00 71 ? ? ? ? 69 22 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 15 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 68 12 40 F9 15 D1 21 8B ? ? ? ? E0 03 13 AA ? ? ? ? F5 03 00 AA E2 23 00 91",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_setupvalue = ptr.as<functions::lua_setupvalue>();
 				},
@@ -732,29 +726,29 @@ namespace rml
 				},
 			},
 			{
-				"SIGNAL_DISCONNECT",
-				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA FF 0B 00 F9 ? ? ? ? F4 03 00 AA",
+				"CONNECTION_DISCONNECT",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 08 00 40 F9 ? ? ? ? 0A FD DF 88 ? ? ? ? E9 03 0A AA 4B 05 00 11 0B FD E9 88 3F 01 0A 6B ? ? ? ? EA 03 09 AA ? ? ? ? ? ? ? ? 13 00 40 F9 ? ? ? ? E0 03 13 AA 0D 00 00 94 E0 03 13 AA FD 7B 41 A9 F4 4F C2 A8",
 				[](const memory::handle ptr) {
-					g_pointers->m_roblox_pointers.signal_disconnect = ptr.as<functions::signal_disconnect>();
+					g_pointers->m_roblox_pointers.connection_disconnect = ptr.as<functions::connection_disconnect>();
 				},
 			},
 			{
 				"SLOTS_HOLDER_RELEASE",
-				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA FF 0B 00 F9 ? ? ? ? F4 03 00 AA",
+				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 00 AA FF 0B 00 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.slots_holder_release = ptr.add(0x6C).bl().add(0x18).bl().as<functions::slots_holder_release>();
 				},
 			},
 			{
 				"NAME_DECLARE",
-				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 00 AA ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? E1 03 13 AA FD 7B 41 A9 F4 4F C2 A8 ? ? ? ? FF 03 03 D1",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 00 AA ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? E1 03 13 AA FD 7B 41 A9 F4 4F C2 A8 ? ? ? ? FF 43 03 D1",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.name_declare = ptr.as<functions::name_declare>();
 				},
 			},
 			{
 				"SIGNAL_MUTEX_GET",
-				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA FF 0B 00 F9 ? ? ? ? F4 03 00 AA",
+				"FF 03 01 D1 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 00 AA FF 0B 00 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.signal_mutex_get = ptr.add(0x18).bl().as<functions::signal_mutex_get>();
 				},
@@ -817,7 +811,7 @@ namespace rml
 			},
 			{
 				"LUA_ISCFUNCTION",
-				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 08 08 40 F9 08 51 21 8B 08 41 00 D1 09 14 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 14 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 21 00 71 ? ? ? ? 08 00 40 F9 08 0D 40 39 1F 01 00 71 E0 07 9F 1A",
+				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 09 20 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 10 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 21 00 71 ? ? ? ? 08 00 40 F9 08 0D 40 39 1F 01 00 71 E0 07 9F 1A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_iscfunction = ptr.as<functions::lua_iscfunction>();
 				},

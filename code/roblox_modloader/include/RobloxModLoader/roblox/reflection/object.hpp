@@ -1,4 +1,5 @@
 #pragma once
+#include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/roblox/security/script_permissions.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "callback_descriptor.hpp"
@@ -12,6 +13,7 @@
 #include "yield_function_descriptor.hpp"
 
 #include <mutex>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 
@@ -69,22 +71,20 @@ namespace RBX::Reflection
 		using EventDescriptors = MemberDescriptorContainer<EventDescriptor>::DescriptorView;
 		using CallbackDescriptors = MemberDescriptorContainer<CallbackDescriptor>::DescriptorView;
 
-		public:
-		std::uint64_t security;
-		std::byte reserved_after_security[16];
+		Security::Protection security;
+
+	private:
+		std::uint64_t reserved_198[2];
+
+	public:
 		const std::uint32_t* memory_category;
 		ClassDescriptor* base;
-		std::uint32_t reserved_before_functionality;
+		std::uint16_t is_a_index;
+		std::uint16_t is_a_range;
 		std::uint16_t functionality;
-		std::uint16_t reserved_after_functionality;
 		ClassDescriptors derived_classes;
-		std::uint32_t member_table_count;
-		std::uint32_t reserved_1dc;
-		std::uint64_t reserved_1e0;
-		void* member_table;
-		std::uint64_t reserved_1f0;
-		void* arena;
-				std::byte reserved_tail[48];
+		MemberTable member_table;
+		std::optional<StringMemberTable> string_member_table;
 
 		unsigned replicate_type() const
 		{
@@ -143,7 +143,7 @@ namespace RBX::Reflection
 
 		bool is_a(const ClassDescriptor& test) const
 		{
-			if (name == test.name)
+			if (this == &test)
 			{
 				return true;
 			}
@@ -245,19 +245,20 @@ namespace RBX::Reflection
 		T* find_descriptor(const char* name) const
 		{
 			const auto* pointers = get_roblox_pointers();
-			if (!pointers || !pointers->get_string_atom || !pointers->descriptor_lookup || !pointers->member_table_offset)
+			if (!pointers || !pointers->get_string_atom || !pointers->member_table_find)
 			{
 				return nullptr;
 			}
 
-			auto atom = pointers->get_string_atom(name);
-			if (!atom)
+			const auto* atom = pointers->get_string_atom(name);
+			if (!atom || !member_table.size)
 			{
 				return nullptr;
 			}
 
-			const auto desc = pointers->descriptor_lookup(reinterpret_cast<uint64_t>(this) + pointers->member_table_offset, &atom);
-			return desc && *desc ? reinterpret_cast<T*>(*desc) : nullptr;
+			const auto result = rml::memory::call_member<MemberTable::FindResult>(reinterpret_cast<void*>(pointers->member_table_find), &member_table, &atom, 0);
+			const auto* entry = member_table.item_at(result);
+			return entry && entry->descriptor ? static_cast<T*>(entry->descriptor) : nullptr;
 		}
 
 		PropertyDescriptor* find_property(const char* name) const
@@ -309,17 +310,21 @@ namespace RBX::Reflection
 
 	private:
 		RML_LAYOUT_GUARD_BEGIN()
-			RML_LAYOUT_DIAGNOSTIC_PUSH()
-			RML_ASSERT_SIZE(ClassDescriptor, 0x230);
-			RML_ASSERT_OFFSET(ClassDescriptor, security, 0x190);
-			RML_ASSERT_OFFSET(ClassDescriptor, memory_category, 0x1A8);
-			RML_ASSERT_OFFSET(ClassDescriptor, base, 0x1B0);
-			RML_ASSERT_OFFSET(ClassDescriptor, functionality, 0x1BC);
-			RML_ASSERT_OFFSET(ClassDescriptor, derived_classes, 0x1C0);
-			RML_ASSERT_OFFSET(ClassDescriptor, member_table_count, 0x1D8);
-			RML_ASSERT_OFFSET(ClassDescriptor, member_table, 0x1E8);
-			RML_ASSERT_OFFSET(ClassDescriptor, arena, 0x1F8);
-			RML_LAYOUT_DIAGNOSTIC_POP()
+		RML_ASSERT_SIZE(ClassDescriptor, 0x230);
+		RML_ASSERT_OFFSET(ClassDescriptor, security, 0x190);
+		RML_ASSERT_OFFSET(ClassDescriptor, memory_category, 0x1A8);
+		RML_ASSERT_OFFSET(ClassDescriptor, reserved_198, 0x198);
+		RML_ASSERT_OFFSET(ClassDescriptor, base, 0x1B0);
+		RML_ASSERT_OFFSET(ClassDescriptor, is_a_index, 0x1B8);
+		RML_ASSERT_OFFSET(ClassDescriptor, functionality, 0x1BC);
+		RML_ASSERT_OFFSET(ClassDescriptor, derived_classes, 0x1C0);
+		RML_ASSERT_OFFSET(ClassDescriptor, member_table, 0x1D8);
+		RML_ASSERT_OFFSET(ClassDescriptor, string_member_table, 0x200);
+#if defined(RML_WINDOWS)
+		RML_ASSERT_OFFSET(Attributes, flags, 0x10);
+#else
+		RML_ASSERT_OFFSET(Attributes, flags, 0xC);
+#endif
 		RML_LAYOUT_GUARD_END()
 	};
 

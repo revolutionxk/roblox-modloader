@@ -21,7 +21,6 @@ namespace RBX::Graphics
 		virtual void reload(const std::vector<char>& bytecode) = 0;
 
 		std::uint32_t type;
-		std::uint32_t reserved_3c;
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()

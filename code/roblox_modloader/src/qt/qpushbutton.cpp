@@ -12,7 +12,7 @@ namespace rml::qt
 			return nullptr;
 
 		const QString label(text);
-		return detail::heap_construct<QPushButton>(detail::WIDGET_INSTANCE_SIZE, construct, label.data(), parent);
+		return detail::heap_construct<QPushButton>(sizeof(QPushButton), construct, &label, parent);
 	}
 
 	QtOwned<QPushButton> QPushButton::create_owned(const std::string_view text)

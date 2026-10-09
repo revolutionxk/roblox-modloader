@@ -230,18 +230,15 @@ namespace RBX::Graphics
 		};
 
 		std::vector<Technique> techniques;
-		std::uint32_t reserved_24;
-		std::uint32_t flags;
-		std::uint32_t pass_mask;
-		std::uint32_t reserved_36;
 
-		Material() :
-		    reserved_24(0),
-		    flags(0),
-		    pass_mask(0),
-		    reserved_36(0)
-		{
-		}
+	private:
+		[[maybe_unused]] std::uint32_t reserved_18{};
+
+	public:
+		std::uint32_t flags{};
+		std::uint32_t pass_mask{};
+
+		Material() = default;
 
 		void add_technique(const Technique& technique)
 		{

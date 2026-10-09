@@ -47,14 +47,14 @@ namespace RBX::Reflection::Metadata
 		std::string description;
 
 	private:
-		std::byte reserved_198[0x8];
+		[[maybe_unused]] std::uint64_t reserved_198;
 
 	public:
 		[[nodiscard]] static bool is_deprecated(const Item* item, const Descriptor& descriptor)
 		{
 			if (item && item->deprecated)
 				return true;
-			return descriptor.attributes.is_deprecated;
+			return descriptor.is_deprecated;
 		}
 
 		[[nodiscard]] static bool is_backend(const Item* item, const Descriptor&)
@@ -74,11 +74,7 @@ namespace RBX::Reflection::Metadata
 		Reflected<std::string, "PreferredParent"> preferred_parent;
 		Reflected<int, "ExplorerImageIndex"> explorer_image_index;
 		Reflected<int, "ExplorerOrder"> explorer_order;
-
-	private:
-		std::byte reserved_1c0[0x4];
-
-	public:
+		Reflected<int, "ServiceVisibility"> service_visibility;
 		Reflected<bool, "Insertable"> insertable;
 
 		[[nodiscard]] const Class* get_base() const;

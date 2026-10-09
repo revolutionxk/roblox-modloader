@@ -1,6 +1,5 @@
 #include "graphics_registry.hpp"
 
-#include "RobloxModLoader/hooking/vtable_index.hpp"
 #include "RobloxModLoader/memory/vtable.hpp"
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/memory/instruction.hpp"
@@ -187,7 +186,7 @@ namespace rml::graphics
 			if (!vtable)
 				continue;
 
-			auto* target = (*vtable)[0];
+			auto* target = (*vtable)[platform::abi::destructor_body_slot];
 			if (image.contains(memory::handle(target)))
 				target = follow_thunk(target);
 			const auto function = image.contains(memory::handle(target)) ? memory::function_containing(target) : std::nullopt;
@@ -208,7 +207,7 @@ namespace rml::graphics
 			return nullptr;
 
 		const memory::module image(platform::studio_image_name());
-		const auto slot = vtable_index_of(&RBX::Graphics::DeviceContext::begin_pass, nullptr, 0u, 0u, nullptr, nullptr, 0u);
+		const auto slot = memory::virtual_index(&RBX::Graphics::DeviceContext::begin_pass);
 		for (const auto* name : {"RBX::Graphics::DeviceContextD3D11", "RBX::Graphics::DeviceContextMtl"})
 		{
 			const auto vtable = index->find(name);
@@ -237,7 +236,7 @@ namespace rml::graphics
 		if (!vtable)
 			return nullptr;
 
-		const auto slot = vtable_index_of(&RBX::Adorn::pre_submit_pass);
+		const auto slot = memory::virtual_index(&RBX::Adorn::pre_submit_pass);
 		const memory::module image(platform::studio_image_name());
 		auto* target = (*vtable)[slot];
 		if (!image.contains(memory::handle(target)))
@@ -270,7 +269,7 @@ namespace rml::graphics
 
 			const memory::module image(platform::studio_image_name());
 			auto** vtable = memory::vtable_of(device);
-			const auto slots = vtable_index_of(&RBX::Graphics::Device::create_texture_with_hardware_buffer_impl, RBX::Graphics::Texture::Type::Type_2D, RBX::Graphics::Texture::Format::RGBA8, 0u, 0u, 0u, 0u, 0u, 0u, RBX::Graphics::Texture::Usage::Static, std::string{}, nullptr) + 1;
+			const auto slots = memory::virtual_index(&RBX::Graphics::Device::create_texture_with_hardware_buffer_impl) + 1;
 			for (std::size_t slot = 0; slot < slots; ++slot)
 			{
 				if (!image.contains(memory::handle(vtable[slot])) || !platform::is_executable(vtable[slot]))

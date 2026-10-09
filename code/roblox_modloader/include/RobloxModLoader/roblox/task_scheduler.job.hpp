@@ -1,14 +1,17 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/rsl/condition.hpp"
+#include "RobloxModLoader/roblox/rsl/mutex.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 
 namespace RBX
 {
-	class DataModel;
+	class TaskSchedulerArbiter;
 
 	struct Stats
 	{
@@ -62,20 +65,41 @@ namespace RBX
 
 		virtual ~TaskSchedulerJob() = default;
 
-		std::shared_ptr<TaskSchedulerJob> self;
+		std::weak_ptr<TaskSchedulerJob> self;
 		std::string name;
-		std::shared_ptr<DataModel> data_model;
+		std::shared_ptr<TaskSchedulerArbiter> arbiter;
+		std::int32_t priority;
 
 	private:
+		[[maybe_unused]] std::uint64_t reserved_48[0x13];
+
+	public:
+		std::uint32_t sync_workers;
+		bool completion_waiting;
+		RSL::Condition completion;
+
+	private:
+		[[maybe_unused]] std::uint64_t reserved_f0[0xC];
+		RSL::Mutex reserved_mutex;
+		RSL::Condition reserved_condition;
+		[[maybe_unused]] std::uint16_t reserved_160;
+		[[maybe_unused]] std::uint8_t reserved_162;
+
 		RML_LAYOUT_GUARD_BEGIN()
 		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, self, 0x8);
 		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, name, 0x18);
 #if defined(RML_WINDOWS)
-		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, data_model, 0x38);
-		RML_ASSERT_LAYOUT_SIZE(TaskSchedulerJob, 0x48);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, arbiter, 0x38);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, sync_workers, 0xE8);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, reserved_160, 0x168);
+		RML_ASSERT_SIZE(TaskSchedulerJob, 0x170);
 #else
-		RML_ASSERT_LAYOUT_OFFSET(TaskSchedulerJob, data_model, 0x30);
-		RML_ASSERT_LAYOUT_SIZE(TaskSchedulerJob, 0x40);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, arbiter, 0x30);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, sync_workers, 0xE0);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, completion, 0xE8);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, reserved_mutex, 0x150);
+		RML_ASSERT_OFFSET(TaskSchedulerJob, reserved_160, 0x160);
+		RML_ASSERT_SIZE(TaskSchedulerJob, 0x168);
 #endif
 		RML_LAYOUT_GUARD_END()
 	};

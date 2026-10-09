@@ -3,6 +3,7 @@
 #include "RobloxModLoader/qt/qobject.hpp"
 #include "RobloxModLoader/qt/qt_owned.hpp"
 
+#include <cstdint>
 #include <functional>
 
 namespace rml::qt
@@ -22,5 +23,17 @@ namespace rml::qt
 		void stop();
 
 		void on_timeout(std::function<void()> handler) const;
+
+		int id;
+		int inter;
+		int del;
+		std::uint32_t single : 1;
+		std::uint32_t nulltimer : 1;
+		std::uint32_t type : 2;
 	};
+
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(QTimer, id, 2 * sizeof(void*));
+	RML_ASSERT_SIZE(QTimer, 2 * sizeof(void*) + 16);
+	RML_LAYOUT_DIAGNOSTIC_POP()
 }

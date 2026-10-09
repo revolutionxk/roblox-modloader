@@ -38,7 +38,9 @@
 
 #define RML_LAYOUT_GUARD_BEGIN() \
 	static void rml_assert_layout() noexcept \
-	{
+	{ \
+		RML_LAYOUT_DIAGNOSTIC_PUSH()
 
 #define RML_LAYOUT_GUARD_END() \
+		RML_LAYOUT_DIAGNOSTIC_POP() \
 	}

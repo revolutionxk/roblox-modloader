@@ -52,38 +52,43 @@ namespace RBX::Reflection
 			PUBLIC_REPLICATE = 1 + 2 + 0 + 0 + 0,
 		};
 
-		struct Attributes
+		struct Attributes : Descriptor::Attributes
 		{
-			Descriptor::Attributes descriptor;
-			std::uint64_t reserved_10;
-			std::uint32_t reserved_18;
-			std::uint8_t reserved_1c;
-			std::uint8_t functionality;
-			std::uint8_t reserved_1e;
-			std::uint8_t mutability;
+			const PropertyDescriptor* shared_setter{};
+			std::uint16_t tracking_slot_id{0xFFFF};
+			std::uint16_t raw_property_id{};
+			std::uint8_t shared_type_id{};
+			std::uint8_t functionality{STANDARD};
+			std::uint8_t storage_type{1};
+			std::uint8_t next_generation_replication{};
+			std::uint8_t client_authority{};
 		};
 
-		std::byte reserved_48[32];
+	private:
+		[[maybe_unused]] std::uint64_t reserved_50[4];
+
+	public:
 		const Type& type;
 
 		PropertyDescriptor() = delete;
-		std::uint64_t reserved_70;
-		Security::Permissions protection_set;
-		std::uint32_t reserved_7c;
-		std::uint32_t index;
-		std::uint16_t reserved_84;
-		std::uint16_t reserved_86;
-		std::uint8_t reserved_88;
-		std::uint8_t reserved_89;
+
+		const PropertyDescriptor* shared_setter;
+		Security::Protection protection_set;
+		std::uint32_t ephemeral_id;
+		std::uint16_t tracking_slot_id;
+		std::uint16_t raw_property_id;
+		std::uint8_t shared_type_id;
+		std::uint8_t storage_type;
 		bool is_enum;
-		unsigned is_public : 1;
-		unsigned is_editable : 1;
-		unsigned can_replicate : 1;
-		unsigned can_xml_read : 1;
-		unsigned can_xml_write : 1;
-		unsigned is_scriptable : 1;
-		unsigned always_clone : 1;
-		unsigned mutability : 2;
+		std::uint8_t is_public : 1;
+		std::uint8_t is_editable : 1;
+		std::uint8_t can_replicate : 1;
+		std::uint8_t can_xml_read : 1;
+		std::uint8_t can_xml_write : 1;
+		std::uint8_t is_scriptable : 1;
+		std::uint8_t always_clone : 1;
+		std::uint8_t client_authority : 2;
+		std::uint8_t next_generation_replication : 2;
 
 		bool operator==(const PropertyDescriptor& other) const
 		{
@@ -125,16 +130,20 @@ namespace RBX::Reflection
 		virtual void set_metadata_value(DescribedBase* instance, PropertyMetadataType type, detail::PropertyMetadataView view) const = 0;
 		virtual void write_xml_value(const DescribedBase* instance, XmlElement* element, IReferenceBinderWrite& binder) const = 0;
 		virtual void read_xml_value(DescribedBase* instance, const XmlElement* element, IReferenceBinder& binder) const = 0;
-	};
 
-	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(PropertyDescriptor::Attributes, 0x20);
-	RML_ASSERT_SIZE(PropertyDescriptor, 0x90);
-	RML_ASSERT_REFERENCE_OFFSET(PropertyDescriptor, type, 0x68);
-	RML_ASSERT_OFFSET(PropertyDescriptor, protection_set, 0x78);
-	RML_ASSERT_OFFSET(PropertyDescriptor, index, 0x80);
-	RML_ASSERT_OFFSET(PropertyDescriptor, is_enum, 0x8A);
-	RML_LAYOUT_DIAGNOSTIC_POP()
+	private:
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_SIZE(PropertyDescriptor, 0x98);
+		RML_ASSERT_OFFSET(PropertyDescriptor, reserved_50, 0x50);
+		RML_ASSERT_REFERENCE_OFFSET(PropertyDescriptor, type, 0x70);
+		RML_ASSERT_OFFSET(PropertyDescriptor, shared_setter, 0x78);
+		RML_ASSERT_OFFSET(PropertyDescriptor, protection_set, 0x80);
+		RML_ASSERT_OFFSET(PropertyDescriptor, ephemeral_id, 0x88);
+		RML_ASSERT_OFFSET(PropertyDescriptor, tracking_slot_id, 0x8C);
+		RML_ASSERT_OFFSET(PropertyDescriptor, shared_type_id, 0x90);
+		RML_ASSERT_OFFSET(PropertyDescriptor, is_enum, 0x92);
+		RML_LAYOUT_GUARD_END()
+	};
 
 	template<typename V>
 	class TypedPropertyDescriptor : public PropertyDescriptor
@@ -157,7 +166,7 @@ namespace RBX::Reflection
 	public:
 		std::unique_ptr<GetSet> get_set;
 		std::unique_ptr<StyleGetSet> style_get_set;
-		std::uint64_t reserved_a0;
+		std::uint64_t reserved_a8;
 
 	public:
 		[[nodiscard]] bool is_read_only() const override
@@ -181,8 +190,8 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(TypedPropertyDescriptor<float>, 0xA8);
-	RML_ASSERT_OFFSET(TypedPropertyDescriptor<float>, get_set, 0x90);
+	RML_ASSERT_SIZE(TypedPropertyDescriptor<float>, 0xB0);
+	RML_ASSERT_OFFSET(TypedPropertyDescriptor<float>, get_set, 0x98);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	class EnumPropertyDescriptor : public PropertyDescriptor
@@ -207,11 +216,11 @@ namespace RBX::Reflection
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 #if !defined(RML_WINDOWS)
-	RML_ASSERT_OFFSET(EnumPropertyDescriptor, enum_descriptor, 0x90);
-	RML_ASSERT_SIZE(EnumPropDescriptor<int>, 0xB0);
-	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, get_set, 0x98);
-	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, style_get_set, 0xA0);
-	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, value_enum_descriptor, 0xA8);
+	RML_ASSERT_OFFSET(EnumPropertyDescriptor, enum_descriptor, 0x98);
+	RML_ASSERT_SIZE(EnumPropDescriptor<int>, 0xB8);
+	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, get_set, 0xA0);
+	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, style_get_set, 0xA8);
+	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, value_enum_descriptor, 0xB0);
 #endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 

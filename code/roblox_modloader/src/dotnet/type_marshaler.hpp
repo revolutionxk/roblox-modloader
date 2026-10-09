@@ -28,7 +28,8 @@ namespace rml::dotnet
 		Double,
 		Number,
 		Blittable,
-		Sequence,
+		NumberSequence,
+		ColorSequence,
 	};
 
 	struct MarshalPlan
@@ -50,9 +51,10 @@ namespace rml::dotnet
 		[[nodiscard]] static InteropVariant encode_property(const RBX::Reflection::PropertyDescriptor* descriptor, const RBX::Reflection::DescribedBase* instance);
 
 		[[nodiscard]] static bool decode_property(const RBX::Reflection::PropertyDescriptor* descriptor, RBX::Reflection::DescribedBase* instance, const InteropVariant& value);
-		[[nodiscard]] static bool decode_argument(const RBX::Reflection::Type* type, const InteropVariant& value, RBX::Reflection::Variant& out, const void* value_ops);
+		[[nodiscard]] static bool decode_argument(const RBX::Reflection::Type* type, const InteropVariant& value, RBX::Reflection::Variant& out, const RBX::Reflection::detail::holder* value_ops);
+		[[nodiscard]] static const RBX::Reflection::detail::holder* trivially_copied_holder() noexcept;
 
-		static void encode_return_value(const RBX::Reflection::Type* type, uint64_t raw_return, uintptr_t return_slot_address, InteropVariant& out) noexcept;
+		static void encode_return_value(const RBX::Reflection::Type* type, uint64_t raw_return, void* return_storage, InteropVariant& out) noexcept;
 
 
 		[[nodiscard]] static bool build_tuple_variant(const InteropVariant* args, uint32_t count, const RBX::Reflection::Type* tuple_type, RBX::Reflection::Variant& out);

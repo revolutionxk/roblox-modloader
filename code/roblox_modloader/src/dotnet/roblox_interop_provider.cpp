@@ -102,18 +102,19 @@ namespace rml::dotnet
 		const auto type = descriptor.get_signature().first_result_type();
 		const bool indirect_result = TypeMarshaler::returns_indirectly(type);
 
-		const auto ret = function.invoke(arguments, indirect_result);
+		RBX::Function::ReturnStorage result{};
+		const auto ret = function.invoke(arguments, indirect_result, result);
 		if constexpr (platform::abi::callee_destroys_arguments)
 			arguments.hand_over_by_value_arguments();
 
-		TypeMarshaler::encode_return_value(type, ret, reinterpret_cast<uintptr_t>(&arguments.return_value), out);
+		TypeMarshaler::encode_return_value(type, ret, result.bytes, out);
 	}
 
 	RBX::Reflection::EventArguments build_event_fire_args(const RBX::Reflection::EventDescriptor* descriptor, const InteropVariant* args, const uint32_t arg_count)
 	{
 		RBX::Reflection::EventArguments event_args;
 		const auto& signature = descriptor->get_signature();
-		const auto sig_args = signature.arguments();
+		const auto& sig_args = signature.arguments;
 
 		if (sig_args.size() == 1 && sig_args[0].type && sig_args[0].type->type_id == RBX::Reflection::TypeId::Tuple)
 		{
@@ -394,9 +395,7 @@ namespace rml::dotnet
 
 			try
 			{
-				const auto atom = g_pointers->m_roblox_pointers.get_string_atom(class_name);
-
-				const auto* name = reinterpret_cast<const RBX::Name*>(atom);
+				const auto* name = g_pointers->m_roblox_pointers.get_string_atom(class_name);
 				auto instance = g_pointers->m_roblox_pointers.object_create_by_name(nullptr, *name, static_cast<RBX::CreatorRole>(creator_role));
 				if (!instance)
 				{
@@ -588,7 +587,7 @@ namespace rml::dotnet
 					return nullptr;
 
 				for (size_t i = 0; i < snapshot.size(); ++i)
-					result[i] = reinterpret_cast<uintptr_t>(new RBX::Signals::Connection(std::move(snapshot[i])));
+					result[i] = reinterpret_cast<uintptr_t>(new rbx::signals::connection(std::move(snapshot[i])));
 
 				if (out_count)
 					*out_count = static_cast<uint32_t>(snapshot.size());
@@ -603,15 +602,15 @@ namespace rml::dotnet
 		table.event_slot_fire = [](const uintptr_t instance_ptr, const char* event_name, const uintptr_t slot_handle, const InteropVariant* args, const uint32_t arg_count) {
 			try
 			{
-				const auto* connection = reinterpret_cast<RBX::Signals::Connection*>(slot_handle);
+				const auto* connection = reinterpret_cast<rbx::signals::connection*>(slot_handle);
 				if (!connection)
 					return;
 
 				const auto* slot = connection->raw_slot();
-				if (!slot || !slot->source)
+				if (!slot || !slot->holder)
 					return;
 
-				auto* wrapper = static_cast<RBX::Reflection::GenericSlotWrapper*>(slot->wrapper_ptr);
+				auto* wrapper = static_cast<const rbx::signals::slot_with_functor<RBX::Reflection::GenericSlotFunctor>*>(slot)->functor.wrapper.get();
 				if (!wrapper)
 					return;
 
@@ -636,12 +635,12 @@ namespace rml::dotnet
 		};
 
 		table.event_slot_disconnect = [](const uintptr_t slot_handle) {
-			if (const auto* connection = reinterpret_cast<RBX::Signals::Connection*>(slot_handle))
+			if (const auto* connection = reinterpret_cast<rbx::signals::connection*>(slot_handle))
 				connection->disconnect();
 		};
 
 		table.event_slot_release = [](const uintptr_t slot_handle) {
-			delete reinterpret_cast<RBX::Signals::Connection*>(slot_handle);
+			delete reinterpret_cast<rbx::signals::connection*>(slot_handle);
 		};
 
 		table.luau_host_ready = [](const int32_t data_model_type) -> int32_t {

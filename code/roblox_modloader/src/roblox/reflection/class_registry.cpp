@@ -12,7 +12,7 @@
 #include "RobloxModLoader/platform/memory/host_image.hpp"
 #include "RobloxModLoader/roblox/reflection/described_creatable.hpp"
 #include "RobloxModLoader/mod/init_context.hpp"
-#include "RobloxModLoader/roblox/reflection/array_view.hpp"
+#include "RobloxModLoader/roblox/util/array_view.hpp"
 #include "app/init_gate.hpp"
 #include "pointers.hpp"
 
@@ -61,21 +61,21 @@ namespace rml::reflection
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
 		entry->layout.destroy(self);
-		return reinterpret_cast<void* (*)(void*, unsigned int)>(entry->engine_vtable[0])(self, flags);
+		return reinterpret_cast<void* (*)(void*, unsigned int)>(entry->engine_vtable[platform::abi::scalar_deleting_destructor_slot])(self, flags);
 	}
 #else
 	static void mod_complete_dtor(void* self)
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
 		entry->layout.destroy(self);
-		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[0])(self);
+		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[platform::abi::complete_destructor_slot])(self);
 	}
 
 	static void mod_deleting_dtor(void* self)
 	{
 		auto* entry = ClassRegistry::instance().class_of(self);
 		entry->layout.destroy(self);
-		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[1])(self);
+		reinterpret_cast<void (*)(void*)>(entry->engine_vtable[platform::abi::deleting_destructor_slot])(self);
 	}
 #endif
 
@@ -149,7 +149,7 @@ namespace rml::reflection
 			if (!member)
 				return std::unexpected(member.error());
 			if (property.hints.deprecated)
-				reinterpret_cast<RBX::Reflection::Descriptor*>(member->storage.get())->attributes.is_deprecated = true;
+				reinterpret_cast<RBX::Reflection::Descriptor*>(member->storage.get())->is_deprecated = true;
 			entry.property_table.push_back(reinterpret_cast<const RBX::Reflection::PropertyDescriptor*>(member->storage.get()));
 			entry.member_storage.push_back(std::move(member->storage));
 			entry.accessors.push_back(property.accessor);
@@ -219,7 +219,7 @@ namespace rml::reflection
 		for (const auto* current = &container; current; current = current->base_container)
 		{
 			for (const auto& view : current->views)
-				counted += view.size();
+				counted += view.size;
 		}
 		return counted == container.total;
 	}
@@ -348,7 +348,7 @@ namespace rml::reflection
 
 		static const RBX::Reflection::ClassDescriptor::Attributes attributes(RBX::Reflection::ClassDescriptor::PERSISTENT_LOCAL);
 		const auto& p = g_pointers->m_roblox_pointers;
-		p.class_descriptor_ctor(entry.storage.get(), base, entry.name.c_str(), 0, 0, false, false, &attributes, RBX::Security::Permissions::None, nullptr,
+		p.class_descriptor_ctor(entry.storage.get(), base, entry.name.c_str(), 0, 0, false, false, &attributes, RBX::Security::Protection{}, nullptr,
 		    RBX::ArrayView<const RBX::Reflection::PropertyDescriptor*>{entry.property_table},
 		    RBX::ArrayView<const RBX::Reflection::EventDescriptor*>{entry.event_table},
 		    RBX::ArrayView<const RBX::Reflection::FunctionDescriptor*>{entry.function_table},
@@ -474,10 +474,10 @@ namespace rml::reflection
 			auto& vtable = entry.vtable = memory::VtableCopy(entry.engine_vtable, engine_vtable_slots(entry.engine_vtable));
 
 #if defined(RML_WINDOWS)
-			vtable.set(0, reinterpret_cast<void*>(&mod_scalar_deleting_dtor));
+			vtable.set(platform::abi::scalar_deleting_destructor_slot, reinterpret_cast<void*>(&mod_scalar_deleting_dtor));
 #else
-			vtable.set(0, reinterpret_cast<void*>(&mod_complete_dtor));
-			vtable.set(1, reinterpret_cast<void*>(&mod_deleting_dtor));
+			vtable.set(platform::abi::complete_destructor_slot, reinterpret_cast<void*>(&mod_complete_dtor));
+			vtable.set(platform::abi::deleting_destructor_slot, reinterpret_cast<void*>(&mod_deleting_dtor));
 #endif
 
 			std::size_t merged = 0;

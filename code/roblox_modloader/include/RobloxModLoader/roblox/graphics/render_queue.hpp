@@ -45,11 +45,18 @@ namespace RBX::Graphics
 			std::int32_t z_index;
 			std::uint32_t distance_bucket;
 		};
-		std::uint8_t reserved_36;
-		std::uint8_t reserved_37;
-		std::uint8_t reserved_38;
-		std::uint8_t reserved_39;
 
+	private:
+		std::uint8_t reserved_24{0};
+		std::uint8_t reserved_25{3};
+		std::uint8_t reserved_26{5};
+		std::uint8_t reserved_27{4};
+
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_OFFSET(RenderOperation, reserved_24, 0x24);
+		RML_LAYOUT_GUARD_END()
+
+	public:
 		static RenderOperation make(const Renderable* renderable, const Technique* technique, const GeometryBatch* geometry, const float distance_key = 0.0f, const float radius = 0.0f, const std::int32_t z_index = 0)
 		{
 			RenderOperation op;
@@ -59,10 +66,6 @@ namespace RBX::Graphics
 			op.distance_key = distance_key;
 			op.radius = radius;
 			op.z_index = z_index;
-			op.reserved_36 = 0;
-			op.reserved_37 = 3;
-			op.reserved_38 = 5;
-			op.reserved_39 = 4;
 			return op;
 		}
 
@@ -138,6 +141,50 @@ namespace RBX::Graphics
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(RenderQueueGroup, 24);
+	RML_LAYOUT_DIAGNOSTIC_POP()
+
+	struct RenderQueueStats
+	{
+		std::uint32_t cullable_scene_node;
+		std::uint32_t beam_node;
+		std::uint32_t custom_emitter;
+		std::uint32_t explosion_emitter;
+		std::uint32_t particle_emitter;
+		std::uint32_t fast_cluster;
+		std::uint32_t gui_cluster;
+		std::uint32_t trail_node;
+		std::uint32_t render_node;
+		std::uint32_t smooth_cluster;
+	};
+
+	struct MipLodConsts
+	{
+	private:
+		std::uint32_t reserved_0;
+		float reserved_4[8];
+		float reserved_24;
+		float reserved_28[4];
+
+	public:
+		std::uint8_t marker_view;
+
+		void clear()
+		{
+			reserved_0 = 0;
+			reserved_24 = 0.0f;
+		}
+
+	private:
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_OFFSET(MipLodConsts, reserved_24, 0x24);
+		RML_ASSERT_OFFSET(MipLodConsts, reserved_28, 0x28);
+		RML_LAYOUT_GUARD_END()
+	};
+
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_SIZE(RenderQueueStats, 0x28);
+	RML_ASSERT_OFFSET(MipLodConsts, marker_view, 0x38);
+	RML_ASSERT_SIZE(MipLodConsts, 0x3C);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	class RenderQueue
@@ -242,18 +289,20 @@ namespace RBX::Graphics
 		    "Id_ScreenOnTopOfBlur",
 		};
 
-		std::uint64_t reserved_0[5];
-		std::uint32_t reserved_40;
-		std::uint32_t reserved_44[8];
-		std::uint32_t reserved_76;
-		std::uint8_t reserved_80[16];
-		bool reserved_96;
-		std::uint8_t reserved_97[7];
-		void* reserved_104;
+		RenderQueueStats stats;
+		MipLodConsts mip_lod_consts;
+
+	private:
+		const void* reserved_68;
+
+	public:
 		RenderQueueGroup groups[Id_Count];
 		unsigned features;
-		std::uint32_t reserved_548;
 
+	private:
+		std::uint32_t reserved_224;
+
+	public:
 		RenderQueueGroup& get_group(const Id id)
 		{
 			return groups[id];
@@ -278,23 +327,25 @@ namespace RBX::Graphics
 		{
 			for (auto& group : groups)
 				group.clear();
-			reserved_104 = nullptr;
+			reserved_68 = nullptr;
 			features = 0;
-			reserved_548 = 0xFFFFFFFFu;
-			reserved_40 = 0;
-			reserved_76 = 0;
+			reserved_224 = 0xFFFFFFFFu;
+			mip_lod_consts.clear();
 		}
 
 	private:
 		RenderQueue() = delete;
+
+		RML_LAYOUT_GUARD_BEGIN()
+		RML_ASSERT_OFFSET(RenderQueue, reserved_68, 0x68);
+		RML_ASSERT_OFFSET(RenderQueue, reserved_224, 0x224);
+		RML_LAYOUT_GUARD_END()
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_OFFSET(RenderQueue, reserved_40, 40);
-	RML_ASSERT_OFFSET(RenderQueue, reserved_76, 76);
-	RML_ASSERT_OFFSET(RenderQueue, reserved_96, 96);
-	RML_ASSERT_OFFSET(RenderQueue, groups, 112);
-	RML_ASSERT_OFFSET(RenderQueue, features, 544);
-	RML_ASSERT_SIZE(RenderQueue, 552);
+	RML_ASSERT_OFFSET(RenderQueue, mip_lod_consts, 0x28);
+	RML_ASSERT_OFFSET(RenderQueue, groups, 0x70);
+	RML_ASSERT_OFFSET(RenderQueue, features, 0x220);
+	RML_ASSERT_SIZE(RenderQueue, 0x228);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

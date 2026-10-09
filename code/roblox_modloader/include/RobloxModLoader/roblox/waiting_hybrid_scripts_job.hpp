@@ -4,28 +4,38 @@
 
 #include "RobloxModLoader/util/layout_assert.hpp"
 
-#include <string>
+#include <cstdint>
+#include <memory>
 
-namespace RBX::ScriptContextFacets {
-    class WaitingHybridScriptsJob : public DataModelJob {
-        std::string reserved_string;
-        char padding[0x150];
+namespace RBX
+{
+	class Random
+	{
+	public:
+		std::uint64_t state;
+	};
+}
 
-    public:
-        ScriptContext *script_context;
+namespace RBX::ScriptContextFacets
+{
+	class WaitingHybridScriptsJob : public DataModelJob
+	{
+	public:
+		double waiting_threads_budget;
+		Random random;
+		std::weak_ptr<ScriptContext> script_context;
 
-    private:
-        char padding_tail[0x40];
-
-        RML_LAYOUT_GUARD_BEGIN()
+	private:
+		RML_LAYOUT_GUARD_BEGIN()
 #if defined(RML_WINDOWS)
-            RML_ASSERT_LAYOUT_SIZE(WaitingHybridScriptsJob, 0x200);
-            RML_ASSERT_LAYOUT_OFFSET(WaitingHybridScriptsJob, reserved_string, 0x48);
-            RML_ASSERT_LAYOUT_OFFSET(WaitingHybridScriptsJob, script_context, 0x1B8);
+		RML_ASSERT_OFFSET(WaitingHybridScriptsJob, waiting_threads_budget, 0x1B0);
+		RML_ASSERT_OFFSET(WaitingHybridScriptsJob, script_context, 0x1C0);
+		RML_ASSERT_SIZE(WaitingHybridScriptsJob, 0x1D0);
 #else
-            RML_ASSERT_OFFSET(WaitingHybridScriptsJob, reserved_string, 0x40);
-            RML_ASSERT_OFFSET(WaitingHybridScriptsJob, script_context, 0x1A8);
+		RML_ASSERT_OFFSET(WaitingHybridScriptsJob, waiting_threads_budget, 0x1A0);
+		RML_ASSERT_OFFSET(WaitingHybridScriptsJob, script_context, 0x1B0);
+		RML_ASSERT_SIZE(WaitingHybridScriptsJob, 0x1C0);
 #endif
-        RML_LAYOUT_GUARD_END()
-    };
+		RML_LAYOUT_GUARD_END()
+	};
 }

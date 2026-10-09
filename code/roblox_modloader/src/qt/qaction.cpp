@@ -29,7 +29,7 @@ namespace rml::qt
 	{
 		static const auto fn = detail::widgets<void (*)(void*, const void*)>("QAction::setIcon(QIcon const&)");
 		if (fn)
-			fn(this, icon.data());
+			fn(this, &icon);
 	}
 
 	void QAction::setMenuRole(const MenuRole role)

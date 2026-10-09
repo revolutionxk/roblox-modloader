@@ -9,13 +9,13 @@ namespace rml::qt
 	QAction* QMenu::addAction(const QString& text)
 	{
 		static const auto fn = detail::widgets<void* (*)(void*, const void*)>("QMenu::addAction(QString const&)");
-		return fn ? static_cast<QAction*>(fn(this, text.data())) : nullptr;
+		return fn ? static_cast<QAction*>(fn(this, &text)) : nullptr;
 	}
 
 	QMenu* QMenu::addMenu(const QString& title)
 	{
 		static const auto fn = detail::widgets<void* (*)(void*, const void*)>("QMenu::addMenu(QString const&)");
-		return fn ? static_cast<QMenu*>(fn(this, title.data())) : nullptr;
+		return fn ? static_cast<QMenu*>(fn(this, &title)) : nullptr;
 	}
 
 	QAction* QMenu::addSeparator()
@@ -35,7 +35,7 @@ namespace rml::qt
 	{
 		static const auto fn = detail::widgets<void (*)(void*, const void*)>("QMenu::setIcon(QIcon const&)");
 		if (fn)
-			fn(this, icon.data());
+			fn(this, &icon);
 	}
 
 	QAction* QMenu::menuAction() const

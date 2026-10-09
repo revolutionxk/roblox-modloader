@@ -22,7 +22,11 @@ namespace RBX::Graphics
 		Device* device;
 		std::size_t index;
 		std::uint32_t memory_category;
-		std::uint32_t reserved_1c;
+
+	private:
+		[[maybe_unused]] std::uint32_t reserved_1c;
+
+	public:
 		union
 		{
 			std::string debug_name;

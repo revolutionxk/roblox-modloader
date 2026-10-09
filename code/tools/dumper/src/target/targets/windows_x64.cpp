@@ -21,7 +21,7 @@ namespace rml::dumper::target
 	     "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 48 63 F2 33 ED 49 8B F8 89 6C 24 ? 44 0F B6 41"},
 	    {Anchor::luaF_freeproto, "48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 30 44 0F B6 4A ? 49 8B F0"},
 	    {Anchor::luaU_load,
-	     "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9"},
+	     "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9 4D 8B"},
 	    {.id = Anchor::lua_pushnumber, .text = "attempt to index vector with '%s'", .path = {{{Step::call_from_end, 1}}}},
 	    {.id = Anchor::lua_toboolean, .text = "assertion failed!", .path = {{{Step::call, 1}}}},
 	    {.id = Anchor::luau_precall, .text = "cannot resume dead coroutine", .path = {{{Step::call, 0}}}},
@@ -29,7 +29,7 @@ namespace rml::dumper::target
 	    {.id = Anchor::lua_pushcclosurek, .text = "_LOADED", .path = {{{Step::call_from_end, 2}}}},
 		{Anchor::luaC_enumheap, "", "weakregistry"},
 		{Anchor::rbx_derive_thread_capabilities,
-		"48 89 5C 24 ? 57 48 83 EC 20 48 8B DA 48 8B F9 E8 ? ? ? ? 4C 8B C8 4C 8B 40 ? 48 85 DB 74 ? 48 8B 43"},
+		"48 89 5C 24 ? 57 48 83 EC 20 48 8B DA 48 8B F9 E8 ? ? ? ? 4C 8B C8 4C 8B 40 ? 48 85 DB 74"},
 	}};
 
 	const TargetProfile& windows_x64_profile()

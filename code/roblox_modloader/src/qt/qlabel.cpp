@@ -12,7 +12,7 @@ namespace rml::qt
 			return nullptr;
 
 		const QString label(text);
-		return detail::heap_construct<QLabel>(detail::WIDGET_INSTANCE_SIZE, construct, label.data(), parent, 0);
+		return detail::heap_construct<QLabel>(sizeof(QLabel), construct, &label, parent, 0);
 	}
 
 	QtOwned<QLabel> QLabel::create_owned(const std::string_view text)
@@ -32,7 +32,7 @@ namespace rml::qt
 		if (fn)
 		{
 			const QString value(text);
-			fn(this, value.data());
+			fn(this, &value);
 		}
 	}
 

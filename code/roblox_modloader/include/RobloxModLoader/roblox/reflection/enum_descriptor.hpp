@@ -35,7 +35,6 @@ namespace RBX::Reflection
 		{
 			std::int32_t value;
 			std::uint16_t item;
-			std::uint16_t reserved_6;
 		};
 
 		static constexpr std::uint16_t no_alias = 0xFFFF;

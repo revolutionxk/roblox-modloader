@@ -2,112 +2,88 @@
 
 #include "RobloxModLoader/internal/engine_abi.hpp"
 #include "RobloxModLoader/rml_export.hpp"
-#include "RobloxModLoader/util/intrusive_weak_ptr.hpp"
+#include "RobloxModLoader/roblox/util/intrusive_ptr.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
+#include <atomic>
 #include <cstdint>
 
-namespace RBX::Signals
+namespace rbx::signals
 {
-	struct Slot
-	{
-		std::int32_t strong;
-		std::int32_t weak;
-		void* fire_fn;
-		Slot* next;
-		std::uint64_t flags;
-		void* source;
-		void(RML_ENGINE_CALL* destroy_fn)(Slot*);
-		void* wrapper_ptr;
-		void* wrapper_rep;
+	struct slots_holder;
 
-	private:
-		RML_LAYOUT_GUARD_BEGIN()
-		RML_ASSERT_LAYOUT_SIZE(Slot, 0x40);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, strong, 0x0);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, weak, 0x4);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, fire_fn, 0x8);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, next, 0x10);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, flags, 0x18);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, source, 0x20);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, destroy_fn, 0x28);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, wrapper_ptr, 0x30);
-		RML_ASSERT_LAYOUT_OFFSET(Slot, wrapper_rep, 0x38);
-		RML_LAYOUT_GUARD_END()
+	struct slot_base : intrusive_ptr_target<slot_base>
+	{
+		void* do_call;
+		slot_base* next;
+		std::uintptr_t prev_and_flags;
+		slots_holder* holder;
+		void(RML_ENGINE_CALL* do_dtor)(slot_base*);
 	};
 
-	struct Signal
+	template<typename Functor>
+	struct slot_with_functor : slot_base
 	{
-		std::int32_t strong;
-		std::int32_t weak;
-		Slot* head;
-
-	private:
-		RML_LAYOUT_GUARD_BEGIN()
-		RML_ASSERT_LAYOUT_OFFSET(Signal, strong, 0x0);
-		RML_ASSERT_LAYOUT_OFFSET(Signal, weak, 0x4);
-		RML_ASSERT_LAYOUT_OFFSET(Signal, head, 0x8);
-		RML_LAYOUT_GUARD_END()
+		Functor functor;
 	};
 
-	class Connection
+	struct slots_holder : intrusive_ptr_target<slots_holder>
+	{
+		slot_base* head;
+		std::uint32_t iteration_mask;
+		std::atomic<std::int32_t> iteration_state;
+	};
+
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(slot_base, strong, 0x0);
+	RML_ASSERT_OFFSET(slot_base, weak, 0x4);
+	RML_ASSERT_OFFSET(slot_base, do_call, 0x8);
+	RML_ASSERT_OFFSET(slot_base, next, 0x10);
+	RML_ASSERT_OFFSET(slot_base, prev_and_flags, 0x18);
+	RML_ASSERT_OFFSET(slot_base, holder, 0x20);
+	RML_ASSERT_OFFSET(slot_base, do_dtor, 0x28);
+	RML_ASSERT_SIZE(slot_base, 0x30);
+	RML_ASSERT_OFFSET(slots_holder, head, 0x8);
+	RML_ASSERT_OFFSET(slots_holder, iteration_mask, 0x10);
+	RML_LAYOUT_DIAGNOSTIC_POP()
+
+	RML_EXPORT void intrusive_ptr_release(slots_holder* holder) noexcept;
+	RML_EXPORT void intrusive_weak_ptr_free(slot_base* slot) noexcept;
+
+	class connection
 	{
 	public:
-		using Slot = Slot;
+		connection() noexcept = default;
 
-		struct Deleter
-		{
-			void operator()(Slot* slot) const noexcept;
-		};
-
-		Connection() noexcept = default;
-
-		explicit Connection(Slot* slot) noexcept :
-		    m_slot(slot)
+		explicit connection(intrusive_weak_ptr<slot_base> slot) noexcept :
+		    m_slot(std::move(slot))
 		{
 		}
 
-		Connection(const Connection&) noexcept = default;
-		Connection(Connection&&) noexcept = default;
-		Connection& operator=(const Connection&) noexcept = default;
-		Connection& operator=(Connection&&) noexcept = default;
-		~Connection() = default;
-
-		[[nodiscard]] static Connection observe(Slot* slot) noexcept
+		[[nodiscard]] static connection observe(slot_base* slot) noexcept
 		{
-			if (slot)
-				std::atomic_ref(slot->weak).fetch_add(1, std::memory_order_seq_cst);
-			return Connection(slot);
+			return connection(intrusive_weak_ptr<slot_base>::observe(slot));
 		}
 
 		void disconnect() const;
 
-		[[nodiscard]] Slot* raw_slot() const noexcept
+		[[nodiscard]] slot_base* raw_slot() const noexcept
 		{
 			return m_slot.get();
 		}
 
-		[[nodiscard]] bool connected() const
+		[[nodiscard]] bool connected() const noexcept
 		{
 			return m_slot.alive();
 		}
 
-		bool operator==(const Connection& other) const
-		{
-			return m_slot == other.m_slot;
-		}
-		bool operator!=(const Connection& other) const
-		{
-			return m_slot != other.m_slot;
-		}
+		bool operator==(const connection& other) const noexcept = default;
 
 	private:
-		rml::utils::intrusive_weak_ptr<Slot, Deleter> m_slot;
+		intrusive_weak_ptr<slot_base> m_slot;
 	};
 
-	static_assert(sizeof(Connection) == sizeof(void*), "Connection must stay a single-pointer handle");
-
-	RML_EXPORT void release_holder(Signal* holder) noexcept;
+	static_assert(sizeof(connection) == sizeof(void*), "connection must stay a single-pointer handle");
 }
 
 namespace rbx
@@ -116,22 +92,15 @@ namespace rbx
 	class signal
 	{
 	public:
-		RBX::Signals::Signal* holder{};
-
-		signal() = default;
-		signal(const signal&) = delete;
-		signal& operator=(const signal&) = delete;
-
-		~signal()
-		{
-			RBX::Signals::release_holder(holder);
-		}
+		boost::intrusive_ptr<signals::slots_holder> holder;
 
 		[[nodiscard]] bool empty() const noexcept
 		{
 			return !holder || !holder->head;
 		}
 	};
+
+	static_assert(requires(signals::slots_holder* holder) { intrusive_ptr_release(holder); });
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_SIZE(signal<void()>, 8);

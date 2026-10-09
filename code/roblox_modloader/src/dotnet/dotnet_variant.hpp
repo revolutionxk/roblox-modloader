@@ -121,34 +121,6 @@ namespace rml::dotnet
 		return out;
 	}
 
-	struct engine_vector_header
-	{
-		const std::byte* begin;
-		const std::byte* end;
-		const std::byte* capacity;
-	};
-
-	[[nodiscard]] inline InteropVariant pack_sequence(const void* vec_storage, const size_t stride)
-	{
-		InteropVariant out{};
-		out.tag = InteropValueTag::Blittable;
-		out.as_instance = 0;
-
-		const auto* header = static_cast<const engine_vector_header*>(vec_storage);
-		const size_t bytes = (header->end > header->begin) ? static_cast<size_t>(header->end - header->begin) : 0;
-		const auto count = static_cast<int32_t>(bytes / stride);
-
-		const size_t buf_size = sizeof(int32_t) + bytes;
-		if (auto* buf = static_cast<std::byte*>(std::malloc(buf_size)))
-		{
-			*reinterpret_cast<int32_t*>(buf) = count;
-			if (bytes)
-				std::memcpy(buf + sizeof(int32_t), header->begin, bytes);
-			out.as_instance = reinterpret_cast<uintptr_t>(buf);
-		}
-		return out;
-	}
-
 	[[nodiscard]] inline bool read_bool(const InteropVariant& v, bool& out) noexcept
 	{
 		switch (v.tag)

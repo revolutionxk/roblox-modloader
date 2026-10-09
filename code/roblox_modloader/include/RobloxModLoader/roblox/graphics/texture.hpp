@@ -94,8 +94,9 @@ namespace RBX::Graphics
 		std::uint32_t array_length;
 		std::uint32_t samples;
 		std::uint32_t usage;
-		std::uint32_t reserved_5c;
-		void* reserved_60;
+
+	private:
+		[[maybe_unused]] void* reserved_60;
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
@@ -113,9 +114,9 @@ namespace RBX::Graphics
 	struct Renderbuffer
 	{
 		std::shared_ptr<Texture> texture;
-		std::uint64_t index;
-		std::uint32_t mip;
-		std::uint32_t reserved_1c;
+		std::uint32_t index{0};
+		std::uint32_t layer_count{1};
+		std::uint32_t mip{0};
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
@@ -139,7 +140,6 @@ namespace RBX::Graphics
 		std::uint32_t mask;
 		std::uint32_t size[2];
 		std::uint32_t format;
-		std::uint32_t reserved_8c;
 
 	protected:
 		Framebuffer()

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "RobloxModLoader/roblox/graphics/shader.hpp"
+#include "RobloxModLoader/roblox/util/split_hash_table.hpp"
+#include "RobloxModLoader/roblox/util/string_view.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
 #include <cstddef>
@@ -14,45 +16,6 @@
 namespace FW
 {
 	class FileWatcher;
-}
-
-namespace RBX
-{
-	struct StringView
-	{
-		const char* data;
-		std::size_t size;
-
-		StringView() :
-		    data(nullptr),
-		    size(0)
-		{
-		}
-
-		StringView(const char* text, const std::size_t length) :
-		    data(text),
-		    size(length)
-		{
-		}
-
-		StringView(const std::string_view text) :
-		    data(text.data()),
-		    size(text.size())
-		{
-		}
-
-		StringView(const char* text) :
-		    StringView(std::string_view(text))
-		{
-		}
-
-		std::string_view view() const
-		{
-			return {data, size};
-		}
-	};
-
-	static_assert(std::is_trivially_copyable_v<StringView> && sizeof(StringView) == 16);
 }
 
 namespace RBX::Graphics
@@ -84,7 +47,7 @@ namespace RBX::Graphics
 		union {
 			std::unordered_map<std::string, std::shared_ptr<Shader>> shaders;
 		};
-		std::byte deferred_shaders[40];
+		SplitHashMap<std::string, std::shared_ptr<DeferredShaderHandle>, static_cast<SplitHashPolicy>(9)> deferred_shaders;
 		union {
 			std::unordered_map<std::string, std::shared_ptr<ShaderProgram>> programs;
 		};
@@ -94,14 +57,13 @@ namespace RBX::Graphics
 		union {
 			std::unordered_map<std::string, unsigned> shader_flags;
 		};
-		bool reserved_200;
-		std::byte reserved_201[7];
+		bool shaders_changed;
 		union {
 			std::string pack_name;
 		};
-		std::uint64_t reserved_232;
-		bool reserved_240;
-		std::byte reserved_241[15];
+		std::int64_t pack_last_write_time;
+		bool pack_reload_pending;
+		double pack_reload_time;
 		union {
 			std::unique_ptr<FW::FileWatcher> file_watcher;
 		};
@@ -112,7 +74,6 @@ namespace RBX::Graphics
 			std::string key_scratch;
 		};
 		bool deferred_loading;
-		std::byte reserved_313[7];
 
 		~ShaderManager() override
 		{

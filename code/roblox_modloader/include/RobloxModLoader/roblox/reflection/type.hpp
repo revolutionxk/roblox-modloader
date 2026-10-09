@@ -3,9 +3,11 @@
 #include "descriptor.hpp"
 #include "member.hpp"
 #include "RobloxModLoader/rml_export.hpp"
+#include "variant_holder.hpp"
 
 #include <cstddef>
 #include <span>
+#include <vector>
 #include <string>
 #include <unordered_map>
 
@@ -36,9 +38,12 @@ namespace RBX::Reflection
 		const bool is_float;
 		const bool is_number;
 		const bool is_enum;
-		const bool reserved_37;
-		const bool reserved_38;
 
+	private:
+		[[maybe_unused]] const bool reserved_37;
+		[[maybe_unused]] const bool reserved_38;
+
+	public:
 		Type() = delete;
 
 		virtual std::string to_string(const VariantData* data) const = 0;
@@ -118,13 +123,17 @@ namespace RBX::Reflection
 
 	class Variant
 	{
+	public:
+		static constexpr std::size_t storage_size = 0x40;
+
+	private:
 		struct Storage
 		{
-			std::byte data[0x40]{};
+			std::byte data[storage_size]{};
 		};
 
 		const Type* m_type{nullptr};
-		const void* m_value_ops{nullptr};
+		const detail::holder* m_value_ops{nullptr};
 		alignas(8) Storage m_storage;
 
 	public:
@@ -169,7 +178,7 @@ namespace RBX::Reflection
 			return reinterpret_cast<const T*>(m_storage.data);
 		}
 
-		[[nodiscard]] const void* value_ops() const noexcept
+		[[nodiscard]] const detail::holder* value_ops() const noexcept
 		{
 			return m_value_ops;
 		}
@@ -179,7 +188,7 @@ namespace RBX::Reflection
 			return m_storage.data;
 		}
 
-		void set_type_and_ops(const Type* type, const void* value_ops) noexcept
+		void set_type_and_ops(const Type* type, const detail::holder* value_ops) noexcept
 		{
 			m_type = type;
 			m_value_ops = value_ops;
@@ -218,8 +227,8 @@ namespace RBX::Reflection
 		{
 			const Name* name;
 			const Type* type;
+			const Name* alias;
 			const ClassDescriptor* class_descriptor;
-			const void* reserved_18;
 			const Variant default_handle;
 
 			[[nodiscard]] bool has_default_value() const noexcept
@@ -231,57 +240,23 @@ namespace RBX::Reflection
 		struct Result
 		{
 			const Type* type;
-			const std::string* name;
+			const Name* alias;
 			const ClassDescriptor* class_descriptor;
 		};
 
-		template<typename T>
-		struct StdVector
-		{
-			T* m_begin{nullptr};
-			T* m_end{nullptr};
-			T* m_capacity{nullptr};
-
-			[[nodiscard]] bool empty() const noexcept
-			{
-				return m_begin == m_end;
-			}
-			[[nodiscard]] std::size_t size() const noexcept
-			{
-				return static_cast<std::size_t>(m_end - m_begin);
-			}
-			[[nodiscard]] T& front() const
-			{
-				return *m_begin;
-			}
-			[[nodiscard]] std::span<T> span() const noexcept
-			{
-				return {m_begin, m_end};
-			}
-		};
-
-		StdVector<Argument> m_arguments;
-		StdVector<Result> m_result_types;
-
-		[[nodiscard]] std::span<const Argument> arguments() const noexcept
-		{
-			return m_arguments.span();
-		}
-
-		[[nodiscard]] std::span<const Result> result_types() const noexcept
-		{
-			return m_result_types.span();
-		}
+		std::vector<Argument> arguments;
+		std::vector<Result> result_types;
 
 		[[nodiscard]] const Type* first_result_type() const noexcept
 		{
-			return m_result_types.empty() ? nullptr : m_result_types.front().type;
+			return result_types.empty() ? nullptr : result_types.front().type;
 		}
 	};
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	RML_ASSERT_OFFSET(SignatureDescriptor::Argument, class_descriptor, 0x18);
+	RML_ASSERT_OFFSET(SignatureDescriptor::Argument, default_handle, 0x20);
 	RML_ASSERT_SIZE(SignatureDescriptor::Argument, 0x70);
 	RML_ASSERT_SIZE(SignatureDescriptor::Result, 0x18);
-	RML_ASSERT_SIZE(SignatureDescriptor::StdVector<void*>, 0x18);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 	static_assert(sizeof(SignatureDescriptor) == 0x30);
 }

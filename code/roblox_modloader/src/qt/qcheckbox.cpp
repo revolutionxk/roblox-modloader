@@ -12,7 +12,7 @@ namespace rml::qt
 			return nullptr;
 
 		const QString label(text);
-		return detail::heap_construct<QCheckBox>(detail::WIDGET_INSTANCE_SIZE, construct, label.data(), parent);
+		return detail::heap_construct<QCheckBox>(sizeof(QCheckBox), construct, &label, parent);
 	}
 
 	QtOwned<QCheckBox> QCheckBox::create_owned(const std::string_view text)

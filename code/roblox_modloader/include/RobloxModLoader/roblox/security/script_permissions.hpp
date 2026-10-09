@@ -42,6 +42,10 @@ namespace RBX::Security {
         Restricted = 0xFFFFFFFFFFFFFFFFULL
     };
 
+    struct Protection {
+        Capabilities capabilities{};
+    };
+
     constexpr std::uint64_t FULL_CAPABILITIES = Restricted;
 
     constexpr std::uint64_t BASIC_SCRIPT_CAPABILITIES =
