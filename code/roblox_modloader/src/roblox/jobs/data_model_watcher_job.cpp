@@ -58,7 +58,8 @@ namespace rml::jobs
 
 		check_and_cleanup_stale_data_models();
 
-		on_data_model_changed(old_data_model, new_data_model, job->script_context);
+		const auto script_context = job->script_context.lock();
+		on_data_model_changed(old_data_model, new_data_model, script_context.get());
 	}
 
 	void DataModelWatcherJob::destroy_impl() noexcept

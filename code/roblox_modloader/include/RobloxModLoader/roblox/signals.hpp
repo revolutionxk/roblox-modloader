@@ -5,6 +5,7 @@
 #include "RobloxModLoader/roblox/util/intrusive_ptr.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 
+#include <atomic>
 #include <cstdint>
 
 namespace rbx::signals
@@ -29,8 +30,8 @@ namespace rbx::signals
 	struct slots_holder : intrusive_ptr_target<slots_holder>
 	{
 		slot_base* head;
-		std::uint32_t reserved_10;
-		std::uint32_t reserved_14;
+		std::uint32_t iteration_mask;
+		std::atomic<std::int32_t> iteration_state;
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
@@ -43,7 +44,7 @@ namespace rbx::signals
 	RML_ASSERT_OFFSET(slot_base, do_dtor, 0x28);
 	RML_ASSERT_SIZE(slot_base, 0x30);
 	RML_ASSERT_OFFSET(slots_holder, head, 0x8);
-	RML_ASSERT_OFFSET(slots_holder, reserved_10, 0x10);
+	RML_ASSERT_OFFSET(slots_holder, iteration_mask, 0x10);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	RML_EXPORT void intrusive_ptr_release(slots_holder* holder) noexcept;

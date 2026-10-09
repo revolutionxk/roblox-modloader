@@ -17,7 +17,6 @@ namespace RBX
 			T value;
 			std::uint64_t hash;
 			std::uint32_t references;
-			std::uint32_t reserved_2c;
 		};
 
 		RML_LAYOUT_DIAGNOSTIC_PUSH()

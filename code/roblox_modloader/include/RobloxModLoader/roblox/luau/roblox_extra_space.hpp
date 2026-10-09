@@ -40,10 +40,10 @@ namespace RBX::Luau {
 
     private:
         RML_LAYOUT_GUARD_BEGIN()
-            RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, identity, 0x00);
-            RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, bound_state, 0x20);
-            RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, capabilities, 0x30);
-            RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, capability_deriver, 0x38);
+        RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, identity, 0x00);
+        RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, bound_state, 0x20);
+        RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, capabilities, 0x30);
+        RML_ASSERT_LAYOUT_OFFSET(ThreadIdentityContext, capability_deriver, 0x38);
         RML_LAYOUT_GUARD_END()
     };
 
@@ -71,35 +71,43 @@ public:
     };
 
 private:
-
-    std::byte padding_0[0x18];
+    [[maybe_unused]] void *reserved_0[3];
 
 public:
     std::shared_ptr<Shared> shared;
-    RBX::Luau::CapabilityValidator *capabilities_validator;
-    RBX::Luau::ExtendedIdentity context;
 
 private:
-    std::byte padding_2[0x18];
+    [[maybe_unused]] void *reserved_28;
+    [[maybe_unused]] WeakRef reserved_30;
 
 public:
     uint64_t capabilities;
 
 private:
-    std::byte padding_3[0x8];
+    WeakRef reserved_weak_ref_0;
 
 public:
-    WeakRef weak_refs[4];
+    RBX::Luau::ExtendedIdentity context;
 
 private:
-    std::byte padding_4[0x10];
+    std::byte padding_2[0x10];
+
+    WeakRef reserved_weak_ref_1;
+    WeakRef reserved_weak_ref_2;
+    WeakRef reserved_weak_ref_3;
+    std::byte padding_3[0x10];
+
+    RML_LAYOUT_GUARD_BEGIN()
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_28, 0x28);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_0, 0x48);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_1, 0x78);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_3, 0x98);
+    RML_LAYOUT_GUARD_END()
 };
 
 RML_LAYOUT_DIAGNOSTIC_PUSH()
 RML_ASSERT_OFFSET(RobloxExtraSpace, shared, 0x18);
-RML_ASSERT_OFFSET(RobloxExtraSpace, capabilities_validator, 0x28);
-RML_ASSERT_OFFSET(RobloxExtraSpace, context, 0x30);
-RML_ASSERT_OFFSET(RobloxExtraSpace, capabilities, 0x58);
-RML_ASSERT_OFFSET(RobloxExtraSpace, weak_refs, 0x68);
+RML_ASSERT_OFFSET(RobloxExtraSpace, capabilities, 0x40);
+RML_ASSERT_OFFSET(RobloxExtraSpace, context, 0x58);
 RML_ASSERT_SIZE(RobloxExtraSpace, 0xB8);
 RML_LAYOUT_DIAGNOSTIC_POP()
