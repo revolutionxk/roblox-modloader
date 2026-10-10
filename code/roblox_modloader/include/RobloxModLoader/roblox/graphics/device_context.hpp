@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/profiler/micro_profile.hpp"
 #include "buffer.hpp"
 #include "shader.hpp"
 #include "texture.hpp"
@@ -52,7 +53,7 @@ namespace RBX::Graphics
 		virtual void dispatch(unsigned x, unsigned y, unsigned z) = 0;
 		virtual void begin_group(const char* name, int color) = 0;
 		virtual void end_group() = 0;
-		virtual void begin_sync_profiler_scope(std::uint64_t token, Profiler::ActiveRegion* region, const char* name) = 0;
-		virtual void end_sync_profiler_scope(std::uint64_t token, Profiler::ActiveRegion* region, const char* name) = 0;
+		virtual void begin_sync_profiler_scope(MicroProfileTimerToken token, Profiler::ActiveRegion* region, const char* name) = 0;
+		virtual void end_sync_profiler_scope(MicroProfileTimerToken token, Profiler::ActiveRegion* region, const char* name) = 0;
 	};
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "RobloxModLoader/roblox/profiler/micro_profile.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "task_scheduler.job.hpp"
 
@@ -24,7 +25,7 @@ namespace RBX
 		[[maybe_unused]] bool reserved_170;
 
 	public:
-		std::uint64_t profiler_token;
+		MicroProfileTimerToken profiler_token;
 
 	private:
 		[[maybe_unused]] bool reserved_180;
