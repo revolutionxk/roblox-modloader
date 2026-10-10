@@ -201,7 +201,8 @@ private:
 			if (m_memory)
 				m_memory->stop();
 			tracy_profiler::attach_gpu_zones(nullptr);
-			tracy_profiler::remove_capture();
+			if (!tracy_profiler::remove_capture())
+				m_log->warn("MicroProfile capture: detours still busy; left installed");
 			if (m_gpu_zones)
 				m_gpu_zones->stop();
 			m_installed = false;

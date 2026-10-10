@@ -335,10 +335,10 @@ namespace tracy_profiler
 		force_groups();
 	}
 
-	void remove_capture()
+	bool remove_capture()
 	{
 		if (!g_hooked)
-			return;
+			return true;
 
 		g_active.store(false);
 
@@ -355,7 +355,8 @@ namespace tracy_profiler
 		if (g_hooked_get_token)
 			rml::Hooking::DetourHookHelper::disable<&get_token>();
 
-		g_in_flight.wait_idle(std::chrono::seconds(2));
+		if (!g_in_flight.wait_idle(std::chrono::seconds(2)))
+			return false;
 
 		rml::Hooking::DetourHookHelper::remove<&enter>();
 		rml::Hooking::DetourHookHelper::remove<&leave>();
@@ -381,5 +382,6 @@ namespace tracy_profiler
 		g_state = nullptr;
 		g_timers = nullptr;
 		g_callstacks = nullptr;
+		return true;
 	}
 }

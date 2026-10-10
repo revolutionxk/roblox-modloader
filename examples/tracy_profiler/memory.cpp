@@ -45,7 +45,7 @@ namespace tracy_profiler
 			m_log->warn("Luau memory off: LUA_NEWSTATE or LUA_CLOSE missing");
 		if (m_engine.has_external())
 		{
-			m_external = std::make_unique<ExternalMemory>(m_engine, m_callstacks);
+			m_external = std::make_unique<ExternalMemory>(m_engine, m_callstacks, m_log);
 			if (!m_external->install())
 			{
 				m_log->warn("external memory events off: trackExternal entry points or memory categories missing");

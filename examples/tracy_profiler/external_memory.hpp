@@ -4,10 +4,16 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+namespace spdlog
+{
+	class logger;
+}
 
 namespace tracy_profiler
 {
@@ -17,7 +23,7 @@ namespace tracy_profiler
 	class ExternalMemory
 	{
 	public:
-		ExternalMemory(const MemoryEngine& engine, const Callstacks& callstacks);
+		ExternalMemory(const MemoryEngine& engine, const Callstacks& callstacks, std::shared_ptr<spdlog::logger> log);
 		~ExternalMemory();
 
 		ExternalMemory(const ExternalMemory&) = delete;
@@ -66,6 +72,7 @@ namespace tracy_profiler
 
 		const MemoryEngine& m_engine;
 		const Callstacks& m_callstacks;
+		std::shared_ptr<spdlog::logger> m_log;
 		std::vector<std::string> m_gpu_pools;
 		std::vector<std::string> m_heap_pools;
 		std::mutex m_mutex;

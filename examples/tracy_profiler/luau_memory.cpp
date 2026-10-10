@@ -217,7 +217,11 @@ namespace tracy_profiler
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		while (g_closing.load() != 0)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		g_in_flight.wait_idle(std::chrono::seconds(2));
+		if (!g_in_flight.wait_idle(std::chrono::seconds(2)))
+		{
+			m_log->warn("Luau memory: detours still busy; left installed");
+			return;
+		}
 		while (g_closing.load() != 0)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		rml::Hooking::DetourHookHelper::remove<&lua_newstate_detour>();

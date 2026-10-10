@@ -9,6 +9,7 @@
 #include <RobloxModLoader/memory/string_anchor.hpp>
 #include <algorithm>
 #include <array>
+#include <spdlog/spdlog.h>
 #include <thread>
 #include <tracy/TracyC.h>
 
@@ -76,9 +77,10 @@ namespace tracy_profiler
 		return hash;
 	}
 
-	ExternalMemory::ExternalMemory(const MemoryEngine& engine, const Callstacks& callstacks) :
+	ExternalMemory::ExternalMemory(const MemoryEngine& engine, const Callstacks& callstacks, std::shared_ptr<spdlog::logger> log) :
 	    m_engine(engine),
-	    m_callstacks(callstacks)
+	    m_callstacks(callstacks),
+	    m_log(std::move(log))
 	{
 		const auto count = std::min(m_engine.category_count(), RBX::Memory::max_categories);
 		m_gpu_pools.reserve(count);
@@ -130,7 +132,11 @@ namespace tracy_profiler
 		rml::Hooking::DetourHookHelper::disable<&track_deallocate>();
 		rml::Hooking::DetourHookHelper::disable<&track_deallocate_deferred>();
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-		g_in_flight.wait_idle(std::chrono::seconds(2));
+		if (!g_in_flight.wait_idle(std::chrono::seconds(2)))
+		{
+			m_log->warn("external memory: detours still busy; left installed");
+			return;
+		}
 		rml::Hooking::DetourHookHelper::remove<&track_allocate>();
 		rml::Hooking::DetourHookHelper::remove<&track_deallocate>();
 		rml::Hooking::DetourHookHelper::remove<&track_deallocate_deferred>();

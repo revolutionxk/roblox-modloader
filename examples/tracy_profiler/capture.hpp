@@ -12,7 +12,7 @@ namespace tracy_profiler
 
 	void install_capture(const Engine& engine, Timers& timers, const Callstacks& callstacks);
 	void apply_settings(const Settings& settings);
-	void remove_capture();
+	[[nodiscard]] bool remove_capture();
 	void attach_gpu_zones(GpuZones* zones);
 	[[nodiscard]] std::uint64_t connection_epoch() noexcept;
 }

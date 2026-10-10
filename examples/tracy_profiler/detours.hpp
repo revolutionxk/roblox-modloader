@@ -25,7 +25,7 @@ namespace tracy_profiler
 			std::atomic<std::int32_t>& m_count;
 		};
 
-		bool wait_idle(std::chrono::milliseconds timeout) const;
+		[[nodiscard]] bool wait_idle(std::chrono::milliseconds timeout) const;
 
 	private:
 		struct alignas(64) Slot
