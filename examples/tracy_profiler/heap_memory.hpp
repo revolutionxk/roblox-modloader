@@ -8,6 +8,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace spdlog
@@ -41,6 +42,7 @@ namespace tracy_profiler
 	private:
 		struct Binding
 		{
+			std::string_view symbol;
 			std::vector<rml::platform::ImportSlot> slots;
 			void* hook{};
 		};
@@ -48,6 +50,7 @@ namespace tracy_profiler
 		bool bind();
 		void unbind();
 		void discard(const char* pool) const;
+		void discard_all() const;
 
 		const MemoryEngine& m_engine;
 		const Callstacks& m_callstacks;
@@ -60,8 +63,10 @@ namespace tracy_profiler
 		std::atomic<bool> m_skip_luau{false};
 		std::atomic<std::int32_t> m_depth{16};
 		std::atomic<std::size_t> m_min_size{};
-		std::atomic<std::uint64_t> m_seen{};
-		std::atomic<std::uint64_t> m_failures{};
+		std::uintptr_t m_image_begin{};
+		std::size_t m_image_size{};
 		bool m_bound{};
+		alignas(64) std::atomic<std::uint64_t> m_seen{};
+		alignas(64) std::atomic<std::uint64_t> m_failures{};
 	};
 }

@@ -4,6 +4,8 @@
 #include "detours.hpp"
 #include "settings.hpp"
 
+#include <RobloxModLoader/memory/module.hpp>
+#include <RobloxModLoader/platform/debug/call_stack.hpp>
 #include <RobloxModLoader/platform/memory/host_image.hpp>
 #include <algorithm>
 #include <array>
@@ -22,8 +24,9 @@ namespace tracy_profiler
 	static void* heap_malloc(const std::size_t size)
 	{
 		const InFlight::Call call{g_in_flight};
+		auto* self = g_heap.load(std::memory_order_acquire);
 		auto* block = g_original.malloc(size);
-		if (auto* self = g_heap.load(std::memory_order_acquire); self && block)
+		if (self && block)
 			self->record_allocation(block, size);
 		return block;
 	}
@@ -31,8 +34,9 @@ namespace tracy_profiler
 	static void* heap_malloc_aligned(const std::size_t size, const std::size_t alignment)
 	{
 		const InFlight::Call call{g_in_flight};
+		auto* self = g_heap.load(std::memory_order_acquire);
 		auto* block = g_original.malloc_aligned(size, alignment);
-		if (auto* self = g_heap.load(std::memory_order_acquire); self && block)
+		if (self && block)
 			self->record_allocation(block, size);
 		return block;
 	}
@@ -64,7 +68,8 @@ namespace tracy_profiler
 	static void heap_free_prepared(void* block, void* state)
 	{
 		const InFlight::Call call{g_in_flight};
-		if (auto* self = g_heap.load(std::memory_order_acquire); self && block)
+		auto* self = g_heap.load(std::memory_order_acquire);
+		if (self && block)
 			self->record_free(block);
 		g_original.free_prepared(block, state);
 	}
@@ -72,7 +77,8 @@ namespace tracy_profiler
 	static void heap_free(void* block)
 	{
 		const InFlight::Call call{g_in_flight};
-		if (auto* self = g_heap.load(std::memory_order_acquire); self && block)
+		auto* self = g_heap.load(std::memory_order_acquire);
+		if (self && block)
 			self->record_free(block);
 		g_original.free(block);
 	}
@@ -85,6 +91,9 @@ namespace tracy_profiler
 	    m_luau(RBX::Memory::max_categories)
 	{
 		g_original = engine;
+		const rml::memory::module image{rml::platform::module_path_containing(reinterpret_cast<const void*>(&heap_malloc))};
+		m_image_begin = image.begin().as<std::uintptr_t>();
+		m_image_size = image.size();
 		const auto count = std::min(m_engine.category_count(), RBX::Memory::max_categories);
 		const auto& invalid = m_names.emplace_back("Heap/invalid");
 		std::ranges::fill(m_pools, invalid.c_str());
@@ -106,7 +115,7 @@ namespace tracy_profiler
 
 	bool HeapMemory::active() const
 	{
-		return m_bound;
+		return m_events.load(std::memory_order_relaxed);
 	}
 
 	std::uint64_t HeapMemory::take_events()
@@ -122,12 +131,12 @@ namespace tracy_profiler
 	bool HeapMemory::bind()
 	{
 		const std::array<std::pair<std::string_view, void*>, 6> hooks{{
-		    {"mi_malloc", reinterpret_cast<void*>(&heap_malloc)},
-		    {"mi_malloc_aligned", reinterpret_cast<void*>(&heap_malloc_aligned)},
-		    {"mi_realloc", reinterpret_cast<void*>(&heap_realloc)},
-		    {"mi_realloc_aligned", reinterpret_cast<void*>(&heap_realloc_aligned)},
 		    {"mi_free_prepared", reinterpret_cast<void*>(&heap_free_prepared)},
 		    {"mi_free", reinterpret_cast<void*>(&heap_free)},
+		    {"mi_realloc", reinterpret_cast<void*>(&heap_realloc)},
+		    {"mi_realloc_aligned", reinterpret_cast<void*>(&heap_realloc_aligned)},
+		    {"mi_malloc", reinterpret_cast<void*>(&heap_malloc)},
+		    {"mi_malloc_aligned", reinterpret_cast<void*>(&heap_malloc_aligned)},
 		}};
 		m_bindings.clear();
 		const auto image = rml::platform::studio_image_name();
@@ -140,11 +149,18 @@ namespace tracy_profiler
 				m_bindings.clear();
 				return false;
 			}
-			m_bindings.push_back({std::move(slots), hook});
+			m_bindings.push_back({symbol, std::move(slots), hook});
 		}
 		g_heap.store(this, std::memory_order_release);
 		for (const auto& binding : m_bindings)
-			rml::platform::rebind_import_slots(binding.slots, binding.hook);
+		{
+			if (!rml::platform::rebind_import_slots(binding.slots, binding.hook))
+			{
+				m_log->warn("heap memory events off: could not rebind {}", binding.symbol);
+				unbind();
+				return false;
+			}
+		}
 		return true;
 	}
 
@@ -153,6 +169,11 @@ namespace tracy_profiler
 		for (const auto& binding : m_bindings)
 			rml::platform::restore_import_slots(binding.slots);
 		m_bindings.clear();
+		discard_all();
+	}
+
+	void HeapMemory::discard_all() const
+	{
 		for (const auto& name : m_names)
 			discard(name.c_str());
 	}
@@ -166,7 +187,9 @@ namespace tracy_profiler
 	void HeapMemory::apply(const Settings& settings)
 	{
 		m_depth.store(settings.memory_callstack_depth, std::memory_order_relaxed);
-		m_min_size.store(static_cast<std::size_t>(settings.memory_events_min_size), std::memory_order_relaxed);
+		const auto min_size = static_cast<std::size_t>(settings.memory_events_min_size);
+		if (m_min_size.exchange(min_size, std::memory_order_relaxed) < min_size && m_bound)
+			discard_all();
 		const auto was_skipping = m_skip_luau.exchange(settings.memory_events_luau, std::memory_order_relaxed);
 		if (m_bound && settings.memory_events_luau && !was_skipping)
 		{
@@ -190,6 +213,8 @@ namespace tracy_profiler
 
 	void HeapMemory::stop()
 	{
+		if (!m_bound && !g_heap.load(std::memory_order_acquire))
+			return;
 		m_events.store(false, std::memory_order_relaxed);
 		if (m_bound)
 		{
@@ -207,9 +232,22 @@ namespace tracy_profiler
 			return;
 		try
 		{
-			const auto category = std::bit_cast<RBX::Memory::CategoryWord>(m_engine.get_category()).category;
+			const auto category = std::bit_cast<RBX::Memory::CategoryWord>(m_engine.resolve_category(block)).category;
 			if (m_skip_luau.load(std::memory_order_relaxed) && m_luau[category])
 				return;
+			std::array<std::uintptr_t, 6> raw{};
+			const auto captured = rml::platform::capture_return_addresses(raw);
+			const auto inside = [this](const std::uintptr_t address) {
+				return address - 1 - m_image_begin < m_image_size;
+			};
+			std::size_t first = 0;
+			while (first < captured && inside(raw[first]))
+				++first;
+			for (auto index = first; index < std::min(captured, first + 3); ++index)
+			{
+				if (inside(raw[index]))
+					return;
+			}
 			std::array<std::uint64_t, Callstacks::capacity> frames{};
 			const auto depth = m_callstacks.capture_from_studio(frames.data(), std::min(m_depth.load(std::memory_order_relaxed), Callstacks::capacity), 1);
 			___tracy_emit_memory_alloc_frames_named(block, size, frames.data(), depth, m_pools[category]);

@@ -3,8 +3,10 @@
 #include "callstack.hpp"
 #include "settings.hpp"
 
+#include <chrono>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <tracy/TracyC.h>
 
 namespace tracy_profiler
 {
@@ -63,9 +65,26 @@ namespace tracy_profiler
 			    return dropped();
 		    },
 		    [this] {
-			    if (!m_heap || !m_heap->active() || ++m_ticks % 40 != 0)
+			    if (!m_heap || !m_heap->active())
+			    {
+				    m_ticks = 0;
+				    m_rate_since = {};
 				    return;
-			    m_log->info("heap memory events: {}/s", m_heap->take_events() / 10);
+			    }
+			    const auto now = std::chrono::steady_clock::now();
+			    if (m_rate_since == std::chrono::steady_clock::time_point{})
+			    {
+				    static_cast<void>(m_heap->take_events());
+				    m_rate_since = now;
+				    return;
+			    }
+			    if (++m_ticks % 40 != 0)
+				    return;
+			    const auto events = m_heap->take_events();
+			    const auto seconds = std::chrono::duration<double>(now - m_rate_since).count();
+			    m_rate_since = now;
+			    if (___tracy_connected())
+				    m_log->info("heap memory events: {:.0f}/s", static_cast<double>(events) / seconds);
 		    });
 		apply(settings);
 		m_plots->start();

@@ -7,6 +7,7 @@
 #include "memory_engine.hpp"
 #include "memory_plots.hpp"
 
+#include <chrono>
 #include <memory>
 
 namespace spdlog
@@ -48,6 +49,7 @@ namespace tracy_profiler
 		std::unique_ptr<ExternalMemory> m_external;
 		std::unique_ptr<HeapMemory> m_heap;
 		std::uint32_t m_ticks{};
+		std::chrono::steady_clock::time_point m_rate_since{};
 		std::unique_ptr<MemoryPlots> m_plots;
 	};
 }
