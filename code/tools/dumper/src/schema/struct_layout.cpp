@@ -25,6 +25,13 @@ namespace rml::dumper::schema
 		});
 	}
 
+	bool StructLayout::overlaps(const std::size_t offset, const std::size_t size) const
+	{
+		return std::ranges::any_of(fields, [offset, size](const Field& field) {
+			return offset < field.end() && field.offset < offset + size;
+		});
+	}
+
 	std::size_t StructLayout::recovered_count() const
 	{
 		return static_cast<std::size_t>(
@@ -44,10 +51,10 @@ namespace rml::dumper::schema
 				                                   "{}.{} ends at 0x{:X} past the 0x{:X} byte struct", layout.name,
 				                                   field.name, field.end(), layout.size));
 
-			if (field.size > 1 && field.offset % field.size != 0)
+			if (field.element_size() > 1 && field.offset % field.element_size() != 0)
 				return std::unexpected(Error::make(ErrorCode::validation,
 				                                   "{}.{} at 0x{:X} breaks {} byte alignment", layout.name,
-				                                   field.name, field.offset, field.size));
+				                                   field.name, field.offset, field.element_size()));
 		}
 
 		for (std::size_t i = 1; i < layout.fields.size(); ++i)

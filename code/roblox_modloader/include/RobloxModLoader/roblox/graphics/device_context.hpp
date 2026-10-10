@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/roblox/profiler/micro_profile.hpp"
 #include "buffer.hpp"
 #include "shader.hpp"
 #include "texture.hpp"
@@ -18,7 +19,7 @@ namespace RBX::Graphics
 		virtual ~DeviceContext() = default;
 		virtual void set_default_anisotropy(unsigned value) = 0;
 		virtual Framebuffer* get_framebuffer() = 0;
-		virtual void copy_framebuffer(Framebuffer* buffer, Texture* texture, unsigned index, unsigned mip) = 0;
+		virtual void copy_framebuffer(Framebuffer* buffer, Texture* texture, unsigned mip, unsigned slice) = 0;
 		virtual void resolve_framebuffer(Framebuffer* msaa_buffer, Framebuffer* buffer, unsigned mask) = 0;
 		virtual void generate_mipmaps(Texture* texture) = 0;
 		virtual void begin_pass(Framebuffer* buffer, unsigned load_mask, unsigned store_mask, const PassClear* clear, const PassResolve* resolve, unsigned flags) = 0;
@@ -52,7 +53,7 @@ namespace RBX::Graphics
 		virtual void dispatch(unsigned x, unsigned y, unsigned z) = 0;
 		virtual void begin_group(const char* name, int color) = 0;
 		virtual void end_group() = 0;
-		virtual void begin_sync_profiler_scope(std::uint64_t token, Profiler::ActiveRegion* region, const char* name) = 0;
-		virtual void end_sync_profiler_scope(std::uint64_t token, Profiler::ActiveRegion* region, const char* name) = 0;
+		virtual void begin_sync_profiler_scope(MicroProfileTimerToken token, Profiler::ActiveRegion* region, const char* name) = 0;
+		virtual void end_sync_profiler_scope(MicroProfileTimerToken token, Profiler::ActiveRegion* region, const char* name) = 0;
 	};
 }

@@ -16,6 +16,16 @@ namespace rml::dumper::recover
 	private:
 		static constexpr std::array<std::string_view, 2> m_dependencies{"lua_State", "CommonHeader"};
 
-		[[nodiscard]] static disasm::Object loaded_by(const disasm::Trace& trace, const disasm::MemoryAccess& read);
+		[[nodiscard]] static disasm::Object global_of(const RecoveryContext& context, const disasm::Trace& trace);
+		[[nodiscard]] static const disasm::MemoryAccess* called_hook(const disasm::Trace& trace,
+		                                                             disasm::Object global, disasm::Register state);
+
+		static void take(const RecoveryContext& context, schema::StructLayout& layout,
+		                 const disasm::MemoryAccess* access, schema::Field field);
+
+		static void recover_currentwhite(const RecoveryContext& context, const disasm::Trace& trace,
+		                                 schema::StructLayout& layout);
+		static void recover_accounting(const RecoveryContext& context, schema::StructLayout& layout);
+		static void recover_allocation_hook(const RecoveryContext& context, schema::StructLayout& layout);
 	};
 }

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace rml::dumper::schema
 {
@@ -34,6 +36,18 @@ namespace rml::dumper::schema
 		std::variant<Fixed, Recovered> m_source{Fixed{"unspecified"}};
 	};
 
+	struct Parameter
+	{
+		std::string type;
+		std::string name;
+	};
+
+	struct Signature
+	{
+		std::string result;
+		std::vector<Parameter> parameters;
+	};
+
 	struct Field
 	{
 		std::string name;
@@ -41,7 +55,10 @@ namespace rml::dumper::schema
 		std::size_t size{};
 		std::size_t offset{};
 		Provenance provenance;
+		std::size_t count{};
+		std::optional<Signature> signature;
 
 		[[nodiscard]] std::size_t end() const { return offset + size; }
+		[[nodiscard]] std::size_t element_size() const { return count != 0 ? size / count : size; }
 	};
 }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <format>
 #include <map>
+#include <set>
 
 namespace rml::dumper::recover
 {
@@ -226,8 +227,78 @@ namespace rml::dumper::recover
 			}
 		}
 
+		recover_debugname(context, layout);
+
 		layout.size = layout.fields.empty() ? 0 : layout.fields.back().end();
 
 		return layout;
+	}
+
+	std::set<disasm::Object> ClosureRecoverer::closures_in(const disasm::Trace& trace, const std::size_t is_c)
+	{
+		std::set<disasm::Object> closures;
+
+		for (const auto& access : trace.accesses)
+			if (!access.is_write && access.width == 1 && access.object != disasm::no_object &&
+			    access.index == disasm::Register::none && static_cast<std::size_t>(access.displacement) == is_c)
+				closures.insert(access.object);
+
+		return closures;
+	}
+
+	void ClosureRecoverer::recover_debugname(const RecoveryContext& context, schema::StructLayout& layout)
+	{
+		const auto probe = "the qword lua_getinfo reads off a c closure and hands to ar->name";
+
+		const auto trace = context.trace(target::Anchor::lua_getinfo);
+		const auto* debug = context.layout("lua_Debug");
+		const auto* name = debug != nullptr ? debug->find("name") : nullptr;
+		const auto* is_c = layout.find("isC");
+		const auto* proto = layout.find("p");
+
+		if (!trace || name == nullptr || is_c == nullptr || proto == nullptr)
+		{
+			context.report().record_failure("Closure", "debugname", probe);
+			return;
+		}
+
+		const disasm::TraceQuery query(**trace);
+		const auto record = query.dominant_object();
+		const auto closures = closures_in(**trace, is_c->offset);
+
+		for (const auto& store : (*trace)->accesses)
+		{
+			if (!store.is_write || store.object != record || store.width != 8 ||
+			    static_cast<std::size_t>(store.displacement) != name->offset)
+				continue;
+
+			for (const auto& load : (*trace)->accesses)
+			{
+				if (load.is_write || load.width != 8 || load.displacement < 0 || !closures.contains(load.object))
+					continue;
+
+				const auto offset = static_cast<std::size_t>(load.displacement);
+				if (offset == proto->offset || layout.overlaps(offset, 8))
+					continue;
+
+				const auto header = query.stored_step(load, store);
+				if (!header)
+					continue;
+
+				const auto detail = *header != 0
+				                        ? std::format("{}, past a 0x{:X} byte string header", probe, *header)
+				                        : std::format("{}, as it is", probe);
+
+				context.report().record_recovered("Closure", "debugname", detail);
+				layout.add({.name = "debugname",
+				            .type = *header != 0 ? "TString*" : "const char*",
+				            .size = 8,
+				            .offset = offset,
+				            .provenance = schema::Provenance::recovered("lua_getinfo", detail)});
+				return;
+			}
+		}
+
+		context.report().record_failure("Closure", "debugname", probe);
 	}
 }

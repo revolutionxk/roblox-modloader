@@ -144,4 +144,38 @@ namespace rml::dumper::disasm
 
 		return m_trace.calls.front().sequence;
 	}
+
+	Object TraceQuery::loaded_by(const MemoryAccess& read) const
+	{
+		if (read.loaded != no_object)
+			return read.loaded;
+
+		for (const auto& access : m_trace.accesses)
+			if (access.sequence > read.sequence && access.base == read.value_register)
+				return access.object;
+
+		return no_object;
+	}
+
+	std::optional<std::int64_t> TraceQuery::stored_step(const MemoryAccess& load, const MemoryAccess& store) const
+	{
+		const auto loaded = loaded_by(load);
+		if (loaded == no_object || !store.is_write || store.value_object == no_object)
+			return std::nullopt;
+
+		if (store.value_object == loaded)
+			return 0;
+
+		for (const auto& address : m_trace.accesses)
+			if (!address.is_write && address.object == loaded && address.index == Register::none &&
+			    address.loaded == store.value_object)
+				return address.displacement;
+
+		for (const auto& constant : m_trace.constants)
+			if (constant.kind == ConstantKind::step && constant.operand == loaded &&
+			    constant.result == store.value_object)
+				return constant.value;
+
+		return std::nullopt;
+	}
 }

@@ -3,6 +3,7 @@
 #include "RobloxModLoader/luau/generated/luau_layout.hpp"
 
 #include <cstring>
+#include <string_view>
 
 namespace rml::luau::access
 {
@@ -90,5 +91,10 @@ namespace rml::luau::access
 	inline void advance_top(LuaState* thread)
 	{
 		thread->top = value_at(thread->top, 1);
+	}
+
+	[[nodiscard]] inline std::string_view text(const TString* string)
+	{
+		return string != nullptr ? std::string_view{string->data, string->len} : std::string_view{};
 	}
 }

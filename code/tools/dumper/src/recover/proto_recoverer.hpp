@@ -2,6 +2,9 @@
 
 #include "rml/dumper/recover/recoverer.hpp"
 
+#include <map>
+#include <set>
+
 namespace rml::dumper::recover
 {
 	class ProtoRecoverer final : public Recoverer
@@ -25,7 +28,18 @@ namespace rml::dumper::recover
 
 		static void recover_userdata(const RecoveryContext& context, schema::StructLayout& layout);
 
+		[[nodiscard]] static std::set<disasm::Object> protos_in(const disasm::Trace& trace,
+		                                                        const std::set<disasm::Object>& closures,
+		                                                        std::size_t p);
+
 	private:
-		static constexpr std::array<std::string_view, 2> m_dependencies{"CommonHeader", "Closure"};
+		static constexpr std::array<std::string_view, 3> m_dependencies{"CommonHeader", "Closure", "lua_Debug"};
+
+		[[nodiscard]] static const disasm::MemoryAccess* stored_by_loader(
+		    const RecoveryContext& context, const schema::StructLayout& layout,
+		    const std::map<std::int64_t, const disasm::MemoryAccess*>& candidates);
+
+		static void recover_line(const RecoveryContext& context, schema::StructLayout& layout);
+		static void recover_debug(const RecoveryContext& context, schema::StructLayout& layout);
 	};
 }

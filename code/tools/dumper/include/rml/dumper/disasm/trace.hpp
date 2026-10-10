@@ -3,6 +3,7 @@
 #include "rml/dumper/core/types.hpp"
 #include "rml/dumper/disasm/register.hpp"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -34,13 +35,23 @@ namespace rml::dumper::disasm
 		std::int64_t displacement{};
 		std::optional<std::uint64_t> immediate;
 		bool is_write{};
+		Object loaded{no_object};
 	};
+
+	inline constexpr std::size_t register_slots = static_cast<std::size_t>(Register::zr) + 1;
 
 	struct CallSite
 	{
 		std::size_t sequence{};
 		Rva address{};
 		std::optional<Rva> target;
+		Object callee{no_object};
+		std::array<Object, register_slots> registers{};
+
+		[[nodiscard]] Object object_of(const Register value) const
+		{
+			return registers[static_cast<std::size_t>(value)];
+		}
 	};
 
 	enum class ConstantKind : std::uint8_t
@@ -57,6 +68,8 @@ namespace rml::dumper::disasm
 		Register destination{Register::none};
 		std::int64_t value{};
 		ConstantKind kind{};
+		Object operand{no_object};
+		Object result{no_object};
 	};
 
 	struct Trace

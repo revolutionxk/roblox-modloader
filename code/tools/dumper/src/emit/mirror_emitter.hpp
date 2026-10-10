@@ -19,6 +19,7 @@ namespace rml::dumper::emit
 			std::size_t offset{};
 			std::size_t size{};
 			bool reserved{};
+			std::size_t count{};
 		};
 
 		[[nodiscard]] static std::vector<Slot> pack(const schema::StructLayout& layout,

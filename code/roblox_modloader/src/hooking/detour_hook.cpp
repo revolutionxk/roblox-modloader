@@ -55,11 +55,20 @@ namespace rml
 
 	DetourHook::~DetourHook() noexcept
 	{
+		destroy();
+	}
+
+	void DetourHook::destroy()
+	{
 		if (!m_target || !g_hook_engine)
 			return;
 
 		if (const auto result = g_hook_engine->remove(m_name, m_target); !result)
 			RML_ERROR("Failed to remove hook: {}", result.error().describe());
+
+		m_target = nullptr;
+		m_original = nullptr;
+		m_enabled = false;
 	}
 
 	std::expected<void, rml::HookError> DetourHook::enable()

@@ -205,6 +205,24 @@ namespace rml
 		m_detour_hook_helpers.push_back(helper);
 	}
 
+	void Hooking::DetourHookHelper::disable_hook(DetourHook& hook)
+	{
+		if (const auto result = hook.disable(); !result)
+			RML_WARN("Failed to disable detour hook '{}': {}", hook.name(), result.error().describe());
+
+		if (g_hook_engine)
+			g_hook_engine->apply_queued();
+	}
+
+	void Hooking::DetourHookHelper::unregister_helper(DetourHook& hook)
+	{
+		std::erase_if(m_detour_hook_helpers, [&hook](const DetourHookHelper& helper) {
+			return helper.m_detour_hook == &hook;
+		});
+
+		hook.destroy();
+	}
+
 	void Hooking::DetourHookHelper::enable_hook_if_hooking_is_already_running() const
 	{
 		if (g_hooking && g_hooking->m_enabled)

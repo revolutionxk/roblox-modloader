@@ -23,7 +23,7 @@ namespace rml::memory
 		virtual void enumerate(Sink sink, void* context) const = 0;
 	};
 
-	[[nodiscard]] std::unique_ptr<IRttiBackend> create_rtti_backend();
+	[[nodiscard]] RML_EXPORT std::unique_ptr<IRttiBackend> create_rtti_backend();
 
 	class RML_EXPORT RttiIndex
 	{

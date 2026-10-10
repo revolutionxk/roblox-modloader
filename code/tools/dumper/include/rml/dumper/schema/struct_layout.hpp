@@ -19,6 +19,7 @@ namespace rml::dumper::schema
 
 		[[nodiscard]] const Field* find(std::string_view field_name) const;
 		[[nodiscard]] bool covers(std::size_t offset) const;
+		[[nodiscard]] bool overlaps(std::size_t offset, std::size_t size) const;
 		[[nodiscard]] std::size_t recovered_count() const;
 	};
 

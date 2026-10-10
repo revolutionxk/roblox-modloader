@@ -31,6 +31,9 @@ namespace rml::dumper::disasm
 		[[nodiscard]] Object dominant_object() const;
 		[[nodiscard]] std::optional<std::size_t> call_sequence(Rva target, std::size_t skip = 0) const;
 		[[nodiscard]] std::optional<std::size_t> first_call_sequence() const;
+		[[nodiscard]] Object loaded_by(const MemoryAccess& read) const;
+		[[nodiscard]] std::optional<std::int64_t> stored_step(const MemoryAccess& load,
+		                                                      const MemoryAccess& store) const;
 
 	private:
 		[[nodiscard]] const MemoryAccess* nth(bool is_write, Object object, std::size_t n, std::uint8_t width,

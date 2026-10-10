@@ -1,0 +1,4 @@
+name = "Tracy Profiler"
+version = "0.1.0"
+author = "RML"
+description = "Streams Roblox Studio's MicroProfile scopes, frames, labels, counters and CPU samples into the Tracy profiler."

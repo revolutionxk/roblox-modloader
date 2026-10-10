@@ -43,6 +43,8 @@ namespace rml
 			void enable_now() const;
 
 			static void register_helper(const DetourHookHelper& helper);
+			static void disable_hook(DetourHook& hook);
+			static void unregister_helper(DetourHook& hook);
 
 			template<auto detour_function>
 			struct hook_to_detour_hook_helper
@@ -84,6 +86,18 @@ namespace rml
 				register_helper(d);
 
 				return nullptr;
+			}
+
+			template<auto detour_function>
+			static void disable()
+			{
+				disable_hook(hook_to_detour_hook_helper<detour_function>::m_detour_hook);
+			}
+
+			template<auto detour_function>
+			static void remove()
+			{
+				unregister_helper(hook_to_detour_hook_helper<detour_function>::m_detour_hook);
 			}
 
 			~DetourHookHelper();

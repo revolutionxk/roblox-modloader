@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.hpp"
+#include "texture_download_buffer.hpp"
 #include "types.hpp"
 
 #include <memory>
@@ -69,7 +70,6 @@ namespace RBX::Graphics
 			Static = 0,
 			ShaderRead = 1 << 0,
 			RenderTarget = 1 << 1,
-			AsyncDownload = 1 << 3,
 			ShaderWrite = 1 << 5,
 			Memoryless = 1 << 6
 		};
@@ -77,7 +77,7 @@ namespace RBX::Graphics
 		virtual void upload(unsigned index, unsigned mip, const TextureRegion& region, const void* data, unsigned size) = 0;
 		virtual void download(unsigned index, unsigned mip, void* data, unsigned size) = 0;
 		virtual std::shared_ptr<TextureDownloadBuffer> create_async_download_buffer(unsigned index, unsigned mip) = 0;
-		virtual void async_download(const std::shared_ptr<TextureDownloadBuffer>& buffer) = 0;
+		virtual bool async_download(const std::shared_ptr<TextureDownloadBuffer>& buffer) = 0;
 		virtual bool supports_locking() const = 0;
 		virtual void* lock(unsigned index, unsigned mip, const TextureRegion& region) = 0;
 		virtual void unlock(unsigned index, unsigned mip) = 0;
