@@ -62,6 +62,7 @@ namespace tracy_profiler
 		std::uint32_t m_width{};
 		std::uint32_t m_height{};
 		std::uint64_t m_drawn_mark{};
+		std::uint64_t m_last_emitted{};
 		bool m_drawn{};
 		std::array<Slot, 3> m_slots{};
 		std::vector<std::uint8_t> m_pixels;

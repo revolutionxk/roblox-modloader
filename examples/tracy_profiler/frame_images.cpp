@@ -56,7 +56,6 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 
 	static constexpr std::string_view target_id = "tracy_profiler.frame_image";
 	static constexpr std::uint64_t read_delay = 2;
-	static constexpr std::uint64_t max_frame_offset = 255;
 
 	FrameImages::FrameImages() :
 	    FullscreenPass({metal_fragment, hlsl_fragment, "rml_tracy_thumbnail_fs", 0x1, 0x1}, "rml_tracy_thumbnail")
@@ -91,6 +90,7 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 		for (auto& slot : m_slots)
 			slot = {};
 		m_drawn = false;
+		m_last_emitted = 0;
 		m_width = 0;
 		m_height = 0;
 	}
@@ -110,8 +110,7 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 				continue;
 
 			slot.pending = false;
-			const auto offset = frame_marks() - slot.mark;
-			if (offset > max_frame_offset)
+			if (slot.mark <= m_last_emitted)
 				continue;
 
 			const auto bytes = static_cast<std::size_t>(slot.width) * slot.height * 4;
@@ -122,11 +121,12 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 			if (!slot.buffer->copy_data(m_pixels.data()))
 				continue;
 
-			___tracy_emit_frame_image(m_pixels.data(),
+			___tracy_emit_frame_image_at(m_pixels.data(),
 			    static_cast<std::uint16_t>(slot.width),
 			    static_cast<std::uint16_t>(slot.height),
-			    static_cast<std::uint8_t>(offset),
+			    slot.mark,
 			    0);
+			m_last_emitted = slot.mark;
 		}
 	}
 
@@ -197,8 +197,8 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 		if (!m_readable || !m_enabled.load() || m_stopping.load() || m_frames % std::max<std::uint32_t>(m_interval.load(), 1) != 0)
 			return;
 
-		const auto mark = frame_marks();
-		if (mark == m_drawn_mark)
+		const auto frame = ___tracy_frame_count();
+		if (frame == m_drawn_mark)
 			return;
 
 		auto* source = ctx.frame.resources.texture(rml::render::resource_names::OUTPUT_COLOR);
@@ -231,6 +231,6 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 		m_width = width;
 		m_height = height;
 		m_drawn = true;
-		m_drawn_mark = mark;
+		m_drawn_mark = frame;
 	}
 }
