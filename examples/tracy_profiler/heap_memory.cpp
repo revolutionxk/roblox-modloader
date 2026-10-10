@@ -5,7 +5,6 @@
 #include "settings.hpp"
 
 #include <RobloxModLoader/memory/module.hpp>
-#include <RobloxModLoader/platform/debug/call_stack.hpp>
 #include <RobloxModLoader/platform/memory/host_image.hpp>
 #include <algorithm>
 #include <array>
@@ -94,6 +93,8 @@ namespace tracy_profiler
 		const rml::memory::module image{rml::platform::module_path_containing(reinterpret_cast<const void*>(&heap_malloc))};
 		m_image_begin = image.begin().as<std::uintptr_t>();
 		m_image_size = image.size();
+		if (m_image_size == 0)
+			m_log->warn("heap memory events: own image range unresolved; profiler allocations will not be filtered");
 		const auto count = std::min(m_engine.category_count(), RBX::Memory::max_categories);
 		const auto& invalid = m_names.emplace_back("Heap/invalid");
 		std::ranges::fill(m_pools, invalid.c_str());
@@ -235,22 +236,16 @@ namespace tracy_profiler
 			const auto category = std::bit_cast<RBX::Memory::CategoryWord>(m_engine.resolve_category(block)).category;
 			if (m_skip_luau.load(std::memory_order_relaxed) && m_luau[category])
 				return;
-			std::array<std::uintptr_t, 6> raw{};
-			const auto captured = rml::platform::capture_return_addresses(raw);
-			const auto inside = [this](const std::uintptr_t address) {
-				return address - 1 - m_image_begin < m_image_size;
-			};
-			std::size_t first = 0;
-			while (first < captured && inside(raw[first]))
-				++first;
-			for (auto index = first; index < std::min(captured, first + 3); ++index)
+			const auto depth = std::min(m_depth.load(std::memory_order_relaxed), Callstacks::capacity);
+			const auto scan = std::min(std::max(depth, 8), Callstacks::capacity);
+			std::array<std::uint64_t, Callstacks::capacity> frames{};
+			const auto captured = m_callstacks.capture_from_studio(frames.data(), scan, 1);
+			for (int index = 0; index < captured; ++index)
 			{
-				if (inside(raw[index]))
+				if (frames[index] - 1 - m_image_begin < m_image_size)
 					return;
 			}
-			std::array<std::uint64_t, Callstacks::capacity> frames{};
-			const auto depth = m_callstacks.capture_from_studio(frames.data(), std::min(m_depth.load(std::memory_order_relaxed), Callstacks::capacity), 1);
-			___tracy_emit_memory_alloc_frames_named(block, size, frames.data(), depth, m_pools[category]);
+			___tracy_emit_memory_alloc_frames_named(block, size, frames.data(), std::min(captured, depth), m_pools[category]);
 			m_seen.fetch_add(1, std::memory_order_relaxed);
 		}
 		catch (...)

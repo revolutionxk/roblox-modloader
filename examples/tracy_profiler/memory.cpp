@@ -65,10 +65,12 @@ namespace tracy_profiler
 			    return dropped();
 		    },
 		    [this] {
-			    if (!m_heap || !m_heap->active())
+			    if (!m_heap || !m_heap->active() || !___tracy_connected())
 			    {
 				    m_ticks = 0;
 				    m_rate_since = {};
+				    if (m_heap)
+					    static_cast<void>(m_heap->take_events());
 				    return;
 			    }
 			    const auto now = std::chrono::steady_clock::now();
@@ -83,8 +85,7 @@ namespace tracy_profiler
 			    const auto events = m_heap->take_events();
 			    const auto seconds = std::chrono::duration<double>(now - m_rate_since).count();
 			    m_rate_since = now;
-			    if (___tracy_connected())
-				    m_log->info("heap memory events: {:.0f}/s", static_cast<double>(events) / seconds);
+			    m_log->info("heap memory events: {:.0f}/s", static_cast<double>(events) / seconds);
 		    });
 		apply(settings);
 		m_plots->start();
