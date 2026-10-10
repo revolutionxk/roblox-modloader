@@ -11,6 +11,10 @@ namespace tracy_profiler
 {
 	using namespace rml::luau::mirror;
 
+	static constexpr std::uint64_t fnv_basis = 0xCBF29CE484222325ULL;
+	static constexpr std::uint64_t fnv_prime = 0x100000001B3ULL;
+	static constexpr std::uint64_t native_flag = 0xC;
+
 	static std::uint64_t mix(std::uint64_t value)
 	{
 		value ^= value >> 33;
@@ -19,6 +23,25 @@ namespace tracy_profiler
 		value *= 0xC4CEB9FE1A85EC53ULL;
 		value ^= value >> 33;
 		return value;
+	}
+
+	static std::uint64_t fold(std::uint64_t hash, const std::string_view text)
+	{
+		for (const auto byte : text)
+			hash = (hash ^ static_cast<std::uint8_t>(byte)) * fnv_prime;
+		return (hash ^ text.size()) * fnv_prime;
+	}
+
+	static std::uint64_t lua_key(const Proto& proto)
+	{
+		auto hash = fold(fnv_basis, rml::luau::access::text(proto.source));
+		hash = fold(hash, rml::luau::access::text(proto.debugname));
+		return mix((hash ^ static_cast<std::uint32_t>(proto.linedefined)) * fnv_prime) | 1;
+	}
+
+	static std::uint64_t native_key(const Closure& closure)
+	{
+		return mix((fold(fnv_basis, rml::luau::access::text(closure.debugname)) ^ native_flag) * fnv_prime) | 1;
 	}
 
 	static std::string_view script_of(std::string_view source)
@@ -56,57 +79,66 @@ namespace tracy_profiler
 		return m_dropped.load(std::memory_order_relaxed);
 	}
 
-	std::uint64_t LuauFrames::frame_address(const CallInfo& frame)
+	void LuauFrames::publish(Entry& entry, const Closure& closure, const Proto* proto)
 	{
-		const auto& closure = *rml::luau::access::closure_in(frame.func);
-		const Proto* proto = closure.isC ? nullptr : closure.p;
-		const auto line = proto ? current_line(frame, *proto) : 0;
-		const auto identity = proto ?
-		    mix(reinterpret_cast<std::uintptr_t>(proto)) ^ mix(reinterpret_cast<std::uintptr_t>(proto->source))
-		        ^ mix(static_cast<std::uint64_t>(proto->linedefined) << 1) :
-		    mix(reinterpret_cast<std::uintptr_t>(closure.debugname)) ^ mix(reinterpret_cast<std::uintptr_t>(closure.p) | 1);
-		const auto key = mix(identity ^ line) | 1;
+		entry.native = proto == nullptr;
+		if (proto)
+		{
+			const auto function = rml::luau::access::text(proto->debugname);
+			write(entry.name, function.empty() ? std::string_view{"<anonymous>"} : function);
+			write(entry.script, script_of(rml::luau::access::text(proto->source)));
+		}
+		else
+		{
+			const auto function = rml::luau::access::text(closure.debugname);
+			write(entry.name, function.empty() ? std::string_view{"?"} : function);
+			write(entry.script, "[C]");
+		}
+		entry.ready.store(true, std::memory_order_release);
+	}
 
-		auto index = (key >> 1) % capacity;
-		for (std::size_t probe = 0; probe < probe_limit; ++probe, index = (index + 1) % capacity)
+	std::uint32_t LuauFrames::intern(const Closure& closure, const Proto* proto)
+	{
+		const auto key = proto ? lua_key(*proto) : native_key(closure);
+		auto index = (key >> 1) & (capacity - 1);
+		for (std::size_t probe = 0; probe < probe_limit; ++probe, index = (index + 1) & (capacity - 1))
 		{
 			auto& entry = m_entries[index];
 			auto current = entry.key.load(std::memory_order_acquire);
 			if (current == 0 && entry.key.compare_exchange_strong(current, key, std::memory_order_acq_rel))
 			{
-				if (proto)
-				{
-					const auto function = rml::luau::access::text(proto->debugname);
-					const auto script = script_of(rml::luau::access::text(proto->source));
-					std::snprintf(entry.name.data(),
-					    entry.name.size(),
-					    "%.*s (%.*s:%u)",
-					    static_cast<int>(function.empty() ? 11 : function.size()),
-					    function.empty() ? "<anonymous>" : function.data(),
-					    static_cast<int>(script.size()),
-					    script.data(),
-					    line);
-					write(entry.file, script);
-				}
-				else
-				{
-					const auto function = rml::luau::access::text(closure.debugname);
-					std::snprintf(entry.name.data(),
-					    entry.name.size(),
-					    "%.*s [C]",
-					    static_cast<int>(function.empty() ? 1 : function.size()),
-					    function.empty() ? "?" : function.data());
-					write(entry.file, "[C]");
-				}
-				entry.line = line;
-				entry.ready.store(true, std::memory_order_release);
-				return address_base + index * address_stride;
+				publish(entry, closure, proto);
+				return static_cast<std::uint32_t>(index);
 			}
 			if (current == key)
-				return address_base + index * address_stride;
+				return static_cast<std::uint32_t>(index);
 		}
-		m_dropped.fetch_add(1, std::memory_order_relaxed);
-		return 0;
+		return no_index;
+	}
+
+	std::uint64_t LuauFrames::frame_address(const CallInfo& frame)
+	{
+		thread_local std::array<CacheSlot, cache_size> cache;
+
+		const auto& closure = *rml::luau::access::closure_in(frame.func);
+		const Proto* proto = closure.isC ? nullptr : closure.p;
+		const void* owner = closure.p;
+		const void* source = proto ? static_cast<const void*>(proto->source) : static_cast<const void*>(closure.debugname);
+		const auto linedefined = proto ? proto->linedefined : 0;
+
+		auto& slot = cache[(reinterpret_cast<std::uintptr_t>(owner) * 0x9E3779B97F4A7C15ULL) >> (64 - cache_bits)];
+		if (slot.index == no_index || slot.proto != owner || slot.source != source || slot.linedefined != linedefined)
+		{
+			const auto index = intern(closure, proto);
+			if (index == no_index)
+			{
+				m_dropped.fetch_add(1, std::memory_order_relaxed);
+				return 0;
+			}
+			slot = {owner, source, linedefined, index};
+		}
+		const auto line = proto ? current_line(frame, *proto) : 0;
+		return address_base + (std::uint64_t{slot.index} << line_bits) + std::min(line, line_mask);
 	}
 
 	int LuauFrames::capture(const LuaState& state, std::uint64_t* frames, const int depth)
@@ -125,9 +157,10 @@ namespace tracy_profiler
 
 	bool LuauFrames::resolve(const std::uint64_t address, ___tracy_resolved_symbol& symbol) const
 	{
-		if (address < address_base || address >= address_base + capacity * address_stride)
+		if (address < address_base || address - address_base >= capacity << line_bits)
 			return false;
-		const auto index = (address - address_base) / address_stride;
+		const auto index = (address - address_base) >> line_bits;
+		const auto line = static_cast<std::uint32_t>(address & line_mask);
 		const auto& entry = m_entries[index];
 		for (int spin = 0; !entry.ready.load(std::memory_order_acquire); ++spin)
 		{
@@ -135,7 +168,12 @@ namespace tracy_profiler
 				return false;
 			std::this_thread::yield();
 		}
-		symbol = {entry.name.data(), "Luau", entry.file.data(), entry.line, 0, address_base + index * address_stride};
+		thread_local std::array<char, 256> buffer;
+		if (entry.native)
+			std::snprintf(buffer.data(), buffer.size(), "%s [C]", entry.name.data());
+		else
+			std::snprintf(buffer.data(), buffer.size(), "%s (%s:%u)", entry.name.data(), entry.script.data(), line);
+		symbol = {buffer.data(), "Luau", entry.script.data(), line, 0, address};
 		return true;
 	}
 }
