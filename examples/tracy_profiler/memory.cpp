@@ -41,18 +41,36 @@ namespace tracy_profiler
 		}
 		else
 			m_log->warn("Luau memory off: LUA_NEWSTATE or LUA_CLOSE missing");
+		m_plots = std::make_unique<MemoryPlots>(
+		    m_engine,
+		    m_luau.get(),
+		    [this] {
+			    return dropped();
+		    },
+		    [] {
+		    });
+		m_plots->start();
 		apply(settings);
 	}
 
 	void Memory::apply(const Settings& settings)
 	{
+		if (m_plots)
+			m_plots->apply(settings);
 		if (m_luau)
 			m_luau->apply(settings);
 	}
 
 	void Memory::stop()
 	{
+		if (m_plots)
+			m_plots->stop();
 		if (m_luau)
 			m_luau->remove();
+	}
+
+	std::uint64_t Memory::dropped() const
+	{
+		return m_frames->dropped();
 	}
 }

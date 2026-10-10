@@ -3,6 +3,7 @@
 #include "luau_frames.hpp"
 #include "luau_memory.hpp"
 #include "memory_engine.hpp"
+#include "memory_plots.hpp"
 
 #include <memory>
 
@@ -35,10 +36,13 @@ namespace tracy_profiler
 		}
 
 	private:
+		[[nodiscard]] std::uint64_t dropped() const;
+
 		const Callstacks& m_callstacks;
 		std::shared_ptr<spdlog::logger> m_log;
 		MemoryEngine m_engine;
 		std::unique_ptr<LuauFrames> m_frames;
 		std::unique_ptr<LuauMemory> m_luau;
+		std::unique_ptr<MemoryPlots> m_plots;
 	};
 }
