@@ -109,9 +109,7 @@ namespace tracy_profiler
 		rml::Hooking::DetourHookHelper::add<&track_allocate>("RBX::Memory::trackExternalAllocate",
 		    reinterpret_cast<void*>(m_engine.track_external_allocate));
 		m_installed = true;
-		if (!rml::Hooking::get_original<&track_allocate>() || !rml::Hooking::get_original<&track_deallocate>() || !rml::Hooking::get_original<&track_deallocate_deferred>())
-			remove();
-		return m_installed;
+		return true;
 	}
 
 	void ExternalMemory::apply(const Settings& settings)

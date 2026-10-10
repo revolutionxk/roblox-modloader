@@ -46,7 +46,7 @@ namespace tracy_profiler
 			m_external = std::make_unique<ExternalMemory>(m_engine, m_callstacks);
 			if (!m_external->install())
 			{
-				m_log->warn("external memory events off: trackExternal hooks failed");
+				m_log->warn("external memory events off: trackExternal entry points or memory categories missing");
 				m_external.reset();
 			}
 		}
