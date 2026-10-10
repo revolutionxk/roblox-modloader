@@ -1,6 +1,7 @@
 #include "callstack.hpp"
 #include "capture.hpp"
 #include "engine.hpp"
+#include "gpu_zones.hpp"
 #include "sampling.hpp"
 #include "settings.hpp"
 #include "symbols.hpp"
@@ -10,6 +11,7 @@
 #include <RobloxModLoader/logger/logger.hpp>
 #include <RobloxModLoader/memory/module.hpp>
 #include <RobloxModLoader/mod/mod_base.hpp>
+#include <RobloxModLoader/platform/graphics/gpu_timeline.hpp>
 #include <RobloxModLoader/platform/memory/host_image.hpp>
 #include <exception>
 #include <memory>
@@ -133,6 +135,8 @@ private:
 				std::scoped_lock lock(m_mutex);
 				m_settings = tracy_profiler::read(*m_store);
 				tracy_profiler::apply_settings(m_settings);
+				if (m_gpu_zones)
+					m_gpu_zones->set_enabled(m_settings.gpu_zones);
 				m_log->info("config.toml reloaded (pass_through={}, zone_callstacks={}, callstack_depth={})",
 				    m_settings.pass_through,
 				    m_settings.zone_callstacks,
@@ -152,6 +156,16 @@ private:
 		    m_callstacks->shim_count(),
 		    m_symbols->scope_owner_count());
 		m_log->info("Tracy started on demand (sampling {} Hz)", m_settings.sampling_hz);
+
+		m_gpu_zones = std::make_unique<tracy_profiler::GpuZones>(*m_timers, *m_callstacks);
+		m_gpu_zones->set_enabled(m_settings.gpu_zones);
+		if (m_gpu_zones->start())
+		{
+			tracy_profiler::attach_gpu_zones(m_gpu_zones.get());
+			m_log->info("GPU timeline started ({})", rml::platform::gpu_timeline_api());
+		}
+		else
+			m_log->warn("GPU timeline unsupported on this platform; GPU zones stay off");
 	}
 
 	void stop()
@@ -161,7 +175,10 @@ private:
 
 		if (m_installed)
 		{
+			tracy_profiler::attach_gpu_zones(nullptr);
 			tracy_profiler::remove_capture();
+			if (m_gpu_zones)
+				m_gpu_zones->stop();
 			m_installed = false;
 		}
 
@@ -174,6 +191,7 @@ private:
 		}
 
 		m_symbols.reset();
+		m_gpu_zones.reset();
 		m_callstacks.reset();
 		m_timers.reset();
 	}
@@ -185,6 +203,7 @@ private:
 	std::unique_ptr<tracy_profiler::Timers> m_timers;
 	std::unique_ptr<tracy_profiler::Symbols> m_symbols;
 	std::unique_ptr<tracy_profiler::Callstacks> m_callstacks;
+	std::unique_ptr<tracy_profiler::GpuZones> m_gpu_zones;
 	bool m_installed{};
 	bool m_started{};
 };
