@@ -18,6 +18,10 @@ endif ()
 
 project(RobloxModLoader LANGUAGES CXX C ASM VERSION 0.1.0 DESCRIPTION "Roblox ModLoader")
 
+if (APPLE)
+    enable_language(OBJCXX)
+endif ()
+
 if (WIN32)
     set(RML_PLATFORM_WINDOWS ON)
     set(RML_PLATFORM_ID "windows")

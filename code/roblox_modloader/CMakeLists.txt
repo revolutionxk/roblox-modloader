@@ -9,6 +9,7 @@ set(MODLOADER_SOURCES
 file(GLOB_RECURSE MODLOADER_SUBDIRS CONFIGURE_DEPENDS
         "${ROBLOX_MODLOADER_SOURCE_DIR}/**/*.cpp"
         "${ROBLOX_MODLOADER_SOURCE_DIR}/**/*.hpp"
+        "${ROBLOX_MODLOADER_SOURCE_DIR}/**/*.mm"
 )
 
 if (NOT RML_ENABLE_LUAU)
@@ -72,6 +73,13 @@ setup_luau_dependencies(roblox_modloader PRIVATE)
 setup_dotnet_hosting(roblox_modloader PRIVATE)
 
 target_link_libraries(roblox_modloader PRIVATE rml_thirdparty)
+
+if (APPLE)
+    set(MODLOADER_OBJCXX_SOURCES ${MODLOADER_SOURCES})
+    list(FILTER MODLOADER_OBJCXX_SOURCES INCLUDE REGEX "\\.mm$")
+    set_source_files_properties(${MODLOADER_OBJCXX_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(roblox_modloader PRIVATE "-framework Foundation" "-framework Metal" "-framework QuartzCore")
+endif ()
 
 if (UNIX AND NOT APPLE)
     target_link_libraries(roblox_modloader PRIVATE dl)
