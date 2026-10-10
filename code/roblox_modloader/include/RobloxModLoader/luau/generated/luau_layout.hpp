@@ -100,8 +100,7 @@ namespace rml::luau::mirror
 		std::int32_t linedefined;
 		std::int32_t sizetypeinfo;
 		std::int32_t sizeupvalues;
-		std::uint8_t linegaplog2;
-		std::byte reserved_95[0x3];
+		std::int32_t linegaplog2;
 		std::int32_t sizelocvars;
 		std::byte reserved_9c[0x4];
 		std::int32_t sizep;
