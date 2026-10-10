@@ -30,6 +30,7 @@ namespace tracy_profiler
 		static constexpr unsigned line_bits = 20;
 		static constexpr std::uint32_t line_mask = (std::uint32_t{1} << line_bits) - 1;
 		static constexpr std::uint32_t no_index = ~std::uint32_t{};
+		static constexpr std::uint32_t dropped_index = no_index - 1;
 
 		struct Entry
 		{
@@ -44,7 +45,9 @@ namespace tracy_profiler
 		{
 			const void* proto{};
 			const void* source{};
+			const void* debugname{};
 			std::int32_t linedefined{};
+			std::int32_t sizecode{};
 			std::uint32_t index{no_index};
 		};
 

@@ -65,7 +65,7 @@ namespace tracy_profiler
 	static void write(std::array<char, Size>& target, const std::string_view text)
 	{
 		const auto length = std::min(text.size(), Size - 1);
-		std::copy_n(text.data(), length, target.data());
+		std::copy_n(text.data() + text.size() - length, length, target.data());
 		target[length] = '\0';
 	}
 
@@ -124,19 +124,23 @@ namespace tracy_profiler
 		const Proto* proto = closure.isC ? nullptr : closure.p;
 		const void* owner = closure.p;
 		const void* source = proto ? static_cast<const void*>(proto->source) : static_cast<const void*>(closure.debugname);
+		const void* debugname = proto ? static_cast<const void*>(proto->debugname) : nullptr;
 		const auto linedefined = proto ? proto->linedefined : 0;
+		const auto sizecode = proto ? proto->sizecode : 0;
 
 		auto& slot = cache[(reinterpret_cast<std::uintptr_t>(owner) * 0x9E3779B97F4A7C15ULL) >> (64 - cache_bits)];
-		if (slot.index == no_index || slot.proto != owner || slot.source != source || slot.linedefined != linedefined)
+		if (slot.index == no_index || slot.proto != owner || slot.source != source || slot.debugname != debugname || slot.linedefined != linedefined || slot.sizecode != sizecode)
 		{
-			const auto index = intern(closure, proto);
+			auto index = intern(closure, proto);
 			if (index == no_index)
 			{
+				index = dropped_index;
 				m_dropped.fetch_add(1, std::memory_order_relaxed);
-				return 0;
 			}
-			slot = {owner, source, linedefined, index};
+			slot = {owner, source, debugname, linedefined, sizecode, index};
 		}
+		if (slot.index == dropped_index)
+			return 0;
 		const auto line = proto ? current_line(frame, *proto) : 0;
 		return address_base + (std::uint64_t{slot.index} << line_bits) + std::min(line, line_mask);
 	}
