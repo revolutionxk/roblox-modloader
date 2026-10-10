@@ -167,14 +167,14 @@ private:
 		m_log->info("Tracy started on demand (sampling {} Hz)", m_settings.sampling_hz);
 
 		m_gpu_zones = std::make_unique<tracy_profiler::GpuZones>(*m_timers, *m_callstacks);
+		tracy_profiler::attach_gpu_zones(m_gpu_zones.get());
 		m_gpu_zones->set_enabled(m_settings.gpu_zones);
-		if (m_gpu_zones->start())
-		{
-			tracy_profiler::attach_gpu_zones(m_gpu_zones.get());
+		if (m_gpu_zones->running())
 			m_log->info("GPU timeline started ({})", rml::platform::gpu_timeline_api());
-		}
-		else
+		else if (m_settings.gpu_zones)
 			m_log->warn("GPU timeline unsupported on this platform; GPU zones stay off");
+		else
+			m_log->info("GPU zones disabled in config.toml");
 	}
 
 	void stop()

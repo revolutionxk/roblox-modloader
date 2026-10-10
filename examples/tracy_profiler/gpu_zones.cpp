@@ -8,12 +8,15 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace tracy_profiler
 {
-	static constexpr std::uint8_t context_id = 0;
+	static constexpr std::uint8_t scope_context = 0;
+	static constexpr std::uint8_t buffer_context = 1;
+	static constexpr std::uint64_t no_parent = UINT64_MAX;
 	static constexpr std::uint64_t timeout_frames = 8;
 	static constexpr std::size_t encoder_window = 32768;
 	static constexpr int gpu_callstack_depth = 16;
@@ -24,7 +27,6 @@ namespace tracy_profiler
 		std::uint64_t start;
 		std::uint16_t query;
 		std::uint64_t epoch;
-		bool active;
 	};
 
 	static thread_local std::vector<OpenScope> t_open;
@@ -52,27 +54,69 @@ namespace tracy_profiler
 		stop();
 	}
 
-	bool GpuZones::start()
+	bool GpuZones::start_locked()
 	{
 		if (m_started.load())
 			return true;
-		m_started.store(rml::platform::start_gpu_timeline(&GpuZones::sink, this));
-		return m_started.load();
+		if (!rml::platform::start_gpu_timeline(&GpuZones::sink, this))
+			return false;
+		create_contexts();
+		m_started.store(true);
+		return true;
 	}
 
-	void GpuZones::stop()
+	void GpuZones::stop_locked()
 	{
 		if (!m_started.exchange(false))
 			return;
 		rml::platform::stop_gpu_timeline();
 		std::scoped_lock lock(m_mutex);
+		if (___tracy_connected() && m_context_epoch.load() == connection_epoch())
+		{
+			const auto fallback = fallback_time();
+			for (const auto& scope : m_pending)
+				emit_times(scope, fallback, fallback);
+		}
 		m_pending.clear();
 		m_encoders.clear();
 	}
 
+	void GpuZones::stop()
+	{
+		std::scoped_lock control(m_control);
+		stop_locked();
+	}
+
 	void GpuZones::set_enabled(const bool enabled)
 	{
+		std::scoped_lock control(m_control);
 		m_enabled.store(enabled);
+		if (enabled)
+			(void)start_locked();
+		else
+			stop_locked();
+	}
+
+	bool GpuZones::running() const noexcept
+	{
+		return m_started.load();
+	}
+
+	void GpuZones::create_contexts()
+	{
+		if (m_contexts_created)
+			return;
+
+		const auto api = rml::platform::gpu_timeline_api();
+		const std::string buffers = std::string(api) + " command buffers";
+		const auto now = static_cast<std::int64_t>(rml::platform::gpu_timeline_now());
+		const auto period = static_cast<float>(rml::platform::gpu_timeline_period());
+		const auto type = tracy_type(api);
+		___tracy_emit_gpu_new_context_serial({now, period, scope_context, 0, type});
+		___tracy_emit_gpu_context_name_serial({scope_context, api.data(), static_cast<std::uint16_t>(api.size())});
+		___tracy_emit_gpu_new_context_serial({now, period, buffer_context, 0, type});
+		___tracy_emit_gpu_context_name_serial({buffer_context, buffers.data(), static_cast<std::uint16_t>(buffers.size())});
+		m_contexts_created = true;
 	}
 
 	std::uint16_t GpuZones::next_query()
@@ -80,52 +124,53 @@ namespace tracy_profiler
 		return static_cast<std::uint16_t>(m_query.fetch_add(1));
 	}
 
-	bool GpuZones::ensure_context()
+	void GpuZones::sync_connection(const std::uint64_t epoch)
 	{
-		const auto epoch = connection_epoch();
 		if (m_context_epoch.load() == epoch)
-			return true;
+			return;
 
 		std::scoped_lock lock(m_mutex);
 		if (m_context_epoch.load() == epoch)
-			return true;
+			return;
 
 		m_pending.clear();
 		m_encoders.clear();
-		if (!m_context_created)
-		{
-			const auto api = rml::platform::gpu_timeline_api();
-			___tracy_emit_gpu_new_context_serial({static_cast<std::int64_t>(rml::platform::gpu_timeline_now()), static_cast<float>(rml::platform::gpu_timeline_period()), context_id, 0, tracy_type(api)});
-			___tracy_emit_gpu_context_name_serial({context_id, api.data(), static_cast<std::uint16_t>(api.size())});
-			m_context_created = true;
-		}
 		m_context_epoch.store(epoch);
-		return true;
+	}
+
+	std::int64_t GpuZones::fallback_time() const
+	{
+		if (m_encoders.empty())
+			return static_cast<std::int64_t>(rml::platform::gpu_timeline_now());
+		return static_cast<std::int64_t>(m_encoders.rbegin()->second.end);
+	}
+
+	void GpuZones::emit_times(const Scope& scope, const std::int64_t begin, const std::int64_t end)
+	{
+		___tracy_emit_gpu_time_serial({begin, scope.begin_query, scope_context});
+		___tracy_emit_gpu_time_serial({end, scope.end_query, scope_context});
 	}
 
 	bool GpuZones::enter(const MicroProfileTimerToken token)
 	{
-		if (!m_started.load() || !m_enabled.load() || !___tracy_connected() || !ensure_context())
-		{
-			t_open.push_back({token, 0, 0, 0, false});
+		if (!m_started.load() || !m_enabled.load() || !___tracy_connected())
 			return false;
-		}
+
+		const auto epoch = connection_epoch();
+		sync_connection(epoch);
 
 		std::array<std::uint64_t, Callstacks::capacity> frames{};
 		const auto depth = m_callstacks.capture(frames.data(), gpu_callstack_depth);
 		const auto caller = depth > 0 ? static_cast<std::uintptr_t>(frames[0]) : 0;
 		const auto* location = m_timers.source_location(token, caller);
 		if (!location)
-		{
-			t_open.push_back({token, 0, 0, 0, false});
 			return false;
-		}
 
 		const auto query = next_query();
-		___tracy_emit_gpu_zone_begin_frames_serial({reinterpret_cast<std::uint64_t>(location), query, context_id},
+		___tracy_emit_gpu_zone_begin_frames_serial({reinterpret_cast<std::uint64_t>(location), query, scope_context},
 		    frames.data(),
 		    depth);
-		t_open.push_back({token, rml::platform::gpu_timeline_serial(), query, m_context_epoch.load(), true});
+		t_open.push_back({token, rml::platform::gpu_timeline_serial(), query, epoch});
 		return true;
 	}
 
@@ -139,20 +184,26 @@ namespace tracy_profiler
 
 		const auto last = rml::platform::gpu_timeline_serial();
 		const auto thread = rml::platform::current_thread_id();
-		const auto epoch = m_context_epoch.load();
+		const auto epoch = connection_epoch();
 		const auto connected = ___tracy_connected() != 0;
 		const auto keep = static_cast<std::size_t>(std::distance(match, t_open.rend()) - 1);
 		while (t_open.size() > keep)
 		{
 			const auto open = t_open.back();
 			t_open.pop_back();
-			if (!open.active || open.epoch != epoch || !connected)
+			if (open.epoch != epoch || !connected)
 				continue;
 
+			const auto parent = t_open.empty() ? no_parent : t_open.back().start;
 			const auto end_query = next_query();
-			___tracy_emit_gpu_zone_end_serial({end_query, context_id});
+			___tracy_emit_gpu_zone_end_serial({end_query, scope_context});
 			std::scoped_lock lock(m_mutex);
-			m_pending.push_back({thread, open.start, last, open.query, end_query, m_frames});
+			if (m_context_epoch.load() != open.epoch)
+				continue;
+
+			const Scope scope{thread, open.start, last, parent, open.query, end_query, m_frames};
+			if (!try_resolve(scope))
+				m_pending.push_back(scope);
 		}
 	}
 
@@ -163,16 +214,6 @@ namespace tracy_profiler
 
 	bool GpuZones::try_resolve(const Scope& scope)
 	{
-		if (scope.last <= scope.start)
-		{
-			const auto next = m_encoders.lower_bound(scope.start + 1);
-			if (next == m_encoders.end())
-				return false;
-			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(next->second.begin), scope.begin_query, context_id});
-			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(next->second.begin), scope.end_query, context_id});
-			return true;
-		}
-
 		std::uint64_t begin = UINT64_MAX;
 		std::uint64_t end = 0;
 		for (auto serial = scope.start + 1; serial <= scope.last; ++serial)
@@ -185,15 +226,31 @@ namespace tracy_profiler
 			begin = std::min(begin, it->second.begin);
 			end = std::max(end, it->second.end);
 		}
-		if (begin == UINT64_MAX)
+		if (begin != UINT64_MAX)
 		{
-			const auto next = m_encoders.upper_bound(scope.last);
-			if (next == m_encoders.end())
-				return false;
-			begin = end = next->second.begin;
+			emit_times(scope, static_cast<std::int64_t>(begin), static_cast<std::int64_t>(end));
+			return true;
 		}
-		___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(begin), scope.begin_query, context_id});
-		___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(end), scope.end_query, context_id});
+
+		if (scope.parent_start == no_parent || scope.start > scope.parent_start)
+		{
+			const auto floor = scope.parent_start == no_parent ? 0 : scope.parent_start;
+			for (auto serial = scope.start; serial > floor; --serial)
+			{
+				const auto it = m_encoders.find(serial);
+				if (it == m_encoders.end())
+					return false;
+				if (it->second.thread != scope.thread)
+					continue;
+				emit_times(scope, static_cast<std::int64_t>(it->second.end), static_cast<std::int64_t>(it->second.end));
+				return true;
+			}
+		}
+
+		const auto next = m_encoders.upper_bound(scope.last);
+		if (next == m_encoders.end())
+			return false;
+		emit_times(scope, static_cast<std::int64_t>(next->second.begin), static_cast<std::int64_t>(next->second.begin));
 		return true;
 	}
 
@@ -216,10 +273,10 @@ namespace tracy_profiler
 		{
 			const auto begin_query = next_query();
 			const auto end_query = next_query();
-			___tracy_emit_gpu_zone_begin_serial({reinterpret_cast<std::uint64_t>(&m_command_buffer_location), begin_query, context_id});
-			___tracy_emit_gpu_zone_end_serial({end_query, context_id});
-			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(timing.begin), begin_query, context_id});
-			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(timing.end), end_query, context_id});
+			___tracy_emit_gpu_zone_begin_serial({reinterpret_cast<std::uint64_t>(&m_command_buffer_location), begin_query, buffer_context});
+			___tracy_emit_gpu_zone_end_serial({end_query, buffer_context});
+			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(timing.begin), begin_query, buffer_context});
+			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(timing.end), end_query, buffer_context});
 		}
 
 		std::erase_if(m_pending, [this](const Scope& scope) {
@@ -231,15 +288,17 @@ namespace tracy_profiler
 	void GpuZones::on_frame()
 	{
 		std::scoped_lock lock(m_mutex);
+		if (m_context_epoch.load() != connection_epoch())
+			return;
+
 		++m_frames;
-		const auto fallback = m_encoders.empty() ? static_cast<std::int64_t>(rml::platform::gpu_timeline_now()) :
-		                                           static_cast<std::int64_t>(m_encoders.rbegin()->second.end);
+		const auto fallback = fallback_time();
 		std::erase_if(m_pending, [&](const Scope& scope) {
 			if (m_frames < scope.frame + timeout_frames)
 				return false;
-			___tracy_emit_gpu_time_serial({fallback, scope.begin_query, context_id});
-			___tracy_emit_gpu_time_serial({fallback, scope.end_query, context_id});
-			m_dropped.fetch_add(1);
+			emit_times(scope, fallback, fallback);
+			if (scope.last > scope.start)
+				m_dropped.fetch_add(1);
 			return true;
 		});
 		___tracy_emit_plot_int("RML/GPU dropped", m_dropped.load());

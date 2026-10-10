@@ -23,9 +23,9 @@ namespace tracy_profiler
 		GpuZones(const GpuZones&) = delete;
 		GpuZones& operator=(const GpuZones&) = delete;
 
-		[[nodiscard]] bool start();
 		void stop();
 		void set_enabled(bool enabled);
+		[[nodiscard]] bool running() const noexcept;
 		bool enter(MicroProfileTimerToken token);
 		void leave(MicroProfileTimerToken token);
 		void on_frame();
@@ -43,15 +43,21 @@ namespace tracy_profiler
 			std::uint64_t thread;
 			std::uint64_t start;
 			std::uint64_t last;
+			std::uint64_t parent_start;
 			std::uint16_t begin_query;
 			std::uint16_t end_query;
 			std::uint64_t frame;
 		};
 
 		static void sink(const rml::platform::GpuCommandBufferTiming& timing, void* user);
+		static void emit_times(const Scope& scope, std::int64_t begin, std::int64_t end);
 		void deliver(const rml::platform::GpuCommandBufferTiming& timing);
-		bool ensure_context();
+		bool start_locked();
+		void stop_locked();
+		void create_contexts();
+		void sync_connection(std::uint64_t epoch);
 		std::uint16_t next_query();
+		std::int64_t fallback_time() const;
 		bool try_resolve(const Scope& scope);
 		void prune();
 
@@ -63,7 +69,8 @@ namespace tracy_profiler
 		std::atomic<std::uint32_t> m_query{0};
 		std::atomic<std::int64_t> m_dropped{0};
 		std::uint64_t m_frames{};
-		bool m_context_created{};
+		bool m_contexts_created{};
+		std::mutex m_control;
 		std::mutex m_mutex;
 		std::map<std::uint64_t, Encoder> m_encoders;
 		std::deque<Scope> m_pending;
