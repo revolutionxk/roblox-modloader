@@ -52,13 +52,20 @@ namespace tracy_profiler
 		}
 		else
 			m_log->warn("external memory events off: trackExternal entry points missing");
+		if (m_engine.has_heap())
+			m_heap = std::make_unique<HeapMemory>(m_engine, m_callstacks, m_log);
+		else
+			m_log->warn("heap memory events off: allocator exports or category entry points missing");
 		m_plots = std::make_unique<MemoryPlots>(
 		    m_engine,
 		    m_luau.get(),
 		    [this] {
 			    return dropped();
 		    },
-		    [] {
+		    [this] {
+			    if (!m_heap || !m_heap->active() || ++m_ticks % 40 != 0)
+				    return;
+			    m_log->info("heap memory events: {}/s", m_heap->take_events() / 10);
 		    });
 		apply(settings);
 		m_plots->start();
@@ -72,12 +79,16 @@ namespace tracy_profiler
 			m_luau->apply(settings);
 		if (m_external)
 			m_external->apply(settings);
+		if (m_heap)
+			m_heap->apply(settings);
 	}
 
 	void Memory::stop()
 	{
 		if (m_plots)
 			m_plots->stop();
+		if (m_heap)
+			m_heap->stop();
 		if (m_external)
 			m_external->remove();
 		if (m_luau)
@@ -86,6 +97,6 @@ namespace tracy_profiler
 
 	std::uint64_t Memory::dropped() const
 	{
-		return m_frames->dropped() + (m_external ? m_external->dropped() : 0);
+		return m_frames->dropped() + (m_external ? m_external->dropped() : 0) + (m_heap ? m_heap->dropped() : 0);
 	}
 }

@@ -56,6 +56,12 @@ namespace tracy_profiler
 		return false;
 	}
 
+	static void discard_pool(const char* pool)
+	{
+		if (___tracy_connected())
+			___tracy_emit_memory_discard(pool);
+	}
+
 	static void on_allocate(LuaState* state, void* block, std::size_t, const std::size_t size, std::uint8_t, std::int32_t, std::int32_t)
 	{
 		const InFlight::Call call{g_in_flight};
@@ -260,6 +266,7 @@ namespace tracy_profiler
 			{
 				unhook(vm);
 				vm.hooked = false;
+				discard_pool(vm.pool);
 				if (!vm.yielded)
 					m_log->info("Luau {} hook taken by the engine; its Luau events pause until the engine releases it", vm.label);
 				vm.yielded = true;
@@ -270,6 +277,7 @@ namespace tracy_profiler
 			{
 				unhook(vm);
 				vm.hooked = false;
+				discard_pool(vm.pool);
 			}
 			if (vm.hooked)
 				++hooked;
