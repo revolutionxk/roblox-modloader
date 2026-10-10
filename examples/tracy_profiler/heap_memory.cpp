@@ -156,8 +156,11 @@ namespace tracy_profiler
 			m_bindings.push_back({symbol, std::move(slots), hook});
 		}
 		g_heap.store(this, std::memory_order_release);
-		rml::Hooking::DetourHookHelper::add<&mi_free_detour>("mi_free", reinterpret_cast<void*>(m_engine.free));
-		m_free_detoured = true;
+		if (!m_free_detoured)
+		{
+			rml::Hooking::DetourHookHelper::add<&mi_free_detour>("mi_free", reinterpret_cast<void*>(m_engine.free));
+			m_free_detoured = true;
+		}
 		for (const auto& binding : m_bindings)
 		{
 			if (!rml::platform::rebind_import_slots(binding.slots, binding.hook))
@@ -175,19 +178,6 @@ namespace tracy_profiler
 		for (const auto& binding : m_bindings)
 			rml::platform::restore_import_slots(binding.slots);
 		m_bindings.clear();
-		if (m_free_detoured)
-		{
-			rml::Hooking::DetourHookHelper::disable<&mi_free_detour>();
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-			if (g_in_flight.wait_idle(std::chrono::seconds(2)))
-			{
-				rml::Hooking::DetourHookHelper::remove<&mi_free_detour>();
-				forget_original<&mi_free_detour>();
-				m_free_detoured = false;
-			}
-			else
-				m_log->warn("heap memory events: free detour still busy; left installed");
-		}
 		discard_all();
 	}
 
@@ -232,7 +222,7 @@ namespace tracy_profiler
 
 	void HeapMemory::stop()
 	{
-		if (!m_bound && !g_heap.load(std::memory_order_acquire))
+		if (!m_bound && !m_free_detoured && !g_heap.load(std::memory_order_acquire))
 			return;
 		m_events.store(false, std::memory_order_relaxed);
 		if (m_bound)
@@ -241,8 +231,20 @@ namespace tracy_profiler
 			m_bound = false;
 		}
 		g_heap.store(nullptr, std::memory_order_release);
+		if (m_free_detoured)
+			rml::Hooking::DetourHookHelper::disable<&mi_free_detour>();
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-		g_in_flight.wait_idle(std::chrono::seconds(2));
+		if (!g_in_flight.wait_idle(std::chrono::seconds(2)))
+		{
+			m_log->warn("heap memory events: free detour still busy; left installed");
+			return;
+		}
+		if (m_free_detoured)
+		{
+			rml::Hooking::DetourHookHelper::remove<&mi_free_detour>();
+			forget_original<&mi_free_detour>();
+			m_free_detoured = false;
+		}
 	}
 
 	void HeapMemory::record_allocation(void* block, const std::size_t size)
