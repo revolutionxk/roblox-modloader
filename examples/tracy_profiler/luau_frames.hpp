@@ -13,6 +13,7 @@ namespace tracy_profiler
 	{
 	public:
 		static constexpr int max_depth = 32;
+		static constexpr int max_visited = 256;
 
 		LuauFrames();
 

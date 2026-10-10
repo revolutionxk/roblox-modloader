@@ -58,15 +58,16 @@ namespace tracy_profiler
 
 	std::uint64_t LuauFrames::frame_address(const CallInfo& frame)
 	{
-		const auto& closure = *reinterpret_cast<const Closure*>(frame.func->value);
-		const Proto* proto = closure.isC ? nullptr : (frame.proto ? frame.proto : closure.p);
+		const auto& closure = *rml::luau::access::closure_in(frame.func);
+		const Proto* proto = closure.isC ? nullptr : closure.p;
 		const auto line = proto ? current_line(frame, *proto) : 0;
-		const auto identity = proto ? mix(reinterpret_cast<std::uintptr_t>(proto))
-		        ^ mix(reinterpret_cast<std::uintptr_t>(proto->source)) ^ mix(static_cast<std::uint64_t>(proto->linedefined) << 1) :
-		                              mix(reinterpret_cast<std::uintptr_t>(closure.debugname) | 1);
+		const auto identity = proto ?
+		    mix(reinterpret_cast<std::uintptr_t>(proto)) ^ mix(reinterpret_cast<std::uintptr_t>(proto->source))
+		        ^ mix(static_cast<std::uint64_t>(proto->linedefined) << 1) :
+		    mix(reinterpret_cast<std::uintptr_t>(closure.debugname)) ^ mix(reinterpret_cast<std::uintptr_t>(closure.p) | 1);
 		const auto key = mix(identity ^ line) | 1;
 
-		auto index = key % capacity;
+		auto index = (key >> 1) % capacity;
 		for (std::size_t probe = 0; probe < probe_limit; ++probe, index = (index + 1) % capacity)
 		{
 			auto& entry = m_entries[index];
@@ -111,7 +112,8 @@ namespace tracy_profiler
 	int LuauFrames::capture(const LuaState& state, std::uint64_t* frames, const int depth)
 	{
 		int count = 0;
-		for (const auto* frame = state.ci; frame && frame > state.base_ci && count < depth; --frame)
+		int visited = 0;
+		for (const auto* frame = state.ci; frame && frame > state.base_ci && count < depth && visited < max_visited; --frame, ++visited)
 		{
 			if (!frame->func || frame->func->tt != LUA_TFUNCTION)
 				continue;
@@ -133,7 +135,7 @@ namespace tracy_profiler
 				return false;
 			std::this_thread::yield();
 		}
-		symbol = {entry.name.data(), "Luau", entry.file.data(), entry.line, 1, address_base + index * address_stride};
+		symbol = {entry.name.data(), "Luau", entry.file.data(), entry.line, 0, address_base + index * address_stride};
 		return true;
 	}
 }
