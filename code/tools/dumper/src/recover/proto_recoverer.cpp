@@ -1,5 +1,7 @@
 #include "recover/proto_recoverer.hpp"
 
+#include "recover/closure_recoverer.hpp"
+
 #include <algorithm>
 #include <array>
 #include <format>
@@ -159,10 +161,210 @@ namespace rml::dumper::recover
 		}
 
 		recover_userdata(context, layout);
+		recover_line(context, layout);
+		recover_debug(context, layout);
 
 		layout.size = layout.fields.empty() ? 0 : layout.fields.back().end();
 
 		return layout;
+	}
+
+	std::set<disasm::Object> ProtoRecoverer::protos_in(const disasm::Trace& trace,
+	                                                   const std::set<disasm::Object>& closures, const std::size_t p)
+	{
+		const disasm::TraceQuery query(trace);
+		std::set<disasm::Object> protos;
+
+		for (const auto& read : trace.accesses)
+		{
+			if (read.is_write || read.width != 8 || read.index != disasm::Register::none ||
+			    static_cast<std::size_t>(read.displacement) != p || !closures.contains(read.object))
+				continue;
+
+			if (const auto loaded = query.loaded_by(read); loaded >= disasm::first_derived_object)
+				protos.insert(loaded);
+		}
+
+		return protos;
+	}
+
+	void ProtoRecoverer::recover_line(const RecoveryContext& context, schema::StructLayout& layout)
+	{
+		const auto array_probe = "the qword pusherror reads off the proto whose lineinfo it indexes, and indexes in "
+		                         "four byte steps";
+		const auto shift_probe = "the one field narrower than a pointer pusherror reads off the proto whose lineinfo "
+		                         "it indexes, the shift that picks the absolute line";
+
+		const auto trace = context.trace(target::Anchor::pusherror);
+		const auto* lineinfo = layout.find("lineinfo");
+
+		if (!trace || lineinfo == nullptr)
+		{
+			context.report().record_failure("Proto", "abslineinfo", array_probe);
+			context.report().record_failure("Proto", "linegaplog2", shift_probe);
+			return;
+		}
+
+		const disasm::TraceQuery query(**trace);
+
+		const auto indexed = [&](const disasm::MemoryAccess& read, const std::uint8_t width) {
+			const auto loaded = query.loaded_by(read);
+			return std::ranges::any_of((*trace)->accesses, [&](const disasm::MemoryAccess& use) {
+				return !use.is_write && use.object == loaded && use.index != disasm::Register::none &&
+				       use.scale == width && use.width == width;
+			});
+		};
+
+		const auto lines = std::ranges::find_if((*trace)->accesses, [&](const disasm::MemoryAccess& read) {
+			return !read.is_write && read.width == 8 && read.index == disasm::Register::none &&
+			       static_cast<std::size_t>(read.displacement) == lineinfo->offset && indexed(read, 1);
+		});
+
+		const auto proto = lines != (*trace)->accesses.end() ? lines->object : disasm::no_object;
+
+		const disasm::MemoryAccess* array = nullptr;
+		std::map<std::int64_t, const disasm::MemoryAccess*> narrow;
+
+		for (const auto& read : (*trace)->accesses)
+		{
+			if (read.is_write || read.object != proto || read.displacement < 0 ||
+			    read.index != disasm::Register::none)
+				continue;
+
+			if (read.width != 8)
+			{
+				narrow.try_emplace(read.displacement, &read);
+				continue;
+			}
+
+			if (array == nullptr && static_cast<std::size_t>(read.displacement) != lineinfo->offset &&
+			    indexed(read, 4))
+				array = &read;
+		}
+
+		if (array == nullptr || layout.overlaps(static_cast<std::size_t>(array->displacement), 8))
+		{
+			context.report().record_failure("Proto", "abslineinfo", array_probe);
+		}
+		else
+		{
+			context.report().record_recovered("Proto", "abslineinfo", array_probe);
+			layout.add({.name = "abslineinfo",
+			            .type = "int*",
+			            .size = 8,
+			            .offset = static_cast<std::size_t>(array->displacement),
+			            .provenance = schema::Provenance::recovered("pusherror", array_probe)});
+		}
+
+		const auto* shift = narrow.size() == 1 ? narrow.begin()->second : nullptr;
+		const auto* type = shift == nullptr ? nullptr
+		                   : shift->width == 1 ? "uint8_t"
+		                   : shift->width == 4 ? "int"
+		                                       : nullptr;
+
+		if (type == nullptr || layout.overlaps(static_cast<std::size_t>(shift->displacement), shift->width))
+		{
+			context.report().record_failure("Proto", "linegaplog2", shift_probe);
+			return;
+		}
+
+		const auto detail = std::format("{}, read {} byte wide", shift_probe, shift->width);
+
+		context.report().record_recovered("Proto", "linegaplog2", detail);
+		layout.add({.name = "linegaplog2",
+		            .type = type,
+		            .size = shift->width,
+		            .offset = static_cast<std::size_t>(shift->displacement),
+		            .provenance = schema::Provenance::recovered("pusherror", detail)});
+	}
+
+	void ProtoRecoverer::recover_debug(const RecoveryContext& context, schema::StructLayout& layout)
+	{
+		struct Handed
+		{
+			std::string_view field;
+			std::string_view type;
+			std::uint8_t width;
+			std::string_view slot;
+			bool through_string;
+			std::string_view probe;
+		};
+
+		static constexpr std::array<Handed, 3> handed{{
+		    {"source", "TString*", 8, "source", true,
+		     "the qword lua_getinfo reads off the closure's proto whose string it hands to ar->source"},
+		    {"debugname", "TString*", 8, "name", false,
+		     "the qword lua_getinfo reads off the closure's proto and hands to ar->name"},
+		    {"linedefined", "int", 4, "linedefined", false,
+		     "the dword lua_getinfo copies from the closure's proto into ar->linedefined"},
+		}};
+
+		const auto trace = context.trace(target::Anchor::lua_getinfo);
+		const auto* debug = context.layout("lua_Debug");
+		const auto* closure = context.layout("Closure");
+		const auto* is_c = closure != nullptr ? closure->find("isC") : nullptr;
+		const auto* p = closure != nullptr ? closure->find("p") : nullptr;
+
+		if (!trace || debug == nullptr || is_c == nullptr || p == nullptr)
+		{
+			for (const auto& entry : handed)
+				context.report().record_failure("Proto", std::string(entry.field), std::string(entry.probe));
+			return;
+		}
+
+		const disasm::TraceQuery query(**trace);
+		const auto record = query.dominant_object();
+		const auto protos = protos_in(**trace, ClosureRecoverer::closures_in(**trace, is_c->offset), p->offset);
+
+		const auto read_off_proto = [&](const disasm::MemoryAccess& load, const std::uint8_t width) {
+			return !load.is_write && load.width == width && load.displacement >= 0 && protos.contains(load.object);
+		};
+
+		const auto handed_from = [&](const Handed& entry, const schema::Field& slot) -> const disasm::MemoryAccess* {
+			for (const auto& store : (*trace)->accesses)
+			{
+				if (!store.is_write || store.object != record || store.width != slot.size ||
+				    static_cast<std::size_t>(store.displacement) != slot.offset)
+					continue;
+
+				const auto* load = query.preceding(store);
+				if (load == nullptr || load->is_write || load->value_register != store.value_register)
+					continue;
+
+				if (!entry.through_string)
+				{
+					if (read_off_proto(*load, entry.width))
+						return load;
+					continue;
+				}
+
+				for (const auto& pointer : (*trace)->accesses)
+					if (read_off_proto(pointer, entry.width) && pointer.sequence < load->sequence &&
+					    query.loaded_by(pointer) == load->object)
+						return &pointer;
+			}
+
+			return nullptr;
+		};
+
+		for (const auto& entry : handed)
+		{
+			const auto* slot = debug->find(entry.slot);
+			const auto* found = slot != nullptr ? handed_from(entry, *slot) : nullptr;
+
+			if (found == nullptr || layout.overlaps(static_cast<std::size_t>(found->displacement), entry.width))
+			{
+				context.report().record_failure("Proto", std::string(entry.field), std::string(entry.probe));
+				continue;
+			}
+
+			context.report().record_recovered("Proto", std::string(entry.field), std::string(entry.probe));
+			layout.add({.name = std::string(entry.field),
+			            .type = std::string(entry.type),
+			            .size = entry.width,
+			            .offset = static_cast<std::size_t>(found->displacement),
+			            .provenance = schema::Provenance::recovered("lua_getinfo", std::string(entry.probe))});
+		}
 	}
 
 	void ProtoRecoverer::recover_userdata(const RecoveryContext& context, schema::StructLayout& layout)

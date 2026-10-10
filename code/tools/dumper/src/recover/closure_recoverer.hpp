@@ -2,6 +2,8 @@
 
 #include "rml/dumper/recover/recoverer.hpp"
 
+#include <set>
+
 namespace rml::dumper::recover
 {
 	class ClosureRecoverer final : public Recoverer
@@ -28,11 +30,15 @@ namespace rml::dumper::recover
 		[[nodiscard]] static std::optional<std::int64_t> taken_from(const disasm::Trace& trace, disasm::Object source,
 		                                                            disasm::Object destination, std::uint8_t width);
 
+		[[nodiscard]] static std::set<disasm::Object> closures_in(const disasm::Trace& trace, std::size_t is_c);
+
 		static constexpr std::int64_t collectable_header_size = 3;
 
 	private:
-		static constexpr std::array<std::string_view, 1> m_dependencies{"CommonHeader"};
+		static constexpr std::array<std::string_view, 2> m_dependencies{"CommonHeader", "lua_Debug"};
 
 		[[nodiscard]] static disasm::Object allocated_object(const disasm::Trace& trace);
+
+		static void recover_debugname(const RecoveryContext& context, schema::StructLayout& layout);
 	};
 }

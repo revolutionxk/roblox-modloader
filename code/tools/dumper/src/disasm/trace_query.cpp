@@ -144,4 +144,46 @@ namespace rml::dumper::disasm
 
 		return m_trace.calls.front().sequence;
 	}
+
+	const CallSite* TraceQuery::next_call(const std::size_t after) const
+	{
+		const auto found = std::ranges::find_if(m_trace.calls,
+		                                        [after](const CallSite& call) { return call.sequence > after; });
+
+		return found != m_trace.calls.end() ? &*found : nullptr;
+	}
+
+	bool TraceQuery::through_register(const CallSite& call) const
+	{
+		return !call.target && std::ranges::none_of(m_trace.accesses, [&call](const MemoryAccess& access) {
+			return access.address == call.address;
+		});
+	}
+
+	Object TraceQuery::loaded_by(const MemoryAccess& read) const
+	{
+		for (const auto& access : m_trace.accesses)
+			if (access.sequence > read.sequence && access.base == read.value_register)
+				return access.object;
+
+		return no_object;
+	}
+
+	const MemoryAccess* TraceQuery::preceding(const MemoryAccess& access) const
+	{
+		const auto index = static_cast<std::size_t>(&access - m_trace.accesses.data());
+
+		return index > 0 && index < m_trace.accesses.size() ? &m_trace.accesses[index - 1] : nullptr;
+	}
+
+	std::optional<std::int64_t> TraceQuery::step_between(const Register destination, const std::size_t after,
+	                                                     const std::size_t before) const
+	{
+		for (const auto& constant : m_trace.constants)
+			if (constant.kind == ConstantKind::step && constant.destination == destination &&
+			    constant.sequence > after && constant.sequence < before)
+				return constant.value;
+
+		return std::nullopt;
+	}
 }

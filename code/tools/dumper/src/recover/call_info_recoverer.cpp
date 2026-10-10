@@ -1,5 +1,8 @@
 #include "recover/call_info_recoverer.hpp"
 
+#include "recover/closure_recoverer.hpp"
+#include "recover/proto_recoverer.hpp"
+
 #include <algorithm>
 #include <format>
 #include <map>
@@ -80,6 +83,83 @@ namespace rml::dumper::recover
 		}
 
 		return std::nullopt;
+	}
+
+	void CallInfoRecoverer::recover_proto_slots(const RecoveryContext& context, const disasm::Trace& trace,
+	                                            const disasm::Object frame, schema::StructLayout& layout)
+	{
+		const auto proto_probe = "the qword luau_precall stores into the new call info straight after loading the "
+		                         "closure's proto";
+		const auto code_probe = "the qword luau_precall stores into the new call info straight after loading the "
+		                        "code of the closure's proto";
+
+		const auto* closure = context.layout("Closure");
+		const auto* proto = context.layout("Proto");
+		const auto* is_c = closure != nullptr ? closure->find("isC") : nullptr;
+		const auto* p = closure != nullptr ? closure->find("p") : nullptr;
+		const auto* code = proto != nullptr ? proto->find("code") : nullptr;
+
+		if (is_c == nullptr || p == nullptr || code == nullptr)
+		{
+			context.report().record_failure("CallInfo", "proto", proto_probe);
+			context.report().record_failure("CallInfo", "savedpc", code_probe);
+			return;
+		}
+
+		const disasm::TraceQuery query(trace);
+		const auto closures = ClosureRecoverer::closures_in(trace, is_c->offset);
+		const auto protos = ProtoRecoverer::protos_in(trace, closures, p->offset);
+
+		const auto stored_after = [&](const auto& loaded) -> const disasm::MemoryAccess* {
+			for (const auto& store : trace.accesses)
+			{
+				if (!store.is_write || store.object != frame || store.width != 8 || store.displacement < 0 ||
+				    layout.overlaps(static_cast<std::size_t>(store.displacement), 8))
+					continue;
+
+				const auto* load = query.preceding(store);
+				if (load != nullptr && !load->is_write && load->width == 8 && loaded(*load, store))
+					return &store;
+			}
+
+			return nullptr;
+		};
+
+		const auto* proto_slot = stored_after([&](const disasm::MemoryAccess& load, const disasm::MemoryAccess&) {
+			return closures.contains(load.object) && static_cast<std::size_t>(load.displacement) == p->offset;
+		});
+
+		if (proto_slot == nullptr)
+		{
+			context.report().record_failure("CallInfo", "proto", proto_probe);
+		}
+		else
+		{
+			context.report().record_recovered("CallInfo", "proto", proto_probe);
+			layout.add({.name = "proto",
+			            .type = "Proto*",
+			            .size = 8,
+			            .offset = static_cast<std::size_t>(proto_slot->displacement),
+			            .provenance = schema::Provenance::recovered("luau_precall", proto_probe)});
+		}
+
+		const auto* code_slot = stored_after([&](const disasm::MemoryAccess& load, const disasm::MemoryAccess& store) {
+			return protos.contains(load.object) && static_cast<std::size_t>(load.displacement) == code->offset &&
+			       load.value_register == store.value_register;
+		});
+
+		if (code_slot == nullptr)
+		{
+			context.report().record_failure("CallInfo", "savedpc", code_probe);
+			return;
+		}
+
+		context.report().record_recovered("CallInfo", "savedpc", code_probe);
+		layout.add({.name = "savedpc",
+		            .type = "const Instruction*",
+		            .size = 8,
+		            .offset = static_cast<std::size_t>(code_slot->displacement),
+		            .provenance = schema::Provenance::recovered("luau_precall", code_probe)});
 	}
 
 	std::expected<schema::StructLayout, Error> CallInfoRecoverer::recover(const RecoveryContext& context) const
@@ -167,6 +247,8 @@ namespace rml::dumper::recover
 				context.report().record_failure("CallInfo", "base", reason);
 			}
 		}
+
+		recover_proto_slots(context, **precall, func->object, layout);
 
 		const auto smallest = layout.fields.empty() ? 0 : static_cast<std::int64_t>(layout.fields.back().end());
 		const auto size = stride(**precall, func->base, func->sequence, smallest);

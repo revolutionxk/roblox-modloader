@@ -1,6 +1,7 @@
 #include "emit/mirror_emitter.hpp"
 
 #include <format>
+#include <map>
 #include <set>
 
 namespace rml::dumper::emit
@@ -63,6 +64,8 @@ namespace rml::dumper::emit
 			core = "std::uint8_t";
 		else if (core == "int")
 			core = "std::int32_t";
+		else if (core == "size_t")
+			core = "std::size_t";
 
 		return prefix + core + suffix;
 	}
@@ -104,7 +107,7 @@ namespace rml::dumper::emit
 				                 field.offset - cursor, true});
 
 			slots.push_back({field.name, self_contained(under_its_mirror_name(field.type, layouts)), field.offset,
-			                 field.size, false});
+			                 field.size, false, field.count});
 			cursor = field.end();
 		}
 
@@ -124,29 +127,57 @@ namespace rml::dumper::emit
 		out << "namespace rml::luau::mirror\n{\n";
 
 		std::set<std::string> referenced;
+		std::map<std::string, schema::Signature> signatures;
+
+		const auto reference = [&](const std::string& type) {
+			auto pointee = self_contained(under_its_mirror_name(type, layouts));
+			while (!pointee.empty() && pointee.back() == '*')
+				pointee.pop_back();
+
+			if (pointee == type || pointee.empty())
+				return;
+
+			if (pointee.starts_with("const "))
+				pointee.erase(0, 6);
+
+			if (pointee.starts_with("std::") || pointee == "void" || pointee == "char" || pointee == "bool")
+				return;
+
+			referenced.insert(pointee);
+		};
+
 		for (const auto& [name, layout] : layouts.structs)
 			for (const auto& field : layout.fields)
 			{
-				auto pointee = self_contained(under_its_mirror_name(field.type, layouts));
-				while (!pointee.empty() && pointee.back() == '*')
-					pointee.pop_back();
+				reference(field.type);
 
-				if (pointee == field.type || pointee.empty())
+				if (!field.signature)
 					continue;
 
-				if (pointee.starts_with("const "))
-					pointee.erase(0, 6);
-
-				if (pointee.starts_with("std::") || pointee == "void" || pointee == "char" || pointee == "bool")
-					continue;
-
-				referenced.insert(pointee);
+				signatures.emplace(field.type, *field.signature);
+				for (const auto& parameter : field.signature->parameters)
+					reference(parameter.type);
 			}
 
 		for (const auto& type : referenced)
 			out << std::format("\tstruct {};\n", type);
 
 		if (!referenced.empty())
+			out << '\n';
+
+		for (const auto& [alias, signature] : signatures)
+		{
+			std::string parameters;
+			for (const auto& parameter : signature.parameters)
+				parameters += std::format("{}{} {}", parameters.empty() ? "" : ", ",
+				                          self_contained(under_its_mirror_name(parameter.type, layouts)),
+				                          parameter.name);
+
+			out << std::format("\tusing {} = {} (*)({});\n", alias,
+			                   self_contained(under_its_mirror_name(signature.result, layouts)), parameters);
+		}
+
+		if (!signatures.empty())
 			out << '\n';
 
 		for (const auto& [name, layout] : layouts.structs)
@@ -163,6 +194,8 @@ namespace rml::dumper::emit
 			{
 				if (slot.reserved)
 					out << std::format("\t\tstd::byte {}[0x{:X}];\n", slot.name, slot.size);
+				else if (slot.count != 0)
+					out << std::format("\t\t{} {}[{}];\n", slot.type, slot.name, slot.count);
 				else
 					out << std::format("\t\t{} {};\n", slot.type, slot.name);
 			}

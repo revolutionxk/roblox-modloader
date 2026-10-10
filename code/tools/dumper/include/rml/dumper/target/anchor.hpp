@@ -16,6 +16,7 @@ namespace rml::dumper::target
 		lua_settop,
 		lua_resume,
 		luaM_free,
+		luaM_new,
 		luaF_findupval,
 		luaH_new,
 		luaF_newLclosure,
@@ -26,6 +27,7 @@ namespace rml::dumper::target
 		lua_toboolean,
 		luau_precall,
 		lua_getinfo,
+		pusherror,
 		lua_pushcclosurek,
 		luaC_enumheap,
 		rbx_derive_thread_capabilities,
@@ -44,6 +46,7 @@ namespace rml::dumper::target
 		case Anchor::lua_settop: return "lua_settop";
 		case Anchor::lua_resume: return "lua_resume";
 		case Anchor::luaM_free: return "luaM_free";
+		case Anchor::luaM_new: return "luaM_new";
 		case Anchor::luaF_findupval: return "luaF_findupval";
 		case Anchor::luaH_new: return "luaH_new";
 		case Anchor::luaF_newLclosure: return "luaF_newLclosure";
@@ -54,6 +57,7 @@ namespace rml::dumper::target
 		case Anchor::lua_toboolean: return "lua_toboolean";
 		case Anchor::luau_precall: return "luau_precall";
 		case Anchor::lua_getinfo: return "lua_getinfo";
+		case Anchor::pusherror: return "pusherror";
 		case Anchor::lua_pushcclosurek: return "lua_pushcclosurek";
 		case Anchor::luaC_enumheap: return "luaC_enumheap";
 		case Anchor::rbx_derive_thread_capabilities: return "rbx_derive_thread_capabilities";

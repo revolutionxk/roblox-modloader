@@ -25,6 +25,9 @@ namespace rml::dumper::recover
 
 	private:
 		static constexpr std::size_t relocated_count = 3;
-		static constexpr std::array<std::string_view, 1> m_dependencies{"lua_State"};
+		static constexpr std::array<std::string_view, 3> m_dependencies{"lua_State", "Closure", "Proto"};
+
+		static void recover_proto_slots(const RecoveryContext& context, const disasm::Trace& trace,
+		                                disasm::Object frame, schema::StructLayout& layout);
 	};
 }

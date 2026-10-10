@@ -7,6 +7,7 @@
 #include "recover/lua_debug_recoverer.hpp"
 #include "recover/lua_state_recoverer.hpp"
 #include "recover/proto_recoverer.hpp"
+#include "recover/tstring_recoverer.hpp"
 #include "recover/tvalue_recoverer.hpp"
 
 #include <algorithm>
@@ -102,6 +103,7 @@ namespace rml::dumper::recover
 		recoverers.push_back(std::make_unique<LuaStateRecoverer>());
 		recoverers.push_back(std::make_unique<ClosureRecoverer>());
 		recoverers.push_back(std::make_unique<ProtoRecoverer>());
+		recoverers.push_back(std::make_unique<TStringRecoverer>());
 		recoverers.push_back(std::make_unique<CallInfoRecoverer>());
 		recoverers.push_back(std::make_unique<TValueRecoverer>());
 		recoverers.push_back(std::make_unique<LuaDebugRecoverer>());
