@@ -19,7 +19,7 @@ namespace RBX::Graphics
 		virtual ~DeviceContext() = default;
 		virtual void set_default_anisotropy(unsigned value) = 0;
 		virtual Framebuffer* get_framebuffer() = 0;
-		virtual void copy_framebuffer(Framebuffer* buffer, Texture* texture, unsigned index, unsigned mip) = 0;
+		virtual void copy_framebuffer(Framebuffer* buffer, Texture* texture, unsigned mip, unsigned slice) = 0;
 		virtual void resolve_framebuffer(Framebuffer* msaa_buffer, Framebuffer* buffer, unsigned mask) = 0;
 		virtual void generate_mipmaps(Texture* texture) = 0;
 		virtual void begin_pass(Framebuffer* buffer, unsigned load_mask, unsigned store_mask, const PassClear* clear, const PassResolve* resolve, unsigned flags) = 0;
