@@ -5,7 +5,7 @@
 
 #include <algorithm>
 #include <format>
-#include <set>
+#include <utility>
 
 namespace rml::dumper::recover
 {
@@ -40,42 +40,44 @@ namespace rml::dumper::recover
 		const auto protos =
 		    ProtoRecoverer::protos_in(**trace, ClosureRecoverer::closures_in(**trace, is_c->offset), p->offset);
 
-		std::set<disasm::Object> strings;
-		for (const auto& read : (*trace)->accesses)
-			if (!read.is_write && read.width == 8 && protos.contains(read.object) &&
-			    static_cast<std::size_t>(read.displacement) == source->offset)
-				if (const auto loaded = query.loaded_by(read); loaded >= disasm::first_derived_object)
-					strings.insert(loaded);
-
-		const disasm::MemoryAccess* data = nullptr;
-		for (const auto& store : (*trace)->accesses)
-		{
-			if (!store.is_write || store.object != record || store.width != 8 ||
-			    static_cast<std::size_t>(store.displacement) != slot->offset)
-				continue;
-
-			const auto* load = query.preceding(store);
-			if (load != nullptr && !load->is_write && load->width == 8 && load->displacement >= 0 &&
-			    load->value_register == store.value_register && strings.contains(load->object))
+		const auto stepped = [&](const schema::Field& slot, const schema::Field& field)
+		    -> std::pair<const disasm::MemoryAccess*, std::int64_t> {
+			for (const auto& store : (*trace)->accesses)
 			{
-				data = load;
-				break;
-			}
-		}
+				if (!store.is_write || store.object != record || store.width != 8 ||
+				    static_cast<std::size_t>(store.displacement) != slot.offset)
+					continue;
 
-		if (data == nullptr)
+				for (const auto& load : (*trace)->accesses)
+				{
+					if (load.is_write || load.width != 8 || !protos.contains(load.object) ||
+					    static_cast<std::size_t>(load.displacement) != field.offset)
+						continue;
+
+					if (const auto step = query.stored_step(load, store); step && *step > 0)
+						return {&load, *step};
+				}
+			}
+
+			return {nullptr, 0};
+		};
+
+		const auto [pointer, header] = stepped(*slot, *source);
+
+		if (pointer == nullptr)
 		{
 			context.report().record_failure("TString", "data", data_probe);
 			context.report().record_failure("TString", "len", len_probe);
 			return layout;
 		}
 
-		const auto length = std::ranges::find_if((*trace)->accesses, [data](const disasm::MemoryAccess& read) {
-			return !read.is_write && read.object == data->object && read.width == 4 && read.displacement >= 0 &&
-			       read.index == disasm::Register::none && read.displacement != data->displacement;
+		const auto string = query.loaded_by(*pointer);
+		const auto length = std::ranges::find_if((*trace)->accesses, [&](const disasm::MemoryAccess& read) {
+			return !read.is_write && read.object == string && read.width == 4 && read.displacement >= 0 &&
+			       read.index == disasm::Register::none && read.displacement < header;
 		});
 
-		if (length == (*trace)->accesses.end() || length->displacement >= data->displacement)
+		if (length == (*trace)->accesses.end())
 		{
 			context.report().record_failure("TString", "len", len_probe);
 		}
@@ -89,37 +91,30 @@ namespace rml::dumper::recover
 			            .provenance = schema::Provenance::recovered("lua_getinfo", len_probe)});
 		}
 
+		const auto* name = debug->find("name");
+		const auto* debugname = proto->find("debugname");
+
+		if (name != nullptr && debugname != nullptr)
+		{
+			if (const auto [named, step] = stepped(*name, *debugname); named != nullptr && step != header)
+			{
+				context.report().record_failure(
+				    "TString", "data",
+				    std::format("lua_getinfo steps the proto's debug name 0x{:X} bytes in before ar->name, not the "
+				                "0x{:X} it steps the source",
+				                step, header));
+				layout.size = layout.fields.empty() ? 0 : layout.fields.back().end();
+				return layout;
+			}
+		}
+
 		context.report().record_recovered("TString", "data", data_probe);
 		layout.add({.name = "data",
 		            .type = "char",
 		            .size = 1,
-		            .offset = static_cast<std::size_t>(data->displacement),
+		            .offset = static_cast<std::size_t>(header),
 		            .provenance = schema::Provenance::recovered("lua_getinfo", data_probe),
 		            .count = 1});
-
-		if (const auto* name = debug->find("name"), *debugname = proto->find("debugname");
-		    name != nullptr && debugname != nullptr)
-		{
-			for (const auto& store : (*trace)->accesses)
-			{
-				if (!store.is_write || store.object != record ||
-				    static_cast<std::size_t>(store.displacement) != name->offset)
-					continue;
-
-				const auto* load = query.preceding(store);
-				if (load == nullptr || load->is_write || !protos.contains(load->object) ||
-				    static_cast<std::size_t>(load->displacement) != debugname->offset)
-					continue;
-
-				const auto header = query.step_between(store.value_register, load->sequence, store.sequence);
-				if (header && *header != data->displacement)
-					context.report().record_failure(
-					    "TString", "data",
-					    std::format("lua_getinfo steps the proto's debug name 0x{:X} bytes in before ar->name, not "
-					                "0x{:X}",
-					                *header, data->displacement));
-			}
-		}
 
 		layout.size = layout.fields.back().end();
 

@@ -18,8 +18,7 @@ namespace rml::dumper::recover
 
 		[[nodiscard]] static disasm::Object global_of(const RecoveryContext& context, const disasm::Trace& trace);
 		[[nodiscard]] static const disasm::MemoryAccess* called_hook(const disasm::Trace& trace,
-		                                                             disasm::Object global,
-		                                                             std::optional<std::size_t> after);
+		                                                             disasm::Object global, disasm::Register state);
 
 		static void take(const RecoveryContext& context, schema::StructLayout& layout,
 		                 const disasm::MemoryAccess* access, schema::Field field);

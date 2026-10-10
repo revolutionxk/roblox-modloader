@@ -2,6 +2,7 @@
 
 #include <Zydis/Zydis.h>
 
+#include <algorithm>
 #include <array>
 
 namespace rml::dumper::disasm
@@ -82,6 +83,11 @@ namespace rml::dumper::disasm
 			}
 		}
 
+		void capture(std::array<Object, register_slots>& objects) const
+		{
+			std::ranges::copy(m_objects, objects.begin());
+		}
+
 		void redefine_volatiles()
 		{
 			for (const auto scratch : {Register::rax, Register::rcx, Register::rdx, Register::r8, Register::r9,
@@ -127,8 +133,20 @@ namespace rml::dumper::disasm
 		return Register::none;
 	}
 
+	static bool writes(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands,
+	                   const Register value)
+	{
+		for (std::uint8_t i = 0; i < instruction.operand_count_visible; ++i)
+			if (operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER && to_register(operands[i].reg.value) == value &&
+			    (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) != 0)
+				return true;
+
+		return false;
+	}
+
 	static void record_constant(Trace& trace, const ZydisDecodedInstruction& instruction,
-	                            const ZydisDecodedOperand* operands, const Rva address, std::size_t& sequence)
+	                            const ZydisDecodedOperand* operands, const Rva address, std::size_t& sequence,
+	                            const ValueOrigins& origins)
 	{
 		const auto destination = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER
 		                             ? to_register(operands[0].reg.value)
@@ -138,7 +156,12 @@ namespace rml::dumper::disasm
 			if (value <= 1 || value > 0x10000)
 				return;
 
-			trace.constants.push_back({sequence++, address, destination, value, kind});
+			trace.constants.push_back({.sequence = sequence++,
+			                           .address = address,
+			                           .destination = destination,
+			                           .value = value,
+			                           .kind = kind,
+			                           .operand = origins.object_of(destination)});
 		};
 
 		switch (instruction.mnemonic)
@@ -223,9 +246,18 @@ namespace rml::dumper::disasm
 						call.target = static_cast<Rva>(absolute);
 				}
 
+				for (std::uint8_t i = 0; i < instruction.operand_count_visible; ++i)
+					if (operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER)
+						call.callee = origins.object_of(to_register(operands[i].reg.value));
+
+				origins.capture(call.registers);
 				trace.calls.push_back(call);
 				origins.redefine_volatiles();
 			}
+
+			const auto first_access = trace.accesses.size();
+			const auto first_constant = trace.constants.size();
+			std::array<Register, ZYDIS_MAX_OPERAND_COUNT> filled{};
 
 			for (std::uint8_t i = 0; i < instruction.operand_count_visible; ++i)
 			{
@@ -256,10 +288,13 @@ namespace rml::dumper::disasm
 				if (access.is_write && !access.immediate && origins.object_of(raw_value) == zero_object)
 					access.immediate = 0;
 
+				if (!access.is_write && writes(instruction, operands, raw_value))
+					filled[trace.accesses.size() - first_access] = raw_value;
+
 				trace.accesses.push_back(access);
 			}
 
-			record_constant(trace, instruction, operands, address, sequence);
+			record_constant(trace, instruction, operands, address, sequence, origins);
 
 			if (instruction.mnemonic == ZYDIS_MNEMONIC_MOV && instruction.operand_count_visible == 2 &&
 			    operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
@@ -280,6 +315,13 @@ namespace rml::dumper::disasm
 			    operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
 			    operands[0].reg.value == operands[1].reg.value)
 				origins.set_zero(to_register(operands[0].reg.value));
+
+			for (auto index = first_access; index < trace.accesses.size(); ++index)
+				if (const auto value = filled[index - first_access]; value != Register::none)
+					trace.accesses[index].loaded = origins.object_of(value);
+
+			for (auto index = first_constant; index < trace.constants.size(); ++index)
+				trace.constants[index].result = origins.object_of(trace.constants[index].destination);
 
 			offset += instruction.length;
 			trace.end = static_cast<Rva>(begin + offset);

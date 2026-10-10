@@ -21,19 +21,19 @@ namespace rml::dumper::recover
 
 	const disasm::MemoryAccess* GlobalStateRecoverer::called_hook(const disasm::Trace& trace,
 	                                                              const disasm::Object global,
-	                                                              const std::optional<std::size_t> after)
+	                                                              const disasm::Register state)
 	{
-		const disasm::TraceQuery query(trace);
-
 		for (const auto& load : trace.accesses)
 		{
 			if (load.is_write || load.object != global || load.width != 8 || load.displacement < 0 ||
-			    load.index != disasm::Register::none)
-				continue;
-			if (after && load.sequence <= *after)
+			    load.index != disasm::Register::none || load.loaded == disasm::no_object)
 				continue;
 
-			if (const auto* call = query.next_call(load.sequence); call != nullptr && query.through_register(*call))
+			const auto called = std::ranges::any_of(trace.calls, [&](const disasm::CallSite& call) {
+				return call.callee == load.loaded && call.object_of(state) == disasm::entry_object(state);
+			});
+
+			if (called)
 				return &load;
 		}
 
@@ -115,8 +115,8 @@ namespace rml::dumper::recover
 		const auto total_probe = "the qword luaM_free takes the freed size off";
 		const auto categories_probe = "the qword array luaM_free indexes by memory category and takes the freed "
 		                              "size off, one slot for every value the memcat byte holds";
-		const auto hook_probe = "the first function pointer luaM_free loads off the global state and calls through "
-		                        "a register, ahead of releasing the block";
+		const auto hook_probe = "the function pointer luaM_free loads off the global state and calls with the state "
+		                        "as its first argument";
 
 		const auto trace = context.trace(target::Anchor::luaM_free);
 		const auto global = trace ? global_of(context, **trace) : disasm::no_object;
@@ -153,7 +153,8 @@ namespace rml::dumper::recover
 		      .provenance = schema::Provenance::recovered("luaM_free", categories_probe),
 		      .count = count});
 
-		take(context, layout, global != disasm::no_object ? called_hook(**trace, global, std::nullopt) : nullptr,
+		take(context, layout,
+		     global != disasm::no_object ? called_hook(**trace, global, context.abi().argument(0)) : nullptr,
 		     {.name = "onfree",
 		      .type = "FreeHook",
 		      .size = 8,
@@ -164,26 +165,13 @@ namespace rml::dumper::recover
 
 	void GlobalStateRecoverer::recover_allocation_hook(const RecoveryContext& context, schema::StructLayout& layout)
 	{
-		const auto probe = "the function pointer luaM_new loads off the global state and calls once it has counted "
-		                   "the block into totalbytes";
+		const auto probe = "the function pointer luaM_new loads off the global state and calls with the state as its "
+		                   "first argument";
 
 		const auto trace = context.trace(target::Anchor::luaM_new);
-		const auto* total = layout.find("totalbytes");
 		const auto global = trace ? global_of(context, **trace) : disasm::no_object;
-
-		const disasm::MemoryAccess* hook = nullptr;
-
-		if (global != disasm::no_object && total != nullptr)
-		{
-			const auto counted = std::ranges::find_if((*trace)->accesses, [&](const disasm::MemoryAccess& access) {
-				return access.is_write && access.object == global && access.width == 8 &&
-				       access.index == disasm::Register::none &&
-				       static_cast<std::size_t>(access.displacement) == total->offset;
-			});
-
-			if (counted != (*trace)->accesses.end())
-				hook = called_hook(**trace, global, counted->sequence);
-		}
+		const auto* hook =
+		    global != disasm::no_object ? called_hook(**trace, global, context.abi().argument(0)) : nullptr;
 
 		take(context, layout, hook,
 		     {.name = "onallocate",

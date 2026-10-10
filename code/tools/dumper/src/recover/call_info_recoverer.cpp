@@ -88,10 +88,9 @@ namespace rml::dumper::recover
 	void CallInfoRecoverer::recover_proto_slots(const RecoveryContext& context, const disasm::Trace& trace,
 	                                            const disasm::Object frame, schema::StructLayout& layout)
 	{
-		const auto proto_probe = "the qword luau_precall stores into the new call info straight after loading the "
-		                         "closure's proto";
-		const auto code_probe = "the qword luau_precall stores into the new call info straight after loading the "
-		                        "code of the closure's proto";
+		const auto proto_probe = "the qword luau_precall stores into the new call info, carrying the closure's proto";
+		const auto code_probe = "the qword luau_precall stores into the new call info, carrying the code of the "
+		                        "closure's proto";
 
 		const auto* closure = context.layout("Closure");
 		const auto* proto = context.layout("Proto");
@@ -110,22 +109,22 @@ namespace rml::dumper::recover
 		const auto closures = ClosureRecoverer::closures_in(trace, is_c->offset);
 		const auto protos = ProtoRecoverer::protos_in(trace, closures, p->offset);
 
-		const auto stored_after = [&](const auto& loaded) -> const disasm::MemoryAccess* {
+		const auto carrying = [&](const auto& loaded_from) -> const disasm::MemoryAccess* {
 			for (const auto& store : trace.accesses)
 			{
 				if (!store.is_write || store.object != frame || store.width != 8 || store.displacement < 0 ||
 				    layout.overlaps(static_cast<std::size_t>(store.displacement), 8))
 					continue;
 
-				const auto* load = query.preceding(store);
-				if (load != nullptr && !load->is_write && load->width == 8 && loaded(*load, store))
-					return &store;
+				for (const auto& load : trace.accesses)
+					if (!load.is_write && load.width == 8 && loaded_from(load) && query.stored_step(load, store) == 0)
+						return &store;
 			}
 
 			return nullptr;
 		};
 
-		const auto* proto_slot = stored_after([&](const disasm::MemoryAccess& load, const disasm::MemoryAccess&) {
+		const auto* proto_slot = carrying([&](const disasm::MemoryAccess& load) {
 			return closures.contains(load.object) && static_cast<std::size_t>(load.displacement) == p->offset;
 		});
 
@@ -143,9 +142,8 @@ namespace rml::dumper::recover
 			            .provenance = schema::Provenance::recovered("luau_precall", proto_probe)});
 		}
 
-		const auto* code_slot = stored_after([&](const disasm::MemoryAccess& load, const disasm::MemoryAccess& store) {
-			return protos.contains(load.object) && static_cast<std::size_t>(load.displacement) == code->offset &&
-			       load.value_register == store.value_register;
+		const auto* code_slot = carrying([&](const disasm::MemoryAccess& load) {
+			return protos.contains(load.object) && static_cast<std::size_t>(load.displacement) == code->offset;
 		});
 
 		if (code_slot == nullptr)

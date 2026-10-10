@@ -272,26 +272,31 @@ namespace rml::dumper::recover
 			    static_cast<std::size_t>(store.displacement) != name->offset)
 				continue;
 
-			const auto* load = query.preceding(store);
-			if (load == nullptr || load->is_write || load->width != 8 || load->displacement < 0 ||
-			    load->value_register != store.value_register || !closures.contains(load->object))
-				continue;
+			for (const auto& load : (*trace)->accesses)
+			{
+				if (load.is_write || load.width != 8 || load.displacement < 0 || !closures.contains(load.object))
+					continue;
 
-			const auto offset = static_cast<std::size_t>(load->displacement);
-			if (offset == proto->offset || layout.overlaps(offset, 8))
-				continue;
+				const auto offset = static_cast<std::size_t>(load.displacement);
+				if (offset == proto->offset || layout.overlaps(offset, 8))
+					continue;
 
-			const auto header = query.step_between(store.value_register, load->sequence, store.sequence);
-			const auto detail = header ? std::format("{}, past a 0x{:X} byte string header", probe, *header)
-			                           : std::format("{}, as it is", probe);
+				const auto header = query.stored_step(load, store);
+				if (!header)
+					continue;
 
-			context.report().record_recovered("Closure", "debugname", detail);
-			layout.add({.name = "debugname",
-			            .type = header ? "TString*" : "const char*",
-			            .size = 8,
-			            .offset = offset,
-			            .provenance = schema::Provenance::recovered("lua_getinfo", detail)});
-			return;
+				const auto detail = *header != 0
+				                        ? std::format("{}, past a 0x{:X} byte string header", probe, *header)
+				                        : std::format("{}, as it is", probe);
+
+				context.report().record_recovered("Closure", "debugname", detail);
+				layout.add({.name = "debugname",
+				            .type = *header != 0 ? "TString*" : "const char*",
+				            .size = 8,
+				            .offset = offset,
+				            .provenance = schema::Provenance::recovered("lua_getinfo", detail)});
+				return;
+			}
 		}
 
 		context.report().record_failure("Closure", "debugname", probe);

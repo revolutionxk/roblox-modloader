@@ -192,8 +192,9 @@ namespace rml::dumper::recover
 	{
 		const auto array_probe = "the qword pusherror reads off the proto whose lineinfo it indexes, and indexes in "
 		                         "four byte steps";
-		const auto shift_probe = "the one field narrower than a pointer pusherror reads off the proto whose lineinfo "
-		                         "it indexes, the shift that picks the absolute line";
+		const auto shift_probe = "the field narrower than a pointer pusherror reads off the proto whose lineinfo it "
+		                         "indexes that loadsafe also stores into the proto it fills lineinfo into, the shift "
+		                         "that picks the absolute line";
 
 		const auto trace = context.trace(target::Anchor::pusherror);
 		const auto* lineinfo = layout.find("lineinfo");
@@ -256,7 +257,7 @@ namespace rml::dumper::recover
 			            .provenance = schema::Provenance::recovered("pusherror", array_probe)});
 		}
 
-		const auto* shift = narrow.size() == 1 ? narrow.begin()->second : nullptr;
+		const auto* shift = stored_by_loader(context, layout, narrow);
 		const auto* type = shift == nullptr ? nullptr
 		                   : shift->width == 1 ? "uint8_t"
 		                   : shift->width == 4 ? "int"
@@ -268,14 +269,38 @@ namespace rml::dumper::recover
 			return;
 		}
 
-		const auto detail = std::format("{}, read {} byte wide", shift_probe, shift->width);
+		const auto detail = std::format("{}, stored {} byte wide", shift_probe, shift->width);
 
 		context.report().record_recovered("Proto", "linegaplog2", detail);
 		layout.add({.name = "linegaplog2",
 		            .type = type,
 		            .size = shift->width,
 		            .offset = static_cast<std::size_t>(shift->displacement),
-		            .provenance = schema::Provenance::recovered("pusherror", detail)});
+		            .provenance = schema::Provenance::recovered("loadsafe", detail)});
+	}
+
+	const disasm::MemoryAccess* ProtoRecoverer::stored_by_loader(
+	    const RecoveryContext& context, const schema::StructLayout& layout,
+	    const std::map<std::int64_t, const disasm::MemoryAccess*>& candidates)
+	{
+		const auto trace = context.trace(target::Anchor::loadsafe);
+		const auto* lineinfo = layout.find("lineinfo");
+		if (!trace || lineinfo == nullptr)
+			return nullptr;
+
+		std::set<disasm::Object> filled;
+		for (const auto& write : (*trace)->accesses)
+			if (write.is_write && write.width == 8 && write.index == disasm::Register::none &&
+			    static_cast<std::size_t>(write.displacement) == lineinfo->offset)
+				filled.insert(write.object);
+
+		std::map<std::int64_t, const disasm::MemoryAccess*> stored;
+		for (const auto& write : (*trace)->accesses)
+			if (write.is_write && filled.contains(write.object) && write.index == disasm::Register::none &&
+			    write.width < 8 && candidates.contains(write.displacement))
+				stored.try_emplace(write.displacement, &write);
+
+		return stored.size() == 1 ? stored.begin()->second : nullptr;
 	}
 
 	void ProtoRecoverer::recover_debug(const RecoveryContext& context, schema::StructLayout& layout)
@@ -286,15 +311,15 @@ namespace rml::dumper::recover
 			std::string_view type;
 			std::uint8_t width;
 			std::string_view slot;
-			bool through_string;
+			bool past_header;
 			std::string_view probe;
 		};
 
 		static constexpr std::array<Handed, 3> handed{{
 		    {"source", "TString*", 8, "source", true,
-		     "the qword lua_getinfo reads off the closure's proto whose string it hands to ar->source"},
-		    {"debugname", "TString*", 8, "name", false,
-		     "the qword lua_getinfo reads off the closure's proto and hands to ar->name"},
+		     "the qword lua_getinfo reads off the closure's proto and hands, past the string header, to ar->source"},
+		    {"debugname", "TString*", 8, "name", true,
+		     "the qword lua_getinfo reads off the closure's proto and hands, past the string header, to ar->name"},
 		    {"linedefined", "int", 4, "linedefined", false,
 		     "the dword lua_getinfo copies from the closure's proto into ar->linedefined"},
 		}};
@@ -316,10 +341,6 @@ namespace rml::dumper::recover
 		const auto record = query.dominant_object();
 		const auto protos = protos_in(**trace, ClosureRecoverer::closures_in(**trace, is_c->offset), p->offset);
 
-		const auto read_off_proto = [&](const disasm::MemoryAccess& load, const std::uint8_t width) {
-			return !load.is_write && load.width == width && load.displacement >= 0 && protos.contains(load.object);
-		};
-
 		const auto handed_from = [&](const Handed& entry, const schema::Field& slot) -> const disasm::MemoryAccess* {
 			for (const auto& store : (*trace)->accesses)
 			{
@@ -327,21 +348,15 @@ namespace rml::dumper::recover
 				    static_cast<std::size_t>(store.displacement) != slot.offset)
 					continue;
 
-				const auto* load = query.preceding(store);
-				if (load == nullptr || load->is_write || load->value_register != store.value_register)
-					continue;
-
-				if (!entry.through_string)
+				for (const auto& load : (*trace)->accesses)
 				{
-					if (read_off_proto(*load, entry.width))
-						return load;
-					continue;
-				}
+					if (load.is_write || load.width != entry.width || load.displacement < 0 ||
+					    !protos.contains(load.object))
+						continue;
 
-				for (const auto& pointer : (*trace)->accesses)
-					if (read_off_proto(pointer, entry.width) && pointer.sequence < load->sequence &&
-					    query.loaded_by(pointer) == load->object)
-						return &pointer;
+					if (const auto step = query.stored_step(load, store); step && (*step != 0) == entry.past_header)
+						return &load;
+				}
 			}
 
 			return nullptr;

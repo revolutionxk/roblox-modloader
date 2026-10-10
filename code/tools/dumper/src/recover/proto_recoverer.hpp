@@ -2,6 +2,7 @@
 
 #include "rml/dumper/recover/recoverer.hpp"
 
+#include <map>
 #include <set>
 
 namespace rml::dumper::recover
@@ -33,6 +34,10 @@ namespace rml::dumper::recover
 
 	private:
 		static constexpr std::array<std::string_view, 3> m_dependencies{"CommonHeader", "Closure", "lua_Debug"};
+
+		[[nodiscard]] static const disasm::MemoryAccess* stored_by_loader(
+		    const RecoveryContext& context, const schema::StructLayout& layout,
+		    const std::map<std::int64_t, const disasm::MemoryAccess*>& candidates);
 
 		static void recover_line(const RecoveryContext& context, schema::StructLayout& layout);
 		static void recover_debug(const RecoveryContext& context, schema::StructLayout& layout);

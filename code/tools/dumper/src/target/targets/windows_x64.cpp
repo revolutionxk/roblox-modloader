@@ -24,6 +24,7 @@ namespace rml::dumper::target
 	    {Anchor::luaF_freeproto, "48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 30 44 0F B6 4A ? 49 8B F0"},
 	    {Anchor::luaU_load,
 	     "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 81 EC 80 00 00 00 49 8B E9 4D 8B"},
+	    {.id = Anchor::loadsafe, .text = "%s: bytecode version mismatch (expected [%d..%d], got %d)"},
 	    {.id = Anchor::lua_pushnumber, .text = "attempt to index vector with '%s'", .path = {{{Step::call_from_end, 1}}}},
 	    {.id = Anchor::lua_toboolean, .text = "assertion failed!", .path = {{{Step::call, 1}}}},
 	    {.id = Anchor::luau_precall, .text = "cannot resume dead coroutine", .path = {{{Step::call, 0}}}},
