@@ -189,6 +189,7 @@ private:
 				m_frame_images->shutdown();
 				rml::render::graph().remove_pass(tracy_profiler::FrameImages::pass_name);
 				m_frame_images = nullptr;
+				rml::render::enable_output_readback(false);
 			}
 			tracy_profiler::attach_gpu_zones(nullptr);
 			tracy_profiler::remove_capture();
