@@ -9,6 +9,7 @@ CPMAddPackage(
         "TRACY_NO_CRASH_HANDLER ON"
         "TRACY_STATIC ON"
         "TRACY_ONLY_LOCALHOST ON"
+        "TRACY_IGNORE_MEMORY_FAULTS ON"
 )
 
 target_compile_definitions(TracyClient PUBLIC TRACY_DELAYED_INIT)
