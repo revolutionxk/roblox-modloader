@@ -10,6 +10,7 @@
 #include <bit>
 #include <format>
 #include <spdlog/spdlog.h>
+#include <string_view>
 #include <thread>
 #include <tracy/TracyC.h>
 #include <utility>
@@ -23,12 +24,42 @@ namespace tracy_profiler
 
 	static InFlight g_in_flight;
 	static std::atomic<LuauMemory*> g_luau{nullptr};
-	static thread_local bool t_stack_moving = false;
+	static std::atomic<std::int32_t> g_closing{0};
+	static thread_local LuaState* t_stack_moving = nullptr;
+
+	struct CloseScope
+	{
+		CloseScope()
+		{
+			g_closing.fetch_add(1);
+		}
+
+		~CloseScope()
+		{
+			g_closing.fetch_sub(1);
+		}
+
+		CloseScope(const CloseScope&) = delete;
+		CloseScope& operator=(const CloseScope&) = delete;
+	};
+
+	static bool has_name(const std::string_view names, const std::string_view name)
+	{
+		std::size_t begin = 0;
+		while (begin <= names.size())
+		{
+			const auto end = std::min(names.find(", ", begin), names.size());
+			if (names.substr(begin, end - begin) == name)
+				return true;
+			begin = end + 2;
+		}
+		return false;
+	}
 
 	static void on_allocate(LuaState* state, void* block, std::size_t, const std::size_t size, std::uint8_t, std::int32_t, std::int32_t)
 	{
 		const InFlight::Call call{g_in_flight};
-		const auto moving = std::exchange(t_stack_moving, false);
+		const auto moving = std::exchange(t_stack_moving, nullptr) == state;
 		if (auto* self = g_luau.load(std::memory_order_acquire))
 		{
 			try
@@ -45,7 +76,7 @@ namespace tracy_profiler
 	{
 		const InFlight::Call call{g_in_flight};
 		if (state && block && (block == state->stack || block == state->base_ci))
-			t_stack_moving = true;
+			t_stack_moving = state;
 		if (auto* self = g_luau.load(std::memory_order_acquire))
 		{
 			try
@@ -78,6 +109,7 @@ namespace tracy_profiler
 	static void lua_close_detour(LuaState* state)
 	{
 		const InFlight::Call call{g_in_flight};
+		const CloseScope scope;
 		auto* self = g_luau.load(std::memory_order_acquire);
 		auto* global = state ? state->global : nullptr;
 		if (self && global)
@@ -91,7 +123,7 @@ namespace tracy_profiler
 			}
 		}
 		original<&lua_close_detour>()(state);
-		if (self && global)
+		if (self && global && g_luau.load(std::memory_order_acquire) == self)
 		{
 			try
 			{
@@ -138,7 +170,6 @@ namespace tracy_profiler
 		if (m_installed || !m_engine.has_luau())
 			return;
 		g_luau.store(this, std::memory_order_release);
-		rml::Hooking::DetourHookHelper::add<&lua_newstate_detour>("lua_newstate", reinterpret_cast<void*>(m_engine.lua_newstate));
 		rml::Hooking::DetourHookHelper::add<&lua_close_detour>("lua_close", reinterpret_cast<void*>(m_engine.lua_close));
 		if (m_engine.memory_category_index)
 		{
@@ -146,6 +177,7 @@ namespace tracy_profiler
 			    reinterpret_cast<void*>(m_engine.memory_category_index));
 			m_names_hooked = true;
 		}
+		rml::Hooking::DetourHookHelper::add<&lua_newstate_detour>("lua_newstate", reinterpret_cast<void*>(m_engine.lua_newstate));
 		m_installed = true;
 	}
 
@@ -166,7 +198,7 @@ namespace tracy_profiler
 			std::scoped_lock lock(m_mutex);
 			for (auto& vm : m_vms)
 			{
-				if (vm.global && vm.hooked)
+				if (vm.hooked && !vm.closing)
 					unhook(vm);
 				vm.hooked = false;
 			}
@@ -177,6 +209,8 @@ namespace tracy_profiler
 		if (m_names_hooked)
 			rml::Hooking::DetourHookHelper::disable<&memory_category_index_detour>();
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		while (g_closing.load() != 0)
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_in_flight.wait_idle(std::chrono::seconds(2));
 		rml::Hooking::DetourHookHelper::remove<&lua_newstate_detour>();
 		rml::Hooking::DetourHookHelper::remove<&lua_close_detour>();
@@ -190,14 +224,14 @@ namespace tracy_profiler
 	{
 		std::atomic_ref allocation(vm.global->onallocate);
 		std::atomic_ref release(vm.global->onfree);
-		AllocationHook expected_allocation = nullptr;
-		if (!allocation.compare_exchange_strong(expected_allocation, &on_allocate))
-			return false;
 		FreeHook expected_release = nullptr;
 		if (!release.compare_exchange_strong(expected_release, &on_free))
+			return false;
+		AllocationHook expected_allocation = nullptr;
+		if (!allocation.compare_exchange_strong(expected_allocation, &on_allocate))
 		{
-			AllocationHook ours = &on_allocate;
-			allocation.compare_exchange_strong(ours, nullptr);
+			FreeHook ours = &on_free;
+			release.compare_exchange_strong(ours, nullptr);
 			return false;
 		}
 		return true;
@@ -218,7 +252,7 @@ namespace tracy_profiler
 		std::size_t hooked = 0;
 		for (auto& vm : m_vms)
 		{
-			if (!vm.global || vm.closing)
+			if (vm.closing)
 				continue;
 			if (vm.hooked && std::atomic_ref(vm.global->onallocate).load() != &on_allocate)
 			{
@@ -253,7 +287,9 @@ namespace tracy_profiler
 
 	LuauMemory::Vm* LuauMemory::find(const GlobalState* global)
 	{
-		const auto found = std::ranges::find(m_vms, global, &Vm::global);
+		const auto found = std::ranges::find_if(m_vms, [global](const Vm& vm) {
+			return vm.global == global && !vm.closing;
+		});
 		return found == m_vms.end() ? nullptr : &*found;
 	}
 
@@ -264,20 +300,24 @@ namespace tracy_profiler
 		const auto tag = m_engine.get_category ? std::bit_cast<RBX::Memory::CategoryWord>(m_engine.get_category()).data_model_tag : 0u;
 		auto& vm = m_vms.emplace_back();
 		vm.global = global;
-		vm.label = std::format("VM {} (DataModel {})", m_next_id++, tag);
+		const auto id = m_next_id++;
+		vm.label = tag ? std::format("VM {} (DataModel {})", id, tag) : std::format("VM {}", id);
 		vm.pool = intern("Luau/" + vm.label);
 		vm.total = intern("Memory/Luau/" + vm.label + "/total");
 		for (auto& route : m_routes)
 		{
 			if (route.global.load(std::memory_order_acquire))
 				continue;
+			const auto slot = static_cast<std::size_t>(&route - m_routes.data());
 			route.pool.store(vm.pool, std::memory_order_release);
 			route.global.store(global, std::memory_order_release);
-			const auto used = static_cast<std::size_t>(&route - m_routes.data()) + 1;
-			if (used > m_route_limit.load(std::memory_order_relaxed))
-				m_route_limit.store(used, std::memory_order_release);
+			vm.route = slot;
+			if (slot + 1 > m_route_limit.load(std::memory_order_relaxed))
+				m_route_limit.store(slot + 1, std::memory_order_release);
 			break;
 		}
+		if (!vm.route)
+			m_log->warn("Luau {} has no free route slot; its Luau events are dropped", vm.label);
 		m_log->info("Luau {} registered", vm.label);
 		return vm;
 	}
@@ -311,16 +351,14 @@ namespace tracy_profiler
 	void LuauMemory::end_close(GlobalState* global)
 	{
 		std::scoped_lock lock(m_mutex);
-		if (auto* vm = find(global))
-		{
-			vm->global = nullptr;
-			vm->hooked = false;
-		}
-		for (auto& route : m_routes)
-		{
-			if (route.global.load(std::memory_order_acquire) == global)
-				route.global.store(nullptr, std::memory_order_release);
-		}
+		const auto found = std::ranges::find_if(m_vms, [global](const Vm& vm) {
+			return vm.global == global && vm.closing;
+		});
+		if (found == m_vms.end())
+			return;
+		if (found->route)
+			m_routes[*found->route].global.store(nullptr, std::memory_order_release);
+		m_vms.erase(found);
 	}
 
 	void LuauMemory::name_category(GlobalState* global, const std::uint8_t index, const std::string& name)
@@ -328,14 +366,12 @@ namespace tracy_profiler
 		std::scoped_lock lock(m_mutex);
 		auto& vm = ensure(global);
 		auto& names = vm.names[index];
-		if (names == name || names.find(name) != std::string::npos)
+		if (has_name(names, name))
+			return;
+		if (names.size() + name.size() > 200)
 			return;
 		if (!names.empty())
-		{
-			if (names.size() + name.size() > 200)
-				return;
 			names += ", ";
-		}
 		names += name;
 		vm.plots[index] = intern("Memory/Luau/" + vm.label + "/" + names);
 	}
@@ -367,7 +403,7 @@ namespace tracy_profiler
 		std::scoped_lock lock(m_mutex);
 		for (auto& vm : m_vms)
 		{
-			if (!vm.global || vm.closing)
+			if (vm.closing)
 				continue;
 			auto& sample = samples.emplace_back();
 			sample.total = vm.total;

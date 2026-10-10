@@ -8,6 +8,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -62,6 +63,7 @@ namespace tracy_profiler
 			const char* total{};
 			std::array<std::string, 256> names;
 			std::array<const char*, 256> plots{};
+			std::optional<std::size_t> route;
 			bool closing{};
 			bool hooked{};
 			bool yielded{};
