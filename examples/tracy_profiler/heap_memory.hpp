@@ -66,6 +66,7 @@ namespace tracy_profiler
 		std::uintptr_t m_image_begin{};
 		std::size_t m_image_size{};
 		bool m_bound{};
+		bool m_free_detoured{};
 		alignas(64) std::atomic<std::uint64_t> m_seen{};
 		alignas(64) std::atomic<std::uint64_t> m_failures{};
 	};

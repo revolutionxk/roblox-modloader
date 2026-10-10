@@ -37,9 +37,16 @@ namespace tracy_profiler
 	};
 
 	template<auto detour>
-	auto original()
+	auto& cached_original()
 	{
 		static std::atomic<decltype(rml::Hooking::get_original<detour>())> cached{};
+		return cached;
+	}
+
+	template<auto detour>
+	auto original()
+	{
+		auto& cached = cached_original<detour>();
 		auto function = cached.load(std::memory_order_acquire);
 		while (!function)
 		{
@@ -50,5 +57,11 @@ namespace tracy_profiler
 				std::this_thread::yield();
 		}
 		return function;
+	}
+
+	template<auto detour>
+	void forget_original()
+	{
+		cached_original<detour>().store(nullptr, std::memory_order_release);
 	}
 }

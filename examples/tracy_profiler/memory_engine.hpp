@@ -26,6 +26,7 @@ namespace tracy_profiler
 		mi_get_category_fn get_category{};
 		mi_resolve_category_fn resolve_category{};
 		mi_usable_size_fn usable_size{};
+		mi_is_in_heap_region_fn is_in_heap_region{};
 		mi_malloc_fn malloc{};
 		mi_malloc_aligned_fn malloc_aligned{};
 		mi_realloc_fn realloc{};

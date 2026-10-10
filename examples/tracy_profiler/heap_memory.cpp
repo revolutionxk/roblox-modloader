@@ -19,6 +19,7 @@ namespace tracy_profiler
 	static InFlight g_in_flight;
 	static std::atomic<HeapMemory*> g_heap{nullptr};
 	static MemoryEngine g_original{};
+	static thread_local const void* g_reallocating{};
 
 	static void* heap_malloc(const std::size_t size)
 	{
@@ -46,7 +47,9 @@ namespace tracy_profiler
 		auto* self = g_heap.load(std::memory_order_acquire);
 		if (self && block)
 			self->record_free(block);
+		g_reallocating = block;
 		auto* moved = g_original.realloc(block, size);
+		g_reallocating = nullptr;
 		if (self && moved)
 			self->record_allocation(moved, size);
 		return moved;
@@ -58,7 +61,9 @@ namespace tracy_profiler
 		auto* self = g_heap.load(std::memory_order_acquire);
 		if (self && block)
 			self->record_free(block);
+		g_reallocating = block;
 		auto* moved = g_original.realloc_aligned(block, size, alignment);
+		g_reallocating = nullptr;
 		if (self && moved)
 			self->record_allocation(moved, size);
 		return moved;
@@ -73,13 +78,13 @@ namespace tracy_profiler
 		g_original.free_prepared(block, state);
 	}
 
-	static void heap_free(void* block)
+	static void mi_free_detour(void* block)
 	{
 		const InFlight::Call call{g_in_flight};
 		auto* self = g_heap.load(std::memory_order_acquire);
-		if (self && block)
+		if (self && block && block != g_reallocating && g_original.is_in_heap_region(block))
 			self->record_free(block);
-		g_original.free(block);
+		original<&mi_free_detour>()(block);
 	}
 
 	HeapMemory::HeapMemory(const MemoryEngine& engine, const Callstacks& callstacks, std::shared_ptr<spdlog::logger> log) :
@@ -131,9 +136,8 @@ namespace tracy_profiler
 
 	bool HeapMemory::bind()
 	{
-		const std::array<std::pair<std::string_view, void*>, 6> hooks{{
+		const std::array<std::pair<std::string_view, void*>, 5> hooks{{
 		    {"mi_free_prepared", reinterpret_cast<void*>(&heap_free_prepared)},
-		    {"mi_free", reinterpret_cast<void*>(&heap_free)},
 		    {"mi_realloc", reinterpret_cast<void*>(&heap_realloc)},
 		    {"mi_realloc_aligned", reinterpret_cast<void*>(&heap_realloc_aligned)},
 		    {"mi_malloc", reinterpret_cast<void*>(&heap_malloc)},
@@ -162,6 +166,8 @@ namespace tracy_profiler
 				return false;
 			}
 		}
+		rml::Hooking::DetourHookHelper::add<&mi_free_detour>("mi_free", reinterpret_cast<void*>(m_engine.free));
+		m_free_detoured = true;
 		return true;
 	}
 
@@ -170,6 +176,15 @@ namespace tracy_profiler
 		for (const auto& binding : m_bindings)
 			rml::platform::restore_import_slots(binding.slots);
 		m_bindings.clear();
+		if (m_free_detoured)
+		{
+			rml::Hooking::DetourHookHelper::disable<&mi_free_detour>();
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			g_in_flight.wait_idle(std::chrono::seconds(2));
+			rml::Hooking::DetourHookHelper::remove<&mi_free_detour>();
+			forget_original<&mi_free_detour>();
+			m_free_detoured = false;
+		}
 		discard_all();
 	}
 

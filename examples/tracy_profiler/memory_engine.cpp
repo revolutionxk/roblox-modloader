@@ -105,7 +105,7 @@ namespace tracy_profiler
 
 	bool MemoryEngine::has_heap() const
 	{
-		return has_categories() && get_category && resolve_category && usable_size && malloc && malloc_aligned && realloc && realloc_aligned && free_prepared && free;
+		return has_categories() && get_category && resolve_category && usable_size && is_in_heap_region && malloc && malloc_aligned && realloc && realloc_aligned && free_prepared && free;
 	}
 
 	std::vector<std::string> MemoryEngine::missing() const
@@ -127,6 +127,7 @@ namespace tracy_profiler
 		    {get_category != nullptr, "mi_get_category"},
 		    {resolve_category != nullptr, "mi_resolve_category"},
 		    {usable_size != nullptr, "mi_usable_size"},
+		    {is_in_heap_region != nullptr, "mi_is_in_heap_region"},
 		    {malloc != nullptr, "mi_malloc"},
 		    {malloc_aligned != nullptr, "mi_malloc_aligned"},
 		    {realloc != nullptr, "mi_realloc"},
@@ -154,6 +155,7 @@ namespace tracy_profiler
 		exported(allocator, "mi_get_category", g_memory.get_category);
 		exported(allocator, "mi_resolve_category", g_memory.resolve_category);
 		exported(allocator, "mi_usable_size", g_memory.usable_size);
+		exported(allocator, "mi_is_in_heap_region", g_memory.is_in_heap_region);
 		exported(allocator, "mi_malloc", g_memory.malloc);
 		exported(allocator, "mi_malloc_aligned", g_memory.malloc_aligned);
 		exported(allocator, "mi_realloc", g_memory.realloc);
