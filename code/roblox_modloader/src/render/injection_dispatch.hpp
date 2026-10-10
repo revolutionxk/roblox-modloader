@@ -46,6 +46,7 @@ namespace rml::render::detail
 		[[nodiscard]] bool plans_clouds_path() const;
 		void note_main_view();
 		void device_lost(RBX::Graphics::Device& device);
+		bool enable_output_readback(bool enabled);
 
 	private:
 		InjectionDispatch() = default;
@@ -53,6 +54,7 @@ namespace rml::render::detail
 		[[nodiscard]] bool owns_frame() const;
 		void ensure_device(RBX::Graphics::Device& device);
 		void publish_builtins(InjectionPoint point, bool offscreen);
+		RBX::Graphics::Texture* copy_output();
 		void run(const std::vector<std::size_t>& passes, InjectionPoint point, std::uint32_t occurrence, CommandsImpl::Mode mode);
 
 		RenderGraphImpl m_graph;
@@ -65,10 +67,12 @@ namespace rml::render::detail
 		RBX::Graphics::SceneManager* m_scene{};
 		RBX::Graphics::DeviceContext* m_context{};
 		RBX::Graphics::Framebuffer* m_output{};
+		std::shared_ptr<RBX::Graphics::Texture> m_output_copy;
 		std::unordered_map<std::uint32_t, std::uint32_t> m_occurrences;
 		std::chrono::steady_clock::time_point m_last_time{};
 		std::uint64_t m_frame_index{};
 		std::atomic<std::thread::id> m_owner{};
+		std::atomic<bool> m_readback{false};
 		bool m_main_view_seen{};
 		bool m_main_view_now{};
 		bool m_main_done{};

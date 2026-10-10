@@ -14,6 +14,7 @@ namespace rml::render
 	{
 		inline constexpr std::string_view SCENE_DEPTH = "scene_depth";
 		inline constexpr std::string_view SCENE_COLOR = "scene_color";
+		inline constexpr std::string_view OUTPUT_COLOR = "output_color";
 	}
 
 	struct TargetDesc

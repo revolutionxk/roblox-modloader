@@ -3,6 +3,7 @@
 #include "RobloxModLoader/render/frame_resources.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -42,6 +43,8 @@ namespace rml::render::detail
 	public:
 		static constexpr std::uint64_t k_eviction_frames = 60;
 
+		using Provider = std::function<RBX::Graphics::Texture*()>;
+
 		explicit FrameResourcesImpl(RBX::Graphics::Device& device);
 
 		RenderTarget* target(std::string_view id, const TargetDesc& desc) override;
@@ -50,6 +53,7 @@ namespace rml::render::detail
 		[[nodiscard]] RBX::Graphics::Texture* texture(std::string_view id) const override;
 
 		void begin_frame(std::uint64_t frame_index);
+		void provide(std::string_view id, Provider provider);
 		void withdraw(std::string_view id);
 		[[nodiscard]] RBX::Graphics::Device& device() const;
 
@@ -64,7 +68,8 @@ namespace rml::render::detail
 
 		RBX::Graphics::Device& m_device;
 		std::map<std::string, Entry, std::less<>> m_targets;
-		std::map<std::string, RBX::Graphics::Texture*, std::less<>> m_published;
+		mutable std::map<std::string, RBX::Graphics::Texture*, std::less<>> m_published;
+		mutable std::map<std::string, Provider, std::less<>> m_providers;
 		std::uint64_t m_frame{};
 	};
 

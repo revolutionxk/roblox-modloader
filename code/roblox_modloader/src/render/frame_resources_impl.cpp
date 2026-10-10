@@ -129,22 +129,42 @@ namespace rml::render::detail
 			withdraw(id);
 	}
 
+	void FrameResourcesImpl::provide(const std::string_view id, Provider provider)
+	{
+		m_published.erase(std::string(id));
+		m_providers.insert_or_assign(std::string(id), std::move(provider));
+	}
+
 	RBX::Graphics::Texture* FrameResourcesImpl::texture(const std::string_view id) const
 	{
-		const auto it = m_published.find(id);
-		return it == m_published.end() ? nullptr : it->second;
+		if (const auto it = m_published.find(id); it != m_published.end())
+			return it->second;
+
+		const auto provider = m_providers.find(id);
+		if (provider == m_providers.end())
+			return nullptr;
+
+		auto produce = std::move(provider->second);
+		m_providers.erase(provider);
+		auto* texture = produce ? produce() : nullptr;
+		if (texture)
+			m_published.insert_or_assign(std::string(id), texture);
+		return texture;
 	}
 
 	void FrameResourcesImpl::withdraw(const std::string_view id)
 	{
 		if (const auto it = m_published.find(id); it != m_published.end())
 			m_published.erase(it);
+		if (const auto it = m_providers.find(id); it != m_providers.end())
+			m_providers.erase(it);
 	}
 
 	void FrameResourcesImpl::begin_frame(const std::uint64_t frame_index)
 	{
 		m_frame = frame_index;
 		m_published.clear();
+		m_providers.clear();
 		std::erase_if(m_targets, [frame_index](const auto& entry) { return entry.second.last_used + k_eviction_frames < frame_index; });
 	}
 

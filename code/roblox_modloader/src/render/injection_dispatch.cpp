@@ -1,6 +1,7 @@
 #include "render/injection_dispatch.hpp"
 
 #include "RobloxModLoader/internal/common.hpp"
+#include "RobloxModLoader/platform/graphics/output_readback.hpp"
 #include "RobloxModLoader/roblox/graphics/device.hpp"
 #include "RobloxModLoader/roblox/graphics/device_context.hpp"
 #include "RobloxModLoader/roblox/graphics/global_shader_data.hpp"
@@ -151,6 +152,12 @@ namespace rml::render::detail
 	{
 		m_resources->withdraw(resource_names::SCENE_DEPTH);
 		m_resources->withdraw(resource_names::SCENE_COLOR);
+		m_resources->withdraw(resource_names::OUTPUT_COLOR);
+		if (point == InjectionPoint::at(FramePoint::FrameEnd) && m_output)
+			m_resources->provide(resource_names::OUTPUT_COLOR, [this] {
+				return copy_output();
+			});
+
 		const bool readable = traits(point).state == PassState::InPass ? offscreen && m_main_done : m_main_done;
 		const auto* targets = m_scene ? m_scene->get_main_render_targets() : nullptr;
 		if (!readable || !targets)
@@ -159,6 +166,57 @@ namespace rml::render::detail
 			m_resources->publish(resource_names::SCENE_DEPTH, scene_fb->depth.texture.get());
 		if (auto* color = targets->main_color())
 			m_resources->publish(resource_names::SCENE_COLOR, color);
+	}
+
+	RBX::Graphics::Texture* InjectionDispatch::copy_output()
+	{
+		using RBX::Graphics::Texture;
+		if (!m_readback.load() || !m_output || !m_context || !m_device || m_output->samples > 1 || m_output->color.empty()
+		    || !m_output->color[0].texture)
+			return nullptr;
+		if (!rml::platform::output_readable(m_output->width, m_output->height))
+			return nullptr;
+
+		const auto& source = *m_output->color[0].texture;
+		if (!m_output_copy || m_output_copy->width != m_output->width || m_output_copy->height != m_output->height
+		    || m_output_copy->format != source.format)
+		{
+			m_output_copy.reset();
+			try
+			{
+				const auto usage = static_cast<Texture::Usage>(static_cast<std::uint32_t>(Texture::Usage::ShaderRead) | static_cast<std::uint32_t>(Texture::Usage::RenderTarget));
+				m_output_copy = m_device->create_texture_impl(Texture::Type::Type_2D,
+				    static_cast<Texture::Format>(source.format),
+				    m_output->width,
+				    m_output->height,
+				    1,
+				    1,
+				    1,
+				    1,
+				    usage,
+				    "rml:output_color");
+			}
+			catch (const std::exception& e)
+			{
+				RML_ERROR("output_color could not be created: {}", e.what());
+				return nullptr;
+			}
+		}
+		if (!m_output_copy)
+			return nullptr;
+
+		m_context->copy_framebuffer(m_output, m_output_copy.get(), 0, 0);
+		return m_output_copy.get();
+	}
+
+	bool InjectionDispatch::enable_output_readback(const bool enabled)
+	{
+		if (m_readback.load() == enabled)
+			return true;
+		if (!rml::platform::set_output_readable(enabled))
+			return false;
+		m_readback.store(enabled);
+		return true;
 	}
 
 	void InjectionDispatch::run(const std::vector<std::size_t>& passes, const InjectionPoint point, const std::uint32_t occurrence, const CommandsImpl::Mode mode)
@@ -264,6 +322,7 @@ namespace rml::render::detail
 			return;
 		m_graph.device_lost();
 		m_resources.reset();
+		m_output_copy.reset();
 		m_fullscreen = {};
 		m_device = nullptr;
 		RML_INFO("render resources released with the device");
@@ -275,5 +334,10 @@ namespace rml::render
 	RenderGraph& graph()
 	{
 		return detail::InjectionDispatch::instance().graph();
+	}
+
+	bool enable_output_readback(const bool enabled)
+	{
+		return detail::InjectionDispatch::instance().enable_output_readback(enabled);
 	}
 }
