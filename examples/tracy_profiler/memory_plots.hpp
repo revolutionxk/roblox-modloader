@@ -13,6 +13,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace tracy_profiler
@@ -54,6 +55,7 @@ namespace tracy_profiler
 		std::deque<std::string> m_names;
 		std::unordered_map<std::uint32_t, const char*> m_datamodel_plots;
 		std::unordered_map<const char*, std::uint64_t> m_last;
+		std::unordered_set<const char*> m_configured;
 		std::vector<std::uint64_t> m_heap_bytes;
 		std::vector<std::uint64_t> m_datamodel_bytes;
 		std::vector<LuauMemory::Sample> m_luau_samples;

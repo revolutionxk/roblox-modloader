@@ -49,8 +49,8 @@ namespace tracy_profiler
 		    },
 		    [] {
 		    });
-		m_plots->start();
 		apply(settings);
+		m_plots->start();
 	}
 
 	void Memory::apply(const Settings& settings)

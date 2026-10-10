@@ -101,7 +101,8 @@ namespace tracy_profiler
 			if (value == 0)
 				return;
 			m_last.emplace(name, value);
-			___tracy_emit_plot_config(name, TracyPlotFormatMemory, 0, 1, 0);
+			if (m_configured.insert(name).second)
+				___tracy_emit_plot_config(name, TracyPlotFormatMemory, 1, 1, 0);
 		}
 		else if (found->second == value)
 			return;
@@ -125,13 +126,13 @@ namespace tracy_profiler
 			m_luau->maintain();
 		if (m_tick)
 			m_tick();
-		if (!___tracy_connected())
-			return;
 		if (const auto epoch = connection_epoch(); epoch != m_epoch)
 		{
 			m_epoch = epoch;
 			m_last.clear();
 		}
+		if (!___tracy_connected())
+			return;
 		if (m_enabled.load(std::memory_order_relaxed))
 		{
 			sample_heap();
