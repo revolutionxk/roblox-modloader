@@ -110,7 +110,7 @@ namespace tracy_profiler
 	{
 		const InFlight::Call call{g_in_flight};
 		const CloseScope scope;
-		auto* self = g_luau.load(std::memory_order_acquire);
+		auto* self = g_luau.load(std::memory_order_seq_cst);
 		auto* global = state ? state->global : nullptr;
 		if (self && global)
 		{
@@ -123,7 +123,7 @@ namespace tracy_profiler
 			}
 		}
 		original<&lua_close_detour>()(state);
-		if (self && global && g_luau.load(std::memory_order_acquire) == self)
+		if (self && global && g_luau.load(std::memory_order_seq_cst) == self)
 		{
 			try
 			{
@@ -203,7 +203,7 @@ namespace tracy_profiler
 				vm.hooked = false;
 			}
 		}
-		g_luau.store(nullptr, std::memory_order_release);
+		g_luau.store(nullptr, std::memory_order_seq_cst);
 		rml::Hooking::DetourHookHelper::disable<&lua_newstate_detour>();
 		rml::Hooking::DetourHookHelper::disable<&lua_close_detour>();
 		if (m_names_hooked)
@@ -212,6 +212,8 @@ namespace tracy_profiler
 		while (g_closing.load() != 0)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		g_in_flight.wait_idle(std::chrono::seconds(2));
+		while (g_closing.load() != 0)
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		rml::Hooking::DetourHookHelper::remove<&lua_newstate_detour>();
 		rml::Hooking::DetourHookHelper::remove<&lua_close_detour>();
 		if (m_names_hooked)
@@ -364,6 +366,11 @@ namespace tracy_profiler
 	void LuauMemory::name_category(GlobalState* global, const std::uint8_t index, const std::string& name)
 	{
 		std::scoped_lock lock(m_mutex);
+		const auto closing = std::ranges::any_of(m_vms, [global](const Vm& vm) {
+			return vm.global == global && vm.closing;
+		});
+		if (closing && !find(global))
+			return;
 		auto& vm = ensure(global);
 		auto& names = vm.names[index];
 		if (has_name(names, name))
