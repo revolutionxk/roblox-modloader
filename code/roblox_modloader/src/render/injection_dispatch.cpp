@@ -44,6 +44,7 @@ namespace rml::render::detail
 		if (m_device == &device && m_resources && m_fullscreen.geometry)
 			return;
 		m_resources.reset();
+		m_output_copy.reset();
 		m_fullscreen = {};
 		m_device = &device;
 		m_resources = std::make_unique<FrameResourcesImpl>(device);
