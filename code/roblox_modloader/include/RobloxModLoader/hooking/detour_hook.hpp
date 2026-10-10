@@ -24,6 +24,7 @@ namespace rml
 		void set_instance(const std::string& name, void* detour);
 		void set_instance(const std::string& name, void* target, void* detour);
 		void set_target_and_create_hook(void* target);
+		void destroy();
 
 		[[nodiscard]] std::expected<void, rml::HookError> enable() override;
 		[[nodiscard]] std::expected<void, rml::HookError> disable() override;
