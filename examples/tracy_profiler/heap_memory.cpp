@@ -19,7 +19,6 @@ namespace tracy_profiler
 	static InFlight g_in_flight;
 	static std::atomic<HeapMemory*> g_heap{nullptr};
 	static MemoryEngine g_original{};
-	static thread_local const void* g_reallocating{};
 
 	static void* heap_malloc(const std::size_t size)
 	{
@@ -45,13 +44,13 @@ namespace tracy_profiler
 	{
 		const InFlight::Call call{g_in_flight};
 		auto* self = g_heap.load(std::memory_order_acquire);
-		if (self && block)
-			self->record_free(block);
-		g_reallocating = block;
 		auto* moved = g_original.realloc(block, size);
-		g_reallocating = nullptr;
 		if (self && moved)
+		{
+			if (moved == block)
+				self->record_free(block);
 			self->record_allocation(moved, size);
+		}
 		return moved;
 	}
 
@@ -59,13 +58,13 @@ namespace tracy_profiler
 	{
 		const InFlight::Call call{g_in_flight};
 		auto* self = g_heap.load(std::memory_order_acquire);
-		if (self && block)
-			self->record_free(block);
-		g_reallocating = block;
 		auto* moved = g_original.realloc_aligned(block, size, alignment);
-		g_reallocating = nullptr;
 		if (self && moved)
+		{
+			if (moved == block)
+				self->record_free(block);
 			self->record_allocation(moved, size);
+		}
 		return moved;
 	}
 
@@ -82,7 +81,7 @@ namespace tracy_profiler
 	{
 		const InFlight::Call call{g_in_flight};
 		auto* self = g_heap.load(std::memory_order_acquire);
-		if (self && block && block != g_reallocating && g_original.is_in_heap_region(block))
+		if (self && block && self->active() && ___tracy_connected() && g_original.is_in_heap_region(block))
 			self->record_free(block);
 		original<&mi_free_detour>()(block);
 	}
@@ -157,6 +156,8 @@ namespace tracy_profiler
 			m_bindings.push_back({symbol, std::move(slots), hook});
 		}
 		g_heap.store(this, std::memory_order_release);
+		rml::Hooking::DetourHookHelper::add<&mi_free_detour>("mi_free", reinterpret_cast<void*>(m_engine.free));
+		m_free_detoured = true;
 		for (const auto& binding : m_bindings)
 		{
 			if (!rml::platform::rebind_import_slots(binding.slots, binding.hook))
@@ -166,8 +167,6 @@ namespace tracy_profiler
 				return false;
 			}
 		}
-		rml::Hooking::DetourHookHelper::add<&mi_free_detour>("mi_free", reinterpret_cast<void*>(m_engine.free));
-		m_free_detoured = true;
 		return true;
 	}
 
@@ -180,10 +179,14 @@ namespace tracy_profiler
 		{
 			rml::Hooking::DetourHookHelper::disable<&mi_free_detour>();
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-			g_in_flight.wait_idle(std::chrono::seconds(2));
-			rml::Hooking::DetourHookHelper::remove<&mi_free_detour>();
-			forget_original<&mi_free_detour>();
-			m_free_detoured = false;
+			if (g_in_flight.wait_idle(std::chrono::seconds(2)))
+			{
+				rml::Hooking::DetourHookHelper::remove<&mi_free_detour>();
+				forget_original<&mi_free_detour>();
+				m_free_detoured = false;
+			}
+			else
+				m_log->warn("heap memory events: free detour still busy; left installed");
 		}
 		discard_all();
 	}
