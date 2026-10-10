@@ -55,6 +55,8 @@ namespace tracy_profiler
 
 	int Callstacks::capture_from_studio(std::uint64_t* frames, const int depth, const int skip) const
 	{
+		if (depth <= 0)
+			return 0;
 		std::array<std::uintptr_t, capacity + leading_frame_budget> raw{};
 		const auto captured = rml::platform::capture_return_addresses(raw);
 

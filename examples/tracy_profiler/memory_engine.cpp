@@ -100,7 +100,7 @@ namespace tracy_profiler
 
 	bool MemoryEngine::has_external() const
 	{
-		return has_categories() && track_external_allocate && track_external_deallocate && track_external_deallocate_deferred;
+		return has_categories() && track_external_allocate && track_external_deallocate && track_external_deallocate_deferred && flush_deferred_category && flush_deferred_all;
 	}
 
 	bool MemoryEngine::has_heap() const

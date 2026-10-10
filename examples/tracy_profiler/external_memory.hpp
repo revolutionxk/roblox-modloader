@@ -23,7 +23,7 @@ namespace tracy_profiler
 		ExternalMemory(const ExternalMemory&) = delete;
 		ExternalMemory& operator=(const ExternalMemory&) = delete;
 
-		void install();
+		[[nodiscard]] bool install();
 		void apply(const Settings& settings);
 		void remove();
 		[[nodiscard]] std::uint64_t dropped() const;
@@ -57,15 +57,19 @@ namespace tracy_profiler
 			std::size_t size{};
 		};
 
+		using LiveMap = std::unordered_map<Resource, std::vector<Live>, ResourceHash>;
+
 		[[nodiscard]] const char* pool(std::uint32_t category, RBX::Memory::MemoryType type) const;
+		[[nodiscard]] LiveMap::iterator newest_with_size(std::uint32_t category, RBX::Memory::MemoryType type, std::size_t size);
 		void observe_epoch();
+		void forget_all();
 
 		const MemoryEngine& m_engine;
 		const Callstacks& m_callstacks;
 		std::vector<std::string> m_gpu_pools;
 		std::vector<std::string> m_heap_pools;
 		std::mutex m_mutex;
-		std::unordered_map<Resource, std::vector<Live>, ResourceHash> m_live;
+		LiveMap m_live;
 		std::uint64_t m_next{address_base};
 		std::uint64_t m_epoch{};
 		std::atomic<bool> m_events{false};
