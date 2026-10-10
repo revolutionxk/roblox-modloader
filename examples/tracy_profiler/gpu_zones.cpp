@@ -19,6 +19,7 @@ namespace tracy_profiler
 	static constexpr std::uint64_t no_parent = UINT64_MAX;
 	static constexpr std::uint64_t timeout_frames = 8;
 	static constexpr std::size_t encoder_window = 32768;
+	static constexpr std::uint64_t anchor_walk = 64;
 	static constexpr int gpu_callstack_depth = 16;
 
 	struct OpenScope
@@ -75,9 +76,10 @@ namespace tracy_profiler
 		{
 			const auto fallback = fallback_time();
 			for (const auto& scope : m_pending)
-				emit_times(scope, fallback, fallback);
+				settle(scope, fallback, fallback);
 		}
 		m_pending.clear();
+		m_settled.clear();
 		m_encoders.clear();
 	}
 
@@ -134,6 +136,7 @@ namespace tracy_profiler
 			return;
 
 		m_pending.clear();
+		m_settled.clear();
 		m_encoders.clear();
 		m_context_epoch.store(epoch);
 	}
@@ -145,10 +148,11 @@ namespace tracy_profiler
 		return static_cast<std::int64_t>(m_encoders.rbegin()->second.end);
 	}
 
-	void GpuZones::emit_times(const Scope& scope, const std::int64_t begin, const std::int64_t end)
+	void GpuZones::settle(const Scope& scope, const std::int64_t begin, const std::int64_t end)
 	{
 		___tracy_emit_gpu_time_serial({begin, scope.begin_query, scope_context});
 		___tracy_emit_gpu_time_serial({end, scope.end_query, scope_context});
+		m_settled.insert_or_assign(scope.begin_query, Settled{scope.start, begin, m_frames});
 	}
 
 	bool GpuZones::enter(const MicroProfileTimerToken token)
@@ -194,15 +198,19 @@ namespace tracy_profiler
 			if (open.epoch != epoch || !connected)
 				continue;
 
-			const auto parent = t_open.empty() ? no_parent : t_open.back().start;
+			const auto has_parent = !t_open.empty() && t_open.back().epoch == epoch;
+			const auto parent_start = has_parent ? t_open.back().start : no_parent;
+			const auto parent_query = has_parent ? t_open.back().query : std::uint16_t{};
 			const auto end_query = next_query();
 			___tracy_emit_gpu_zone_end_serial({end_query, scope_context});
 			std::scoped_lock lock(m_mutex);
 			if (m_context_epoch.load() != open.epoch)
 				continue;
 
-			const Scope scope{thread, open.start, last, parent, open.query, end_query, m_frames};
-			if (!try_resolve(scope))
+			const Scope scope{thread, open.start, last, parent_start, parent_query, open.query, end_query, m_frames};
+			if (try_resolve(scope))
+				resolve_pending();
+			else
 				m_pending.push_back(scope);
 		}
 	}
@@ -228,30 +236,52 @@ namespace tracy_profiler
 		}
 		if (begin != UINT64_MAX)
 		{
-			emit_times(scope, static_cast<std::int64_t>(begin), static_cast<std::int64_t>(end));
+			settle(scope, static_cast<std::int64_t>(begin), static_cast<std::int64_t>(end));
 			return true;
 		}
 
-		if (scope.parent_start == no_parent || scope.start > scope.parent_start)
+		if (scope.parent_start != no_parent && scope.start <= scope.parent_start)
 		{
-			const auto floor = scope.parent_start == no_parent ? 0 : scope.parent_start;
-			for (auto serial = scope.start; serial > floor; --serial)
-			{
-				const auto it = m_encoders.find(serial);
-				if (it == m_encoders.end())
-					return false;
-				if (it->second.thread != scope.thread)
-					continue;
-				emit_times(scope, static_cast<std::int64_t>(it->second.end), static_cast<std::int64_t>(it->second.end));
-				return true;
-			}
+			const auto parent = m_settled.find(scope.parent_query);
+			if (parent == m_settled.end() || parent->second.start != scope.parent_start)
+				return false;
+			settle(scope, parent->second.begin, parent->second.begin);
+			return true;
+		}
+
+		const auto floor = scope.parent_start == no_parent ? 0 : scope.parent_start;
+		const auto lowest = scope.start > anchor_walk ? std::max(floor, scope.start - anchor_walk) : floor;
+		for (auto serial = scope.start; serial > lowest; --serial)
+		{
+			const auto it = m_encoders.find(serial);
+			if (it == m_encoders.end())
+				return false;
+			if (it->second.thread != scope.thread)
+				continue;
+			settle(scope, static_cast<std::int64_t>(it->second.end), static_cast<std::int64_t>(it->second.end));
+			return true;
 		}
 
 		const auto next = m_encoders.upper_bound(scope.last);
 		if (next == m_encoders.end())
 			return false;
-		emit_times(scope, static_cast<std::int64_t>(next->second.begin), static_cast<std::int64_t>(next->second.begin));
+		settle(scope, static_cast<std::int64_t>(next->second.begin), static_cast<std::int64_t>(next->second.begin));
 		return true;
+	}
+
+	void GpuZones::resolve_pending()
+	{
+		bool progress = true;
+		while (progress)
+		{
+			progress = false;
+			std::erase_if(m_pending, [&](const Scope& scope) {
+				if (!try_resolve(scope))
+					return false;
+				progress = true;
+				return true;
+			});
+		}
 	}
 
 	void GpuZones::prune()
@@ -279,9 +309,7 @@ namespace tracy_profiler
 			___tracy_emit_gpu_time_serial({static_cast<std::int64_t>(timing.end), end_query, buffer_context});
 		}
 
-		std::erase_if(m_pending, [this](const Scope& scope) {
-			return try_resolve(scope);
-		});
+		resolve_pending();
 		prune();
 	}
 
@@ -296,10 +324,13 @@ namespace tracy_profiler
 		std::erase_if(m_pending, [&](const Scope& scope) {
 			if (m_frames < scope.frame + timeout_frames)
 				return false;
-			emit_times(scope, fallback, fallback);
+			settle(scope, fallback, fallback);
 			if (scope.last > scope.start)
 				m_dropped.fetch_add(1);
 			return true;
+		});
+		std::erase_if(m_settled, [this](const auto& entry) {
+			return m_frames > entry.second.frame + timeout_frames;
 		});
 		___tracy_emit_plot_int("RML/GPU dropped", m_dropped.load());
 	}

@@ -44,13 +44,20 @@ namespace tracy_profiler
 			std::uint64_t start;
 			std::uint64_t last;
 			std::uint64_t parent_start;
+			std::uint16_t parent_query;
 			std::uint16_t begin_query;
 			std::uint16_t end_query;
 			std::uint64_t frame;
 		};
 
+		struct Settled
+		{
+			std::uint64_t start;
+			std::int64_t begin;
+			std::uint64_t frame;
+		};
+
 		static void sink(const rml::platform::GpuCommandBufferTiming& timing, void* user);
-		static void emit_times(const Scope& scope, std::int64_t begin, std::int64_t end);
 		void deliver(const rml::platform::GpuCommandBufferTiming& timing);
 		bool start_locked();
 		void stop_locked();
@@ -58,7 +65,9 @@ namespace tracy_profiler
 		void sync_connection(std::uint64_t epoch);
 		std::uint16_t next_query();
 		std::int64_t fallback_time() const;
+		void settle(const Scope& scope, std::int64_t begin, std::int64_t end);
 		bool try_resolve(const Scope& scope);
+		void resolve_pending();
 		void prune();
 
 		Timers& m_timers;
@@ -74,6 +83,7 @@ namespace tracy_profiler
 		std::mutex m_mutex;
 		std::map<std::uint64_t, Encoder> m_encoders;
 		std::deque<Scope> m_pending;
+		std::map<std::uint16_t, Settled> m_settled;
 		___tracy_source_location_data m_command_buffer_location{};
 	};
 }
