@@ -41,6 +41,13 @@ namespace tracy_profiler
 		}
 		else
 			m_log->warn("Luau memory off: LUA_NEWSTATE or LUA_CLOSE missing");
+		if (m_engine.has_external())
+		{
+			m_external = std::make_unique<ExternalMemory>(m_engine, m_callstacks);
+			m_external->install();
+		}
+		else
+			m_log->warn("external memory events off: trackExternal entry points missing");
 		m_plots = std::make_unique<MemoryPlots>(
 		    m_engine,
 		    m_luau.get(),
@@ -59,18 +66,22 @@ namespace tracy_profiler
 			m_plots->apply(settings);
 		if (m_luau)
 			m_luau->apply(settings);
+		if (m_external)
+			m_external->apply(settings);
 	}
 
 	void Memory::stop()
 	{
 		if (m_plots)
 			m_plots->stop();
+		if (m_external)
+			m_external->remove();
 		if (m_luau)
 			m_luau->remove();
 	}
 
 	std::uint64_t Memory::dropped() const
 	{
-		return m_frames->dropped();
+		return m_frames->dropped() + (m_external ? m_external->dropped() : 0);
 	}
 }

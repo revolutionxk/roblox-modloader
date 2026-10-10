@@ -1,5 +1,6 @@
 #pragma once
 
+#include "external_memory.hpp"
 #include "luau_frames.hpp"
 #include "luau_memory.hpp"
 #include "memory_engine.hpp"
@@ -43,6 +44,7 @@ namespace tracy_profiler
 		MemoryEngine m_engine;
 		std::unique_ptr<LuauFrames> m_frames;
 		std::unique_ptr<LuauMemory> m_luau;
+		std::unique_ptr<ExternalMemory> m_external;
 		std::unique_ptr<MemoryPlots> m_plots;
 	};
 }
