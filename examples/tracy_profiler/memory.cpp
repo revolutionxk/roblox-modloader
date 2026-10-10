@@ -34,14 +34,25 @@ namespace tracy_profiler
 		m_engine = resolve_memory_engine();
 		if (const auto missing = m_engine.missing(); !missing.empty())
 			m_log->warn("memory entry points missing ({}); the sources that need them stay off", joined(missing));
+		if (m_engine.has_luau())
+		{
+			m_luau = std::make_unique<LuauMemory>(m_engine, m_callstacks, *m_frames, m_log);
+			m_luau->install();
+		}
+		else
+			m_log->warn("Luau memory off: LUA_NEWSTATE or LUA_CLOSE missing");
 		apply(settings);
 	}
 
-	void Memory::apply(const Settings&)
+	void Memory::apply(const Settings& settings)
 	{
+		if (m_luau)
+			m_luau->apply(settings);
 	}
 
 	void Memory::stop()
 	{
+		if (m_luau)
+			m_luau->remove();
 	}
 }

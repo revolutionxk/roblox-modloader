@@ -1,6 +1,7 @@
 #pragma once
 
 #include "luau_frames.hpp"
+#include "luau_memory.hpp"
 #include "memory_engine.hpp"
 
 #include <memory>
@@ -38,5 +39,6 @@ namespace tracy_profiler
 		std::shared_ptr<spdlog::logger> m_log;
 		MemoryEngine m_engine;
 		std::unique_ptr<LuauFrames> m_frames;
+		std::unique_ptr<LuauMemory> m_luau;
 	};
 }
