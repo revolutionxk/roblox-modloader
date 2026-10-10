@@ -139,6 +139,7 @@ private:
 
 		m_memory = std::make_unique<tracy_profiler::Memory>(*m_callstacks, m_log);
 		m_memory->start(m_settings);
+		m_symbols->set_luau_frames(&m_memory->luau_frames());
 
 		m_store->watch([this] {
 			try

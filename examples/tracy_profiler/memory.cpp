@@ -22,7 +22,8 @@ namespace tracy_profiler
 
 	Memory::Memory(const Callstacks& callstacks, std::shared_ptr<spdlog::logger> log) :
 	    m_callstacks(callstacks),
-	    m_log(std::move(log))
+	    m_log(std::move(log)),
+	    m_frames(std::make_unique<LuauFrames>())
 	{
 	}
 

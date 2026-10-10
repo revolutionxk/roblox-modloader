@@ -1,5 +1,6 @@
 #pragma once
 
+#include "luau_frames.hpp"
 #include "memory_engine.hpp"
 
 #include <memory>
@@ -27,9 +28,15 @@ namespace tracy_profiler
 		void apply(const Settings& settings);
 		void stop();
 
+		[[nodiscard]] const LuauFrames& luau_frames() const
+		{
+			return *m_frames;
+		}
+
 	private:
 		const Callstacks& m_callstacks;
 		std::shared_ptr<spdlog::logger> m_log;
 		MemoryEngine m_engine;
+		std::unique_ptr<LuauFrames> m_frames;
 	};
 }

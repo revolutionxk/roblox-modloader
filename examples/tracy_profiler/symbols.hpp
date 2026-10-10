@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <shared_mutex>
@@ -12,6 +13,7 @@
 
 namespace tracy_profiler
 {
+	class LuauFrames;
 	class Timers;
 
 	class Symbols
@@ -27,6 +29,7 @@ namespace tracy_profiler
 		void add(const void* function, std::string name);
 		void index_rtti();
 		void index_scope_owners(const void* get_token);
+		void set_luau_frames(const LuauFrames* frames);
 		[[nodiscard]] std::string function_name(std::uintptr_t address) const;
 		[[nodiscard]] std::uintptr_t image_base() const;
 		[[nodiscard]] std::size_t scope_owner_count() const;
@@ -43,6 +46,7 @@ namespace tracy_profiler
 		std::unordered_map<std::uintptr_t, std::string> m_names;
 		std::vector<std::uintptr_t> m_scope_owners;
 		mutable std::unordered_map<std::uintptr_t, std::pair<std::uintptr_t, std::string>> m_scope_names;
+		std::atomic<const LuauFrames*> m_luau_frames{};
 		std::jthread m_rtti;
 	};
 }

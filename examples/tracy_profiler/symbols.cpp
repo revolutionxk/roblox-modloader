@@ -1,5 +1,6 @@
 #include "symbols.hpp"
 
+#include "luau_frames.hpp"
 #include "timers.hpp"
 
 #include <RobloxModLoader/memory/rtti_index.hpp>
@@ -138,6 +139,11 @@ namespace tracy_profiler
 		m_scope_owners = std::move(owners);
 	}
 
+	void Symbols::set_luau_frames(const LuauFrames* frames)
+	{
+		m_luau_frames.store(frames, std::memory_order_release);
+	}
+
 	std::string Symbols::name_of(const std::uintptr_t start, const std::size_t size) const
 	{
 		std::optional<std::pair<std::uintptr_t, std::string>> pinned;
@@ -189,6 +195,9 @@ namespace tracy_profiler
 
 	bool Symbols::resolve(const std::uint64_t address, ___tracy_resolved_symbol& symbol) const
 	{
+		if (const auto* frames = m_luau_frames.load(std::memory_order_acquire); frames && frames->resolve(address, symbol))
+			return true;
+
 		thread_local std::string buffer;
 
 		const auto function = rml::memory::function_containing(reinterpret_cast<const void*>(address));
