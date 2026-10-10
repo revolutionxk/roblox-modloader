@@ -15,7 +15,6 @@ using namespace metal;
 
 struct Params
 {
-	float2 source_size;
 	float2 target_size;
 };
 
@@ -35,7 +34,6 @@ fragment float4 rml_tracy_thumbnail_fs(float4 position [[position]], constant Pa
 	static constexpr const char* hlsl_fragment = R"(
 cbuffer Params : register(b0)
 {
-	float2 source_size;
 	float2 target_size;
 };
 
@@ -142,8 +140,6 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 			return;
 
 		auto& slot = m_slots[m_frames % m_slots.size()];
-		if (slot.pending)
-			slot.pending = false;
 		if (!slot.buffer || slot.width != m_width || slot.height != m_height)
 			slot.buffer = texture->create_async_download_buffer(0, 0);
 		if (!slot.buffer || !texture->async_download(slot.buffer))
@@ -220,7 +216,7 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 		if (!target)
 			return;
 
-		const Params params{{static_cast<float>(source->width), static_cast<float>(source->height)}, {static_cast<float>(width), static_cast<float>(height)}};
+		const Params params{{static_cast<float>(width), static_cast<float>(height)}};
 		ctx.commands.begin(*target, rml::render::LoadOp::DontCare);
 		ctx.commands.set_state(RasterizerState::make(RasterizerState::Cull_None), BlendState::opaque(), DepthState::make(DepthState::Function_Always, false));
 		ctx.commands.bind_texture(0, source, SamplerState::make(SamplerState::Filter_Linear, SamplerState::Address_Clamp));

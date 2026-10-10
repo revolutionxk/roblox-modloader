@@ -46,7 +46,6 @@ namespace tracy_profiler
 	static MicroProfile* g_state{};
 	static Timers* g_timers{};
 	static const Callstacks* g_callstacks{};
-	static std::atomic<std::uint64_t> g_frame_marks{};
 	static std::atomic<std::uint64_t> g_connection_epoch{};
 	static std::atomic<bool> g_was_connected{false};
 	static std::atomic<GpuZones*> g_gpu_zones{nullptr};
@@ -68,11 +67,6 @@ namespace tracy_profiler
 	void attach_gpu_zones(GpuZones* zones)
 	{
 		g_gpu_zones.store(zones, std::memory_order_release);
-	}
-
-	std::uint64_t frame_marks() noexcept
-	{
-		return g_frame_marks.load(std::memory_order_acquire);
 	}
 
 	std::uint64_t connection_epoch() noexcept
@@ -245,7 +239,6 @@ namespace tracy_profiler
 		const bool connected = observe_connection();
 
 		___tracy_emit_frame_mark(nullptr);
-		g_frame_marks.fetch_add(1, std::memory_order_acq_rel);
 		if (!connected)
 			return;
 

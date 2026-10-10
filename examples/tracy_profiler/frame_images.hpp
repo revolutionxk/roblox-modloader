@@ -43,7 +43,6 @@ namespace tracy_profiler
 
 		struct Params
 		{
-			float source_size[2];
 			float target_size[2];
 		};
 

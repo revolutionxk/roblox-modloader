@@ -14,6 +14,5 @@ namespace tracy_profiler
 	void apply_settings(const Settings& settings);
 	void remove_capture();
 	void attach_gpu_zones(GpuZones* zones);
-	[[nodiscard]] std::uint64_t frame_marks() noexcept;
 	[[nodiscard]] std::uint64_t connection_epoch() noexcept;
 }
