@@ -1,6 +1,7 @@
 #include "callstack.hpp"
 #include "capture.hpp"
 #include "engine.hpp"
+#include "frame_images.hpp"
 #include "gpu_zones.hpp"
 #include "sampling.hpp"
 #include "settings.hpp"
@@ -13,6 +14,7 @@
 #include <RobloxModLoader/mod/mod_base.hpp>
 #include <RobloxModLoader/platform/graphics/gpu_timeline.hpp>
 #include <RobloxModLoader/platform/memory/host_image.hpp>
+#include <RobloxModLoader/render/render.hpp>
 #include <exception>
 #include <memory>
 #include <mutex>
@@ -129,12 +131,19 @@ private:
 		tracy_profiler::install_capture(engine, *m_timers, *m_callstacks);
 		m_installed = true;
 
+		auto frame_images = std::make_unique<tracy_profiler::FrameImages>();
+		frame_images->apply(m_settings);
+		m_frame_images = frame_images.get();
+		rml::render::graph().add_pass(std::move(frame_images));
+
 		m_store->watch([this] {
 			try
 			{
 				std::scoped_lock lock(m_mutex);
 				m_settings = tracy_profiler::read(*m_store);
 				tracy_profiler::apply_settings(m_settings);
+				if (m_frame_images)
+					m_frame_images->apply(m_settings);
 				if (m_gpu_zones)
 					m_gpu_zones->set_enabled(m_settings.gpu_zones);
 				m_log->info("config.toml reloaded (pass_through={}, zone_callstacks={}, callstack_depth={})",
@@ -175,6 +184,12 @@ private:
 
 		if (m_installed)
 		{
+			if (m_frame_images)
+			{
+				m_frame_images->shutdown();
+				rml::render::graph().remove_pass(tracy_profiler::FrameImages::pass_name);
+				m_frame_images = nullptr;
+			}
 			tracy_profiler::attach_gpu_zones(nullptr);
 			tracy_profiler::remove_capture();
 			if (m_gpu_zones)
@@ -204,6 +219,7 @@ private:
 	std::unique_ptr<tracy_profiler::Symbols> m_symbols;
 	std::unique_ptr<tracy_profiler::Callstacks> m_callstacks;
 	std::unique_ptr<tracy_profiler::GpuZones> m_gpu_zones;
+	tracy_profiler::FrameImages* m_frame_images{};
 	bool m_installed{};
 	bool m_started{};
 };
