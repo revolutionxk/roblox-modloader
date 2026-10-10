@@ -16,17 +16,17 @@ using namespace metal;
 struct Params
 {
 	float2 target_size;
+	float2 sample_step;
 };
 
 fragment float4 rml_tracy_thumbnail_fs(float4 position [[position]], constant Params& p [[buffer(0)]], texture2d<float> source [[texture(0)]])
 {
 	constexpr sampler linear_clamp(filter::linear, address::clamp_to_edge);
 	float2 uv = position.xy / p.target_size;
-	float2 step = 1.0 / (p.target_size * 4.0);
 	float3 sum = 0.0;
 	for (int y = 0; y < 4; ++y)
 		for (int x = 0; x < 4; ++x)
-			sum += source.sample(linear_clamp, uv + (float2(x, y) - 1.5) * step).rgb;
+			sum += source.sample(linear_clamp, uv + (float2(x, y) - 1.5) * p.sample_step).rgb;
 	return float4(sum / 16.0, 1.0);
 }
 )";
@@ -35,6 +35,7 @@ fragment float4 rml_tracy_thumbnail_fs(float4 position [[position]], constant Pa
 cbuffer Params : register(b0)
 {
 	float2 target_size;
+	float2 sample_step;
 };
 
 Texture2D<float4> Source : register(t0);
@@ -43,11 +44,10 @@ SamplerState SourceSampler : register(s0);
 float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 {
 	float2 uv = position.xy / target_size;
-	float2 step = 1.0 / (target_size * 4.0);
 	float3 sum = 0.0;
 	for (int y = 0; y < 4; ++y)
 		for (int x = 0; x < 4; ++x)
-			sum += Source.Sample(SourceSampler, uv + (float2(x, y) - 1.5) * step).rgb;
+			sum += Source.Sample(SourceSampler, uv + (float2(x, y) - 1.5) * sample_step).rgb;
 	return float4(sum / 16.0, 1.0);
 }
 )";
@@ -216,7 +216,7 @@ float4 rml_tracy_thumbnail_fs(float4 position : SV_Position) : SV_Target
 		if (!target)
 			return;
 
-		const Params params{{static_cast<float>(width), static_cast<float>(height)}};
+		const Params params{{static_cast<float>(width), static_cast<float>(height)}, {0.25f / width, 0.25f / height}};
 		ctx.commands.begin(*target, rml::render::LoadOp::DontCare);
 		ctx.commands.set_state(RasterizerState::make(RasterizerState::Cull_None), BlendState::opaque(), DepthState::make(DepthState::Function_Always, false));
 		ctx.commands.bind_texture(0, source, SamplerState::make(SamplerState::Filter_Linear, SamplerState::Address_Clamp));

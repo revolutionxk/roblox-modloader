@@ -44,6 +44,7 @@ namespace tracy_profiler
 		struct Params
 		{
 			float target_size[2];
+			float sample_step[2];
 		};
 
 		void reset();
