@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <mach/mach.h>
 #include <mach/mach_vm.h>
+#include <pthread.h>
 #include <ptrauth.h>
 #include <utility>
 
@@ -72,5 +73,12 @@ namespace rml::platform
 				return reinterpret_cast<std::uintptr_t>(pc) > start + i * sizeof(std::uint32_t);
 		}
 		return false;
+	}
+
+	std::uint64_t current_thread_id() noexcept
+	{
+		std::uint64_t thread = 0;
+		pthread_threadid_np(nullptr, &thread);
+		return thread;
 	}
 }

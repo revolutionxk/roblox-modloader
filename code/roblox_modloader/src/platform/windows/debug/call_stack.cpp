@@ -1,5 +1,6 @@
-#include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/platform/debug/call_stack.hpp"
+
+#include "RobloxModLoader/internal/common.hpp"
 
 namespace rml::platform
 {
@@ -14,5 +15,10 @@ namespace rml::platform
 	bool frame_established(const void*) noexcept
 	{
 		return true;
+	}
+
+	std::uint64_t current_thread_id() noexcept
+	{
+		return GetCurrentThreadId();
 	}
 }
