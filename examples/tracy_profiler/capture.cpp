@@ -1,6 +1,7 @@
 #include "capture.hpp"
 
 #include "callstack.hpp"
+#include "detours.hpp"
 #include "engine.hpp"
 #include "gpu_zones.hpp"
 #include "settings.hpp"
@@ -14,24 +15,17 @@
 #include <chrono>
 #include <cstddef>
 #include <cstring>
-#include <functional>
-#include <thread>
 #include <tracy/TracyC.h>
 
 namespace tracy_profiler
 {
-	struct alignas(64) InFlightSlot
-	{
-		std::atomic<std::int32_t> count{};
-	};
-
 	struct SavedGroups
 	{
 		std::uint32_t force_enable{};
 		std::uint32_t all_groups_wanted{};
 	};
 
-	static std::array<InFlightSlot, 64> g_in_flight{};
+	static InFlight g_in_flight;
 	static std::atomic<bool> g_active{false};
 	static bool g_hooked{};
 	static bool g_hooked_flip_cpu{};
@@ -75,49 +69,6 @@ namespace tracy_profiler
 		return g_connection_epoch.load(std::memory_order_acquire);
 	}
 
-	static InFlightSlot& in_flight_slot()
-	{
-		thread_local auto& slot = g_in_flight[std::hash<std::thread::id>{}(std::this_thread::get_id()) % g_in_flight.size()];
-		return slot;
-	}
-
-	class Call
-	{
-	public:
-		Call() :
-		    m_slot(in_flight_slot())
-		{
-			m_slot.count.fetch_add(1);
-		}
-
-		~Call()
-		{
-			m_slot.count.fetch_sub(1);
-		}
-
-		Call(const Call&) = delete;
-		Call& operator=(const Call&) = delete;
-
-	private:
-		InFlightSlot& m_slot;
-	};
-
-	template<auto detour>
-	static auto original()
-	{
-		static std::atomic<decltype(rml::Hooking::get_original<detour>())> cached{};
-		auto function = cached.load(std::memory_order_acquire);
-		while (!function)
-		{
-			function = rml::Hooking::get_original<detour>();
-			if (function)
-				cached.store(function, std::memory_order_release);
-			else
-				std::this_thread::yield();
-		}
-		return function;
-	}
-
 	static bool is_gpu(const MicroProfileTimerToken token)
 	{
 		return (MicroProfileGetGroupMask(token) & std::atomic_ref(g_state->group_mask_gpu).load(std::memory_order_relaxed)) != 0;
@@ -155,7 +106,7 @@ namespace tracy_profiler
 
 	static std::uint64_t enter(const MicroProfileTimerToken token, const std::uint64_t tick)
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		if (!g_active.load())
 			return original<&enter>()(token, tick);
 		if (is_gpu(token))
@@ -192,7 +143,7 @@ namespace tracy_profiler
 
 	static void leave(const MicroProfileTimerToken token, const std::uint64_t enter_tick, const std::uint64_t leave_tick)
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		if (!g_active.load())
 			return original<&leave>()(token, enter_tick, leave_tick);
 		if (is_gpu(token))
@@ -231,7 +182,7 @@ namespace tracy_profiler
 
 	static void flip_cpu()
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		original<&flip_cpu>()();
 		if (!g_active.load())
 			return;
@@ -281,7 +232,7 @@ namespace tracy_profiler
 
 	static void put_label(const MicroProfileLabelToken label, const char* text)
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		original<&put_label>()(label, text);
 		if (g_active.load() && !t_in_literal)
 			emit_label(text);
@@ -289,7 +240,7 @@ namespace tracy_profiler
 
 	static void label_literal(const MicroProfileLabelToken label, const char* text)
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		t_in_literal = true;
 		original<&label_literal>()(label, text);
 		t_in_literal = false;
@@ -299,7 +250,7 @@ namespace tracy_profiler
 
 	static void on_thread_create(const char* name, const RBX::ThreadBufferSizeType buffer_size)
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		original<&on_thread_create>()(name, buffer_size);
 		if (g_active.load() && name)
 			___tracy_set_thread_name(name);
@@ -307,7 +258,7 @@ namespace tracy_profiler
 
 	static MicroProfileTimerToken get_token(const char* group, const char* name, const int color, const std::uint8_t flags)
 	{
-		const Call call;
+		const InFlight::Call call{g_in_flight};
 		const auto token = original<&get_token>()(group, name, color, flags);
 		if (!g_active.load())
 			return token;
@@ -333,16 +284,6 @@ namespace tracy_profiler
 	{
 		g_state->force_enable = g_saved_groups.force_enable;
 		g_state->all_groups_wanted = g_saved_groups.all_groups_wanted;
-	}
-
-	static void wait_idle()
-	{
-		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-		for (const auto& slot : g_in_flight)
-		{
-			while (slot.count.load() != 0 && std::chrono::steady_clock::now() < deadline)
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
 	}
 
 	void apply_settings(const Settings& settings)
@@ -414,7 +355,7 @@ namespace tracy_profiler
 		if (g_hooked_get_token)
 			rml::Hooking::DetourHookHelper::disable<&get_token>();
 
-		wait_idle();
+		g_in_flight.wait_idle(std::chrono::seconds(2));
 
 		rml::Hooking::DetourHookHelper::remove<&enter>();
 		rml::Hooking::DetourHookHelper::remove<&leave>();

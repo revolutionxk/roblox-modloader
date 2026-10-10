@@ -52,4 +52,20 @@ namespace tracy_profiler
 		std::copy_n(raw.begin() + static_cast<std::ptrdiff_t>(first), count, frames);
 		return static_cast<int>(count);
 	}
+
+	int Callstacks::capture_from_studio(std::uint64_t* frames, const int depth, const int skip) const
+	{
+		std::array<std::uintptr_t, capacity + leading_frame_budget> raw{};
+		const auto captured = rml::platform::capture_return_addresses(raw);
+
+		std::size_t first = 0;
+		while (first < captured && !rml::memory::function_containing(reinterpret_cast<const void*>(raw[first] - 1)))
+			++first;
+		for (int skipped = 0; skipped < skip && first < captured; ++skipped)
+			++first;
+
+		const auto count = std::min<std::size_t>(captured - first, static_cast<std::size_t>(std::max(depth, 0)));
+		std::copy_n(raw.begin() + static_cast<std::ptrdiff_t>(first), count, frames);
+		return static_cast<int>(count);
+	}
 }

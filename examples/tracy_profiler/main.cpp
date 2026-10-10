@@ -3,6 +3,7 @@
 #include "engine.hpp"
 #include "frame_images.hpp"
 #include "gpu_zones.hpp"
+#include "memory.hpp"
 #include "sampling.hpp"
 #include "settings.hpp"
 #include "symbols.hpp"
@@ -136,6 +137,9 @@ private:
 		m_frame_images = frame_images.get();
 		rml::render::graph().add_pass(std::move(frame_images));
 
+		m_memory = std::make_unique<tracy_profiler::Memory>(*m_callstacks, m_log);
+		m_memory->start(m_settings);
+
 		m_store->watch([this] {
 			try
 			{
@@ -146,6 +150,8 @@ private:
 					m_frame_images->apply(m_settings);
 				if (m_gpu_zones)
 					m_gpu_zones->set_enabled(m_settings.gpu_zones);
+				if (m_memory)
+					m_memory->apply(m_settings);
 				m_log->info("config.toml reloaded (pass_through={}, zone_callstacks={}, callstack_depth={})",
 				    m_settings.pass_through,
 				    m_settings.zone_callstacks,
@@ -191,6 +197,8 @@ private:
 				m_frame_images = nullptr;
 				rml::render::enable_output_readback(false);
 			}
+			if (m_memory)
+				m_memory->stop();
 			tracy_profiler::attach_gpu_zones(nullptr);
 			tracy_profiler::remove_capture();
 			if (m_gpu_zones)
@@ -207,6 +215,7 @@ private:
 		}
 
 		m_symbols.reset();
+		m_memory.reset();
 		m_gpu_zones.reset();
 		m_callstacks.reset();
 		m_timers.reset();
@@ -220,6 +229,7 @@ private:
 	std::unique_ptr<tracy_profiler::Symbols> m_symbols;
 	std::unique_ptr<tracy_profiler::Callstacks> m_callstacks;
 	std::unique_ptr<tracy_profiler::GpuZones> m_gpu_zones;
+	std::unique_ptr<tracy_profiler::Memory> m_memory;
 	tracy_profiler::FrameImages* m_frame_images{};
 	bool m_installed{};
 	bool m_started{};
