@@ -2,6 +2,7 @@
 
 #include "callstack.hpp"
 #include "engine.hpp"
+#include "gpu_zones.hpp"
 #include "settings.hpp"
 #include "timers.hpp"
 #include "zone_stack.hpp"
@@ -45,8 +46,40 @@ namespace tracy_profiler
 	static MicroProfile* g_state{};
 	static Timers* g_timers{};
 	static const Callstacks* g_callstacks{};
+	static std::atomic<std::uint64_t> g_frame_marks{};
+	static std::atomic<std::uint64_t> g_connection_epoch{};
+	static std::atomic<bool> g_was_connected{false};
+	static std::atomic<GpuZones*> g_gpu_zones{nullptr};
 	static thread_local bool t_in_literal = false;
 	static constexpr std::size_t max_label_length = 4096;
+
+	static bool observe_connection() noexcept
+	{
+		if (!___tracy_connected())
+		{
+			g_was_connected.store(false);
+			return false;
+		}
+		if (!g_was_connected.exchange(true))
+			g_connection_epoch.fetch_add(1, std::memory_order_acq_rel);
+		return true;
+	}
+
+	void attach_gpu_zones(GpuZones* zones)
+	{
+		g_gpu_zones.store(zones, std::memory_order_release);
+	}
+
+	std::uint64_t frame_marks() noexcept
+	{
+		return g_frame_marks.load(std::memory_order_acquire);
+	}
+
+	std::uint64_t connection_epoch() noexcept
+	{
+		observe_connection();
+		return g_connection_epoch.load(std::memory_order_acquire);
+	}
 
 	static InFlightSlot& in_flight_slot()
 	{
@@ -129,8 +162,24 @@ namespace tracy_profiler
 	static std::uint64_t enter(const MicroProfileTimerToken token, const std::uint64_t tick)
 	{
 		const Call call;
-		if (!g_active.load() || is_gpu(token))
+		if (!g_active.load())
 			return original<&enter>()(token, tick);
+		if (is_gpu(token))
+		{
+			const auto result = original<&enter>()(token, tick);
+			bool opened = false;
+			if (auto* zones = g_gpu_zones.load(std::memory_order_acquire))
+			{
+				try
+				{
+					opened = zones->enter(token);
+				}
+				catch (...)
+				{
+				}
+			}
+			return opened && result == MICROPROFILE_INVALID_TICK ? 0 : result;
+		}
 
 		const auto result = g_pass_through.load(std::memory_order_relaxed) ? original<&enter>()(token, tick) : (tick == MICROPROFILE_INVALID_TICK ? 0 : tick);
 		if (result == MICROPROFILE_INVALID_TICK)
@@ -150,8 +199,24 @@ namespace tracy_profiler
 	static void leave(const MicroProfileTimerToken token, const std::uint64_t enter_tick, const std::uint64_t leave_tick)
 	{
 		const Call call;
-		if (!g_active.load() || is_gpu(token))
+		if (!g_active.load())
 			return original<&leave>()(token, enter_tick, leave_tick);
+		if (is_gpu(token))
+		{
+			if (auto* zones = g_gpu_zones.load(std::memory_order_acquire))
+			{
+				try
+				{
+					zones->leave(token);
+				}
+				catch (...)
+				{
+				}
+			}
+			if (enter_tick == 0)
+				return;
+			return original<&leave>()(token, enter_tick, leave_tick);
+		}
 
 		if (g_pass_through.load(std::memory_order_relaxed))
 			original<&leave>()(token, enter_tick, leave_tick);
@@ -177,14 +242,19 @@ namespace tracy_profiler
 		if (!g_active.load())
 			return;
 
+		const bool connected = observe_connection();
+
 		___tracy_emit_frame_mark(nullptr);
-		if (!___tracy_connected())
+		g_frame_marks.fetch_add(1, std::memory_order_acq_rel);
+		if (!connected)
 			return;
 
 		try
 		{
 			g_timers->emit_counters();
 			emit_health();
+			if (auto* zones = g_gpu_zones.load(std::memory_order_acquire))
+				zones->on_frame();
 		}
 		catch (...)
 		{
