@@ -14,8 +14,8 @@ namespace rml::platform
 	static std::atomic<bool> g_readable{false};
 	static std::atomic<IMP> g_next_drawable{nullptr};
 	static std::once_flag g_install;
-	static std::mutex g_mutex;
-	static std::map<std::pair<std::uint32_t, std::uint32_t>, bool> g_drawables;
+	static auto& g_mutex = *new std::mutex();
+	static auto& g_drawables = *new std::map<std::pair<std::uint32_t, std::uint32_t>, bool>();
 	static char g_changed_key;
 
 	static id swizzled_next_drawable(CAMetalLayer* self, SEL command)

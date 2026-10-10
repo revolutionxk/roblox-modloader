@@ -2,9 +2,9 @@
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
-#include <mach/mach_time.h>
 #include <objc/runtime.h>
 #include <pthread.h>
+#include <time.h>
 
 #include <atomic>
 #include <cmath>
@@ -25,21 +25,27 @@ namespace rml::platform
 		std::vector<std::pair<std::uint64_t, std::uint64_t>> encoders;
 	};
 
-	static std::mutex g_mutex;
-	static std::unordered_map<const void*, std::unique_ptr<CommandBufferState>> g_states;
-	static std::vector<id<MTLCounterSampleBuffer>> g_pool;
+	struct Delivery
+	{
+		GpuTimelineSink sink;
+		void* user;
+	};
+
+	static auto& g_mutex = *new std::mutex();
+	static auto& g_delivery = *new std::mutex();
+	static auto& g_states = *new std::unordered_map<const void*, std::unique_ptr<CommandBufferState>>();
+	static auto& g_pool = *new std::vector<id<MTLCounterSampleBuffer>>();
+	static Delivery g_target{};
 	static id<MTLDevice> g_device;
 	static id<MTLCounterSet> g_counter_set;
 	static std::atomic<bool> g_active{false};
-	static std::atomic<GpuTimelineSink> g_sink{nullptr};
-	static std::atomic<void*> g_user{nullptr};
 	static std::atomic<std::uint64_t> g_serial{0};
-	static IMP g_create_buffer;
-	static IMP g_render_encoder;
-	static IMP g_blit_encoder;
-	static IMP g_compute_encoder;
-	static bool g_swizzled{};
-	static double g_period{1.0};
+	static std::atomic<IMP> g_create_buffer{nullptr};
+	static std::atomic<IMP> g_render_encoder{nullptr};
+	static std::atomic<IMP> g_blit_encoder{nullptr};
+	static std::atomic<IMP> g_compute_encoder{nullptr};
+	static std::once_flag g_install;
+	static bool g_installed{};
 	static double g_gpu_scale{1.0};
 	static std::int64_t g_gpu_offset{};
 
@@ -52,7 +58,7 @@ namespace rml::platform
 
 	static std::uint64_t host_ticks(const CFTimeInterval seconds)
 	{
-		return static_cast<std::uint64_t>(std::llround(seconds * 1e9 / g_period));
+		return static_cast<std::uint64_t>(std::llround(seconds * 1e9));
 	}
 
 	static std::uint64_t gpu_to_host(const std::uint64_t gpu)
@@ -103,9 +109,15 @@ namespace rml::platform
 		if (!state.samples || state.used + 2 > sample_capacity)
 			return NSNotFound;
 		const auto index = state.used;
-		state.used += 2;
 		state.encoders.emplace_back(g_serial.fetch_add(1) + 1, current_thread());
+		state.used += 2;
 		return index;
+	}
+
+	static void unreserve(CommandBufferState& state)
+	{
+		state.encoders.pop_back();
+		state.used -= 2;
 	}
 
 	static void complete(id<MTLCommandBuffer> buffer)
@@ -120,8 +132,7 @@ namespace rml::platform
 			g_states.erase(it);
 		}
 
-		const auto sink = g_sink.load();
-		if (sink && state->used > 0 && buffer.status == MTLCommandBufferStatusCompleted)
+		if (g_active.load() && state->used > 0 && buffer.status == MTLCommandBufferStatusCompleted)
 		{
 			@autoreleasepool
 			{
@@ -139,12 +150,16 @@ namespace rml::platform
 					encoders.push_back({state->encoders[i].first, state->encoders[i].second, gpu_to_host(begin), gpu_to_host(end)});
 				}
 				const GpuCommandBufferTiming timing{host_ticks(buffer.GPUStartTime), host_ticks(buffer.GPUEndTime), encoders};
-				try
+				std::scoped_lock lock(g_delivery);
+				if (g_target.sink)
 				{
-					sink(timing, g_user.load());
-				}
-				catch (...)
-				{
+					try
+					{
+						g_target.sink(timing, g_target.user);
+					}
+					catch (...)
+					{
+					}
 				}
 			}
 		}
@@ -158,12 +173,15 @@ namespace rml::platform
 
 	static id swizzled_create_buffer(id self, SEL command)
 	{
-		id buffer = reinterpret_cast<id (*)(id, SEL)>(g_create_buffer)(self, command);
-		if (!buffer || !g_active.load() || [(id<MTLCommandBuffer>)buffer device] != g_device)
+		const IMP original = g_create_buffer.load();
+		id buffer = reinterpret_cast<id (*)(id, SEL)>(original)(self, command);
+		if (!buffer || !g_active.load())
 			return buffer;
 
 		try
 		{
+			if ([(id<MTLCommandBuffer>)buffer device] != g_device)
+				return buffer;
 			auto state = std::make_unique<CommandBufferState>();
 			state->samples = acquire_samples();
 			if (!state->samples)
@@ -188,107 +206,160 @@ namespace rml::platform
 		return buffer;
 	}
 
+	static void clear_sample_buffer(MTLRenderPassSampleBufferAttachmentDescriptor* attachment)
+	{
+		try
+		{
+			attachment.sampleBuffer = nil;
+		}
+		catch (...)
+		{
+		}
+	}
+
 	static id swizzled_render_encoder(id self, SEL command, MTLRenderPassDescriptor* descriptor)
 	{
-		const auto original = reinterpret_cast<id (*)(id, SEL, MTLRenderPassDescriptor*)>(g_render_encoder);
-		auto* state = g_active.load() && descriptor ? state_of(self) : nullptr;
-		const auto index = state ? reserve(*state) : NSNotFound;
-		if (index == NSNotFound)
-			return original(self, command, descriptor);
+		const IMP original = g_render_encoder.load();
+		CommandBufferState* reserved = nullptr;
+		MTLRenderPassSampleBufferAttachmentDescriptor* attachment = nil;
+		try
+		{
+			auto* state = g_active.load() && descriptor ? state_of(self) : nullptr;
+			const auto index = state ? reserve(*state) : NSNotFound;
+			if (index != NSNotFound)
+			{
+				reserved = state;
+				attachment = descriptor.sampleBufferAttachments[0];
+				attachment.sampleBuffer = state->samples;
+				attachment.startOfVertexSampleIndex = index;
+				attachment.endOfVertexSampleIndex = MTLCounterDontSample;
+				attachment.startOfFragmentSampleIndex = MTLCounterDontSample;
+				attachment.endOfFragmentSampleIndex = index + 1;
+			}
+		}
+		catch (...)
+		{
+			if (reserved)
+				unreserve(*reserved);
+			if (attachment)
+				clear_sample_buffer(attachment);
+			attachment = nil;
+		}
 
-		MTLRenderPassSampleBufferAttachmentDescriptor* attachment = descriptor.sampleBufferAttachments[0];
-		attachment.sampleBuffer = state->samples;
-		attachment.startOfVertexSampleIndex = index;
-		attachment.endOfVertexSampleIndex = MTLCounterDontSample;
-		attachment.startOfFragmentSampleIndex = MTLCounterDontSample;
-		attachment.endOfFragmentSampleIndex = index + 1;
-		id encoder = original(self, command, descriptor);
-		attachment.sampleBuffer = nil;
+		id encoder = reinterpret_cast<id (*)(id, SEL, MTLRenderPassDescriptor*)>(original)(self, command, descriptor);
+		if (attachment)
+			clear_sample_buffer(attachment);
 		return encoder;
 	}
 
 	static id swizzled_blit_encoder(id self, SEL command)
 	{
-		auto* state = g_active.load() ? state_of(self) : nullptr;
-		const auto index = state ? reserve(*state) : NSNotFound;
-		if (index == NSNotFound)
-			return reinterpret_cast<id (*)(id, SEL)>(g_blit_encoder)(self, command);
-
-		MTLBlitPassDescriptor* descriptor = [MTLBlitPassDescriptor blitPassDescriptor];
-		descriptor.sampleBufferAttachments[0].sampleBuffer = state->samples;
-		descriptor.sampleBufferAttachments[0].startOfEncoderSampleIndex = index;
-		descriptor.sampleBufferAttachments[0].endOfEncoderSampleIndex = index + 1;
-		return [(id<MTLCommandBuffer>)self blitCommandEncoderWithDescriptor:descriptor];
+		const IMP original = g_blit_encoder.load();
+		CommandBufferState* reserved = nullptr;
+		try
+		{
+			auto* state = g_active.load() ? state_of(self) : nullptr;
+			const auto index = state ? reserve(*state) : NSNotFound;
+			if (index != NSNotFound)
+			{
+				reserved = state;
+				MTLBlitPassDescriptor* descriptor = [MTLBlitPassDescriptor blitPassDescriptor];
+				descriptor.sampleBufferAttachments[0].sampleBuffer = state->samples;
+				descriptor.sampleBufferAttachments[0].startOfEncoderSampleIndex = index;
+				descriptor.sampleBufferAttachments[0].endOfEncoderSampleIndex = index + 1;
+				return [(id<MTLCommandBuffer>)self blitCommandEncoderWithDescriptor:descriptor];
+			}
+		}
+		catch (...)
+		{
+			if (reserved)
+				unreserve(*reserved);
+		}
+		return reinterpret_cast<id (*)(id, SEL)>(original)(self, command);
 	}
 
 	static id swizzled_compute_encoder(id self, SEL command)
 	{
-		auto* state = g_active.load() ? state_of(self) : nullptr;
-		const auto index = state ? reserve(*state) : NSNotFound;
-		if (index == NSNotFound)
-			return reinterpret_cast<id (*)(id, SEL)>(g_compute_encoder)(self, command);
-
-		MTLComputePassDescriptor* descriptor = [MTLComputePassDescriptor computePassDescriptor];
-		descriptor.dispatchType = MTLDispatchTypeSerial;
-		descriptor.sampleBufferAttachments[0].sampleBuffer = state->samples;
-		descriptor.sampleBufferAttachments[0].startOfEncoderSampleIndex = index;
-		descriptor.sampleBufferAttachments[0].endOfEncoderSampleIndex = index + 1;
-		return [(id<MTLCommandBuffer>)self computeCommandEncoderWithDescriptor:descriptor];
+		const IMP original = g_compute_encoder.load();
+		CommandBufferState* reserved = nullptr;
+		try
+		{
+			auto* state = g_active.load() ? state_of(self) : nullptr;
+			const auto index = state ? reserve(*state) : NSNotFound;
+			if (index != NSNotFound)
+			{
+				reserved = state;
+				MTLComputePassDescriptor* descriptor = [MTLComputePassDescriptor computePassDescriptor];
+				descriptor.dispatchType = MTLDispatchTypeSerial;
+				descriptor.sampleBufferAttachments[0].sampleBuffer = state->samples;
+				descriptor.sampleBufferAttachments[0].startOfEncoderSampleIndex = index;
+				descriptor.sampleBufferAttachments[0].endOfEncoderSampleIndex = index + 1;
+				return [(id<MTLCommandBuffer>)self computeCommandEncoderWithDescriptor:descriptor];
+			}
+		}
+		catch (...)
+		{
+			if (reserved)
+				unreserve(*reserved);
+		}
+		return reinterpret_cast<id (*)(id, SEL)>(original)(self, command);
 	}
 
-	static bool swizzle(Class owner, SEL selector, IMP replacement, IMP& original)
+	static void swizzle(Method method, IMP replacement, std::atomic<IMP>& original)
 	{
-		Method method = class_getInstanceMethod(owner, selector);
-		if (!method)
+		original.store(method_getImplementation(method));
+		method_setImplementation(method, replacement);
+	}
+
+	static bool install()
+	{
+		g_device = MTLCreateSystemDefaultDevice();
+		if (!g_device || ![g_device supportsCounterSampling:MTLCounterSamplingPointAtStageBoundary])
 			return false;
-		original = method_setImplementation(method, replacement);
-		return original != nullptr;
+
+		for (id<MTLCounterSet> set in g_device.counterSets)
+		{
+			if ([set.name isEqualToString:MTLCommonCounterSetTimestamp])
+				g_counter_set = set;
+		}
+		if (!g_counter_set)
+			return false;
+
+		calibrate();
+
+		id<MTLCommandQueue> queue = [g_device newCommandQueue];
+		id<MTLCommandBuffer> probe = [queue commandBufferWithUnretainedReferences];
+		if (!queue || !probe)
+			return false;
+		const Class queue_class = object_getClass(queue);
+		const Class buffer_class = object_getClass(probe);
+		Method create_buffer = class_getInstanceMethod(queue_class, @selector(commandBufferWithUnretainedReferences));
+		Method render_encoder = class_getInstanceMethod(buffer_class, @selector(renderCommandEncoderWithDescriptor:));
+		Method blit_encoder = class_getInstanceMethod(buffer_class, @selector(blitCommandEncoder));
+		Method compute_encoder = class_getInstanceMethod(buffer_class, @selector(computeCommandEncoder));
+		if (!create_buffer || !render_encoder || !blit_encoder || !compute_encoder)
+			return false;
+
+		swizzle(create_buffer, reinterpret_cast<IMP>(&swizzled_create_buffer), g_create_buffer);
+		swizzle(render_encoder, reinterpret_cast<IMP>(&swizzled_render_encoder), g_render_encoder);
+		swizzle(blit_encoder, reinterpret_cast<IMP>(&swizzled_blit_encoder), g_blit_encoder);
+		swizzle(compute_encoder, reinterpret_cast<IMP>(&swizzled_compute_encoder), g_compute_encoder);
+		return true;
 	}
 
 	bool start_gpu_timeline(const GpuTimelineSink sink, void* user)
 	{
-		if (g_active.load())
-			return true;
-
 		@autoreleasepool
 		{
-			if (!g_device)
-				g_device = MTLCreateSystemDefaultDevice();
-			if (!g_device || ![g_device supportsCounterSampling:MTLCounterSamplingPointAtStageBoundary])
-				return false;
-
-			for (id<MTLCounterSet> set in g_device.counterSets)
-			{
-				if ([set.name isEqualToString:MTLCommonCounterSetTimestamp])
-					g_counter_set = set;
-			}
-			if (!g_counter_set)
-				return false;
-
-			mach_timebase_info_data_t timebase{};
-			mach_timebase_info(&timebase);
-			g_period = static_cast<double>(timebase.numer) / static_cast<double>(timebase.denom);
-			calibrate();
-
-			if (!g_swizzled)
-			{
-				id<MTLCommandQueue> queue = [g_device newCommandQueue];
-				id<MTLCommandBuffer> probe = [queue commandBufferWithUnretainedReferences];
-				if (!queue || !probe)
-					return false;
-				const Class queue_class = object_getClass(queue);
-				const Class buffer_class = object_getClass(probe);
-				if (!swizzle(queue_class, @selector(commandBufferWithUnretainedReferences), reinterpret_cast<IMP>(&swizzled_create_buffer), g_create_buffer) ||
-				    !swizzle(buffer_class, @selector(renderCommandEncoderWithDescriptor:), reinterpret_cast<IMP>(&swizzled_render_encoder), g_render_encoder) ||
-				    !swizzle(buffer_class, @selector(blitCommandEncoder), reinterpret_cast<IMP>(&swizzled_blit_encoder), g_blit_encoder) ||
-				    !swizzle(buffer_class, @selector(computeCommandEncoder), reinterpret_cast<IMP>(&swizzled_compute_encoder), g_compute_encoder))
-					return false;
-				g_swizzled = true;
-			}
+			std::call_once(g_install, [] { g_installed = install(); });
 		}
+		if (!g_installed)
+			return false;
 
-		g_user.store(user);
-		g_sink.store(sink);
+		{
+			std::scoped_lock lock(g_delivery);
+			g_target = {sink, user};
+		}
 		g_active.store(true);
 		return true;
 	}
@@ -296,8 +367,8 @@ namespace rml::platform
 	void stop_gpu_timeline()
 	{
 		g_active.store(false);
-		g_sink.store(nullptr);
-		g_user.store(nullptr);
+		std::scoped_lock lock(g_delivery);
+		g_target = {};
 	}
 
 	std::uint64_t gpu_timeline_serial() noexcept
@@ -307,12 +378,12 @@ namespace rml::platform
 
 	std::uint64_t gpu_timeline_now() noexcept
 	{
-		return mach_absolute_time();
+		return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
 	}
 
 	double gpu_timeline_period() noexcept
 	{
-		return g_period;
+		return 1.0;
 	}
 
 	std::string_view gpu_timeline_api() noexcept
