@@ -87,4 +87,25 @@ namespace rml::qt::detail
 		    sender_meta);
 		return connection.d_ptr != nullptr;
 	}
+
+	bool invoke_queued(void* context, std::function<void()> slot)
+	{
+		if (!context || !slot)
+			return false;
+
+		using InvokeMethodImpl = bool (*)(void* object, QtPrivate::QSlotObjectBase* slot, int type, void* ret);
+		static const auto invoke = core<InvokeMethodImpl>("QMetaObject::invokeMethodImpl(QObject*, QtPrivate::QSlotObjectBase*, Qt::ConnectionType, void*)");
+		if (!invoke)
+			return false;
+
+		// Qt takes over the single reference: it frees the slot after the call,
+		// and also when the event is dropped without ever being delivered.
+		std::function<void(void**)> callable = [slot = std::move(slot)](void**) {
+			slot();
+		};
+		auto* const function = new FunctionSlot{{1, &slot_impl}, std::move(callable)};
+
+		constexpr int queued_connection = 2;
+		return invoke(context, function, queued_connection, nullptr);
+	}
 }
