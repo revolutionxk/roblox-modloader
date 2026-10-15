@@ -1,0 +1,11 @@
+name = "Studio Theme"
+version = "1.0.0"
+author = "Revolution"
+description = "Recolors all of Roblox Studio from a theme, with a live editor and color picker."
+
+[runtime]
+enabled = true
+
+[datamodel.context]
+standalone = ["standalone.luau"]
+edit = ["edit.luau"]

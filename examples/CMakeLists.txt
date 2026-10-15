@@ -148,7 +148,7 @@ foreach (EXAMPLE_DIR ${EXAMPLE_DIRS})
     (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLE_DIR}/main.cpp OR
             EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLE_DIR}/CMakeLists.txt))
 
-        if (NOT RML_ENABLE_LUAU AND EXAMPLE_DIR STREQUAL "discord_rpc")
+        if (NOT RML_ENABLE_LUAU AND EXAMPLE_DIR MATCHES "^(discord_rpc|studio_theme)$")
             message(STATUS "Skipping ${EXAMPLE_DIR} (requires RML_ENABLE_LUAU)")
         else ()
             create_roblox_mod(${EXAMPLE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLE_DIR})

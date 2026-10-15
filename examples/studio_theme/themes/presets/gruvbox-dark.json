@@ -1,0 +1,35 @@
+{
+	"name": "Gruvbox Dark",
+	"base": "Dark",
+	"colors": {
+		"background": "#1D2021",
+		"surface": "#282828",
+		"border": "#3C3836",
+		"muted": "#928374",
+		"text": "#EBDBB2",
+		"accent": "#83A598",
+		"success": "#B8BB26",
+		"warning": "#FABD2F",
+		"error": "#FB4934"
+	},
+	"syntax": {
+		"Default": "#EBDBB2",
+		"Keyword": "#FB4934",
+		"LuauKeyword": "#FB4934",
+		"Local": "#FB4934",
+		"Function": "#FB4934",
+		"Self": "#83A598",
+		"String": "#B8BB26",
+		"Number": "#D3869B",
+		"Bool": "#D3869B",
+		"Nil": "#D3869B",
+		"Comment": "#928374",
+		"Builtin": "#FABD2F",
+		"Method": "#8EC07C",
+		"FunctionName": "#8EC07C",
+		"Property": "#83A598",
+		"Operator": "#FE8019",
+		"Bracket": "#EBDBB2",
+		"TODO": "#FABD2F"
+	}
+}

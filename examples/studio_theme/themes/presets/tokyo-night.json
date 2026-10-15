@@ -1,0 +1,35 @@
+{
+	"name": "Tokyo Night",
+	"base": "Dark",
+	"colors": {
+		"background": "#16161E",
+		"surface": "#1A1B26",
+		"border": "#292E42",
+		"muted": "#565F89",
+		"text": "#C0CAF5",
+		"accent": "#7AA2F7",
+		"success": "#9ECE6A",
+		"warning": "#E0AF68",
+		"error": "#F7768E"
+	},
+	"syntax": {
+		"Default": "#C0CAF5",
+		"Keyword": "#BB9AF7",
+		"LuauKeyword": "#BB9AF7",
+		"Local": "#BB9AF7",
+		"Function": "#BB9AF7",
+		"Self": "#F7768E",
+		"String": "#9ECE6A",
+		"Number": "#FF9E64",
+		"Bool": "#FF9E64",
+		"Nil": "#FF9E64",
+		"Comment": "#565F89",
+		"Builtin": "#7DCFFF",
+		"Method": "#7AA2F7",
+		"FunctionName": "#7AA2F7",
+		"Property": "#73DACA",
+		"Operator": "#89DDFF",
+		"Bracket": "#A9B1D6",
+		"TODO": "#E0AF68"
+	}
+}

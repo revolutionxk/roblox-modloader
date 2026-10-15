@@ -1,0 +1,35 @@
+{
+	"name": "Dracula",
+	"base": "Dark",
+	"colors": {
+		"background": "#21222C",
+		"surface": "#282A36",
+		"border": "#44475A",
+		"muted": "#6272A4",
+		"text": "#F8F8F2",
+		"accent": "#BD93F9",
+		"success": "#50FA7B",
+		"warning": "#F1FA8C",
+		"error": "#FF5555"
+	},
+	"syntax": {
+		"Default": "#F8F8F2",
+		"Keyword": "#FF79C6",
+		"LuauKeyword": "#FF79C6",
+		"Local": "#FF79C6",
+		"Function": "#FF79C6",
+		"Self": "#BD93F9",
+		"String": "#F1FA8C",
+		"Number": "#BD93F9",
+		"Bool": "#BD93F9",
+		"Nil": "#BD93F9",
+		"Comment": "#6272A4",
+		"Builtin": "#8BE9FD",
+		"Method": "#50FA7B",
+		"FunctionName": "#50FA7B",
+		"Property": "#8BE9FD",
+		"Operator": "#FF79C6",
+		"Bracket": "#F8F8F2",
+		"TODO": "#FFB86C"
+	}
+}

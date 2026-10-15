@@ -1,0 +1,35 @@
+{
+	"name": "Catppuccin Mocha",
+	"base": "Dark",
+	"colors": {
+		"background": "#1E1E2E",
+		"surface": "#313244",
+		"border": "#45475A",
+		"muted": "#7F849C",
+		"text": "#CDD6F4",
+		"accent": "#89B4FA",
+		"success": "#A6E3A1",
+		"warning": "#F9E2AF",
+		"error": "#F38BA8"
+	},
+	"syntax": {
+		"Default": "#CDD6F4",
+		"Keyword": "#CBA6F7",
+		"LuauKeyword": "#CBA6F7",
+		"Local": "#CBA6F7",
+		"Function": "#CBA6F7",
+		"Self": "#F38BA8",
+		"String": "#A6E3A1",
+		"Number": "#FAB387",
+		"Bool": "#FAB387",
+		"Nil": "#FAB387",
+		"Comment": "#6C7086",
+		"Builtin": "#89DCEB",
+		"Method": "#89B4FA",
+		"FunctionName": "#89B4FA",
+		"Property": "#B4BEFE",
+		"Operator": "#94E2D5",
+		"Bracket": "#9399B2",
+		"TODO": "#F9E2AF"
+	}
+}

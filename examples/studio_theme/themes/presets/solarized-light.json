@@ -1,0 +1,35 @@
+{
+	"name": "Solarized Light",
+	"base": "Light",
+	"colors": {
+		"background": "#FDF6E3",
+		"surface": "#EEE8D5",
+		"border": "#DDD6C1",
+		"muted": "#93A1A1",
+		"text": "#586E75",
+		"accent": "#268BD2",
+		"success": "#859900",
+		"warning": "#B58900",
+		"error": "#DC322F"
+	},
+	"syntax": {
+		"Default": "#657B83",
+		"Keyword": "#859900",
+		"LuauKeyword": "#859900",
+		"Local": "#859900",
+		"Function": "#859900",
+		"Self": "#CB4B16",
+		"String": "#2AA198",
+		"Number": "#D33682",
+		"Bool": "#2AA198",
+		"Nil": "#CB4B16",
+		"Comment": "#93A1A1",
+		"Builtin": "#B58900",
+		"Method": "#268BD2",
+		"FunctionName": "#268BD2",
+		"Property": "#268BD2",
+		"Operator": "#859900",
+		"Bracket": "#586E75",
+		"TODO": "#D33682"
+	}
+}

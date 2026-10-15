@@ -1,0 +1,35 @@
+{
+	"name": "Nord",
+	"base": "Dark",
+	"colors": {
+		"background": "#2E3440",
+		"surface": "#3B4252",
+		"border": "#434C5E",
+		"muted": "#616E88",
+		"text": "#D8DEE9",
+		"accent": "#88C0D0",
+		"success": "#A3BE8C",
+		"warning": "#EBCB8B",
+		"error": "#BF616A"
+	},
+	"syntax": {
+		"Default": "#D8DEE9",
+		"Keyword": "#81A1C1",
+		"LuauKeyword": "#81A1C1",
+		"Local": "#81A1C1",
+		"Function": "#81A1C1",
+		"Self": "#81A1C1",
+		"String": "#A3BE8C",
+		"Number": "#B48EAD",
+		"Bool": "#81A1C1",
+		"Nil": "#81A1C1",
+		"Comment": "#616E88",
+		"Builtin": "#88C0D0",
+		"Method": "#88C0D0",
+		"FunctionName": "#88C0D0",
+		"Property": "#8FBCBB",
+		"Operator": "#81A1C1",
+		"Bracket": "#ECEFF4",
+		"TODO": "#EBCB8B"
+	}
+}
