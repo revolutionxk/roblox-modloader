@@ -37,6 +37,7 @@ namespace studio_theme
 			Theme* theme{};
 			std::string stock;
 			std::string name;
+			std::string applied;
 		};
 
 		static void parse_theme_json(Theme* self, const rml::qt::QByteArray& json);

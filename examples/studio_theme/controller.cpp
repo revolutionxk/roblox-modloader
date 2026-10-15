@@ -15,6 +15,8 @@ RML_LOG_SCOPE("StudioTheme")
 
 namespace studio_theme
 {
+	void dump_widgets();
+
 	using rml::luau::BridgeArgs;
 	using rml::luau::BridgeTable;
 	using rml::luau::BridgeValue;
@@ -233,6 +235,9 @@ namespace studio_theme
 		auto root = qt->menu().add_submenu("Studio Theme");
 		root.add_action("Theme Editor", [] {
 			emit("studio_theme.toggle_editor");
+		});
+		root.add_action("Dump widgets", [] {
+			dump_widgets();
 		});
 		root.add_separator();
 		root.add_action("Stock", [this] {
