@@ -1,10 +1,9 @@
+#include "controller.hpp"
 #include "engine.hpp"
-#include "theme_store.hpp"
 
-#include <RobloxModLoader/logger/logger.hpp>
 #include <RobloxModLoader/mod/mod_base.hpp>
 
-RML_LOG_SCOPE("StudioTheme")
+#include <memory>
 
 class StudioTheme final : public ModBase
 {
@@ -19,15 +18,23 @@ public:
 
 	void on_load() override
 	{
-		const auto engine = studio_theme::resolve_engine();
-		studio_theme::ThemeStore store{mod_folder()};
-		store.load();
-		RML_INFO("{} themes loaded, engine {}", store.themes().size(), engine.complete() ? "complete" : "incomplete");
+		m_controller = std::make_unique<studio_theme::Controller>(mod_folder(), studio_theme::resolve_engine());
+		m_controller->start();
+		register_event_handler<rml::events::DataModelChangedEvent>([this](rml::events::DataModelChangedEvent&) {
+			if (m_controller)
+				m_controller->on_data_model();
+		});
 	}
 
 	void on_unload() override
 	{
+		if (m_controller)
+			m_controller->stop();
+		m_controller.reset();
 	}
+
+private:
+	std::unique_ptr<studio_theme::Controller> m_controller;
 };
 
 extern "C"
