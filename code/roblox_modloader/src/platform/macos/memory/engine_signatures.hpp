@@ -209,7 +209,7 @@ namespace rml
 			},
 			{
 				"FREEBLOCK",
-				"E8 03 01 AA 09 0C 40 F9 41 8C 5F F8 2A 14 40 F9",
+				"E8 03 01 AA 09 28 40 F9 41 8C 5F F8 2A 14 40 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.freeblock = ptr.as<functions::freeblock>();
 				},
@@ -419,7 +419,7 @@ namespace rml
 			},
 			{
 				"LUA_GETTABLE",
-				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F4 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 9F 06 00 71 ? ? ? ? 68 26 42 A9 29 51 34 8B 29 41 00 D1 ? ? ? ? ? ? ? ? 3F 01 08 EB 21 31 8A 9A",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F4 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 E2 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 9F 06 00 71 ? ? ? ? 68 26 40 F9 08 51 34 8B 09 41 00 D1 68 2E 40 F9 ? ? ? ? ? ? ? ? 3F 01 08 EB 21 31 8A 9A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_gettable = ptr.as<functions::lua_gettable>();
 				},
@@ -433,7 +433,7 @@ namespace rml
 			},
 			{
 				"LUA_GETUPVALUE",
-				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 12 40 F9 08 41 00 91 69 06 40 F9 29 05 40 F9 1F 01 09 EB ? ? ? ? E0 03 13 AA 21 00 80 52 ? ? ? ? ? ? ? ? BF 06 00 71 ? ? ? ? 69 22 42 A9 08 51 35 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A",
+				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 E2 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 2E 40 F9 08 41 00 91 69 22 40 F9 29 0D 40 F9 1F 01 09 EB ? ? ? ? E0 03 13 AA 21 00 80 52 ? ? ? ? ? ? ? ? BF 06 00 71 ? ? ? ? 68 26 40 F9 08 51 35 8B 08 41 00 D1 69 2E 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_getupvalue = ptr.as<functions::lua_getupvalue>();
 				},
@@ -461,7 +461,7 @@ namespace rml
 			},
 			{
 				"LUA_ISUSERDATA",
-				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 09 20 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 10 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 25 00 71 04 19 42 7A",
+				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 08 24 40 F9 08 51 21 8B 08 41 00 D1 09 2C 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 2C 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 25 00 71 04 19 42 7A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_isuserdata = ptr.as<functions::lua_isuserdata>();
 				},
@@ -573,7 +573,7 @@ namespace rml
 			},
 			{
 				"LUA_RAWITER",
-				"F6 57 BD A9 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 42 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 12 40 F9 08 81 00 91",
+				"F6 57 BD A9 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F4 03 02 AA F5 03 01 AA F3 03 00 AA 08 04 40 39 ? ? ? ? 62 E2 01 91 E0 03 13 AA E1 03 13 AA ? ? ? ? 68 2E 40 F9 08 81 00 91",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_rawiter = ptr.as<functions::lua_rawiter>();
 				},
@@ -601,14 +601,14 @@ namespace rml
 			},
 			{
 				"LUA_REF",
-				"F8 5F BC A9 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA 17 0C 40 F9 3F 04 00 71",
+				"F8 5F BC A9 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F3 03 00 AA 17 28 40 F9 3F 04 00 71",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_ref = ptr.as<functions::lua_ref>();
 				},
 			},
 			{
 				"LUA_RESUME",
-				"F6 57 BD A9 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F4 03 02 AA F3 03 00 AA ? ? ? ? F5 03 00 AA ? ? ? ? 68 0E 40 F9",
+				"F6 57 BD A9 F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 F4 03 02 AA F3 03 00 AA ? ? ? ? F5 03 00 AA ? ? ? ? 68 2A 40 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_resume = ptr.as<functions::lua_resume>();
 				},
@@ -636,7 +636,7 @@ namespace rml
 			},
 			{
 				"LUA_SETSAFEENV",
-				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 02 AA 3F 04 00 71 ? ? ? ? 09 20 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 10 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 00 40 F9 7F 02 00 71",
+				"F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 02 AA 3F 04 00 71 ? ? ? ? 08 24 40 F9 08 51 21 8B 08 41 00 D1 09 2C 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 2C 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 00 40 F9 7F 02 00 71",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_setsafeenv = ptr.as<functions::lua_setsafeenv>();
 				},
@@ -657,7 +657,7 @@ namespace rml
 			},
 			{
 				"LUA_SETUPVALUE",
-				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F3 03 00 AA 3F 04 00 71 ? ? ? ? 69 22 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 15 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 68 12 40 F9 15 D1 21 8B ? ? ? ? E0 03 13 AA ? ? ? ? F5 03 00 AA E2 23 00 91",
+				"FF 03 01 D1 F6 57 01 A9 F4 4F 02 A9 FD 7B 03 A9 FD C3 00 91 F4 03 02 AA F3 03 00 AA 3F 04 00 71 ? ? ? ? 68 26 40 F9 08 51 21 8B 08 41 00 D1 69 2E 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 15 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 68 2E 40 F9 15 D1 21 8B ? ? ? ? E0 03 13 AA ? ? ? ? F5 03 00 AA E2 23 00 91",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_setupvalue = ptr.as<functions::lua_setupvalue>();
 				},
@@ -706,7 +706,7 @@ namespace rml
 			},
 			{
 				"LUA_UNREF",
-				"3F 04 00 71 ? ? ? ? F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 01 AA 14 0C 40 F9 80 12 43 F9",
+				"3F 04 00 71 ? ? ? ? F4 4F BE A9 FD 7B 01 A9 FD 43 00 91 F3 03 01 AA 14 28 40 F9 80 12 43 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_unref = ptr.as<functions::lua_unref>();
 				},
@@ -720,7 +720,7 @@ namespace rml
 			},
 			{
 				"LUAU_LOAD",
-				"FF 83 02 D1 FA 67 05 A9 F8 5F 06 A9 F6 57 07 A9 F4 4F 08 A9 FD 7B 09 A9 FD 43 02 91 F4 03 04 AA F5 03 03 AA F6 03 02 AA F7 03 01 AA F3 03 00 AA 18 0C 40 F9",
+				"FF 83 02 D1 FA 67 05 A9 F8 5F 06 A9 F6 57 07 A9 F4 4F 08 A9 FD 7B 09 A9 FD 43 02 91 F4 03 04 AA F5 03 03 AA F6 03 02 AA F7 03 01 AA F3 03 00 AA 18 28 40 F9",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.luau_load = ptr.as<functions::luau_load>();
 				},
@@ -811,7 +811,7 @@ namespace rml
 			},
 			{
 				"LUA_ISCFUNCTION",
-				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 09 20 42 A9 08 51 21 8B 08 41 00 D1 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 10 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 21 00 71 ? ? ? ? 08 00 40 F9 08 0D 40 39 1F 01 00 71 E0 07 9F 1A",
+				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 08 24 40 F9 08 51 21 8B 08 41 00 D1 09 2C 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 2C 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 21 00 71 ? ? ? ? 08 00 40 F9 08 0D 40 39 1F 01 00 71 E0 07 9F 1A",
 				[](const memory::handle ptr) {
 					g_pointers->m_roblox_pointers.lua_iscfunction = ptr.as<functions::lua_iscfunction>();
 				},
