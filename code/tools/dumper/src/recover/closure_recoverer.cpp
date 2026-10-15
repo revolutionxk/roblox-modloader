@@ -255,6 +255,7 @@ namespace rml::dumper::recover
 		const auto* name = debug != nullptr ? debug->find("name") : nullptr;
 		const auto* is_c = layout.find("isC");
 		const auto* proto = layout.find("p");
+		const auto* uprefs = layout.find("uprefs");
 
 		if (!trace || name == nullptr || is_c == nullptr || proto == nullptr)
 		{
@@ -278,7 +279,8 @@ namespace rml::dumper::recover
 					continue;
 
 				const auto offset = static_cast<std::size_t>(load.displacement);
-				if (offset == proto->offset || layout.overlaps(offset, 8))
+				const auto shares_uprefs = uprefs != nullptr && offset == uprefs->offset;
+				if (offset == proto->offset || (layout.overlaps(offset, 8) && !shares_uprefs))
 					continue;
 
 				const auto header = query.stored_step(load, store);

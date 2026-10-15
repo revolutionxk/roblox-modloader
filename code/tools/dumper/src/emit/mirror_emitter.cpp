@@ -1,6 +1,8 @@
 #include "emit/mirror_emitter.hpp"
 
+#include <algorithm>
 #include <format>
+#include <iterator>
 #include <map>
 #include <set>
 
@@ -108,7 +110,7 @@ namespace rml::dumper::emit
 
 			slots.push_back({field.name, self_contained(under_its_mirror_name(field.type, layouts)), field.offset,
 			                 field.size, false, field.count});
-			cursor = field.end();
+			cursor = std::max(cursor, field.end());
 		}
 
 		if (layout.size > cursor)
@@ -190,14 +192,31 @@ namespace rml::dumper::emit
 
 			out << std::format("\tstruct {}\n\t{{\n", mirror);
 
-			for (const auto& slot : slots)
-			{
+			const auto declaration = [](const Slot& slot) {
 				if (slot.reserved)
-					out << std::format("\t\tstd::byte {}[0x{:X}];\n", slot.name, slot.size);
-				else if (slot.count != 0)
-					out << std::format("\t\t{} {}[{}];\n", slot.type, slot.name, slot.count);
+					return std::format("std::byte {}[0x{:X}];", slot.name, slot.size);
+				if (slot.count != 0)
+					return std::format("{} {}[{}];", slot.type, slot.name, slot.count);
+				return std::format("{} {};", slot.type, slot.name);
+			};
+
+			for (auto slot = slots.begin(); slot != slots.end();)
+			{
+				const auto arms_end = std::find_if(slot, slots.end(), [offset = slot->offset](const Slot& arm) {
+					return arm.offset != offset;
+				});
+
+				if (std::next(slot) == arms_end)
+					out << std::format("\t\t{}\n", declaration(*slot));
 				else
-					out << std::format("\t\t{} {};\n", slot.type, slot.name);
+				{
+					out << "\t\tunion\n\t\t{\n";
+					for (auto arm = slot; arm != arms_end; ++arm)
+						out << std::format("\t\t\t{}\n", declaration(*arm));
+					out << "\t\t};\n";
+				}
+
+				slot = arms_end;
 			}
 
 			out << "\t};\n\n";

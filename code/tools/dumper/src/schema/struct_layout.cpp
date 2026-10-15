@@ -62,7 +62,9 @@ namespace rml::dumper::schema
 			const auto& previous = layout.fields[i - 1];
 			const auto& current = layout.fields[i];
 
-			if (current.offset < previous.end())
+			const auto same_slot = current.offset == previous.offset && current.size == previous.size;
+
+			if (current.offset < previous.end() && !same_slot)
 				return std::unexpected(Error::make(ErrorCode::validation,
 				                                   "{}.{} at 0x{:X} overlaps {}.{} at 0x{:X}", layout.name,
 				                                   current.name, current.offset, layout.name, previous.name,
