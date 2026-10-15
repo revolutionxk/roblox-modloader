@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 
 #include "discord.h"
@@ -64,6 +65,7 @@ namespace discord_integration {
 
     private:
         discord::Core *core;
+        mutable std::mutex core_mutex;
         std::atomic<bool> initialized;
         std::atomic<bool> running;
         std::thread callback_thread;

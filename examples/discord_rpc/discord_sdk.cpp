@@ -45,6 +45,7 @@ namespace discord_integration {
             callback_thread.join();
         }
 
+        std::lock_guard lock(core_mutex);
         if (core) {
             delete core;
             core = nullptr;
@@ -99,6 +100,7 @@ namespace discord_integration {
 
         discord_activity.SetType(static_cast<discord::ActivityType>(activity.type));
 
+        std::lock_guard lock(core_mutex);
         core->ActivityManager().UpdateActivity(discord_activity, [this](discord::Result result) {
             if (result != discord::Result::Ok) {
                 logger->warn("Failed to update Discord activity: {}", static_cast<int>(result));
@@ -111,6 +113,7 @@ namespace discord_integration {
             return;
         }
 
+        std::lock_guard lock(core_mutex);
         core->ActivityManager().ClearActivity([this](discord::Result result) {
             if (result != discord::Result::Ok) {
                 logger->warn("Failed to clear Discord activity: {}", static_cast<int>(result));
@@ -123,6 +126,7 @@ namespace discord_integration {
             return;
         }
 
+        std::lock_guard lock(core_mutex);
         core->RunCallbacks();
     }
 
