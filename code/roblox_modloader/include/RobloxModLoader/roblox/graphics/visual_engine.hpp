@@ -32,6 +32,7 @@ namespace RBX::Graphics
 
 	private:
 		[[maybe_unused]] std::byte reserved_after_device[0xAB8];
+		[[maybe_unused]] void* reserved_bc8;
 
 	public:
 		union {
@@ -50,6 +51,8 @@ namespace RBX::Graphics
 		union {
 			[[maybe_unused]] std::unique_ptr<SoftwareOcclusion, SoftwareOcclusionDeleter> reserved_software_occlusion;
 		};
+
+		[[maybe_unused]] void* reserved_bf8;
 
 	public:
 		union {
@@ -74,14 +77,14 @@ namespace RBX::Graphics
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 #if defined(RML_WINDOWS)
 	RML_ASSERT_OFFSET(VisualEngine, device, 0xD8);
-	RML_ASSERT_OFFSET(VisualEngine, shader_manager, 0xB98);
-	RML_ASSERT_OFFSET(VisualEngine, external_shader_manager, 0xBB0);
-	RML_ASSERT_OFFSET(VisualEngine, scene_manager, 0xBC0);
+	RML_ASSERT_OFFSET(VisualEngine, shader_manager, 0xBA0);
+	RML_ASSERT_OFFSET(VisualEngine, external_shader_manager, 0xBB8);
+	RML_ASSERT_OFFSET(VisualEngine, scene_manager, 0xBD0);
 #else
 	RML_ASSERT_OFFSET(VisualEngine, device, 0x108);
-	RML_ASSERT_OFFSET(VisualEngine, shader_manager, 0xBC8);
-	RML_ASSERT_OFFSET(VisualEngine, external_shader_manager, 0xBE0);
-	RML_ASSERT_OFFSET(VisualEngine, scene_manager, 0xBF0);
+	RML_ASSERT_OFFSET(VisualEngine, shader_manager, 0xBD0);
+	RML_ASSERT_OFFSET(VisualEngine, external_shader_manager, 0xBE8);
+	RML_ASSERT_OFFSET(VisualEngine, scene_manager, 0xC00);
 #endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

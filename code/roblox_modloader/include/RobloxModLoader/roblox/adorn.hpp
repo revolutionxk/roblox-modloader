@@ -136,6 +136,7 @@ namespace RBX
 		virtual TextureProxyBaseRef create_texture_proxy(std::shared_ptr<EditableImage> image) = 0;
 		virtual TextureProxyBaseRef create_texture_proxy(const Content& content) = 0;
 		virtual TextureProxyBaseRef create_texture_proxy(std::weak_ptr<VideoSinkBase> sink) = 0;
+		virtual void reserved_8() = 0;
 		virtual TextureProxyBaseRef create_future_texture_proxy(const ContentId& id, bool& waiting, const InstanceIdentifier& owner, bool blocking) = 0;
 		virtual void garbage_collect_incremental() = 0;
 		virtual void request_or_update_ui_rt(const std::shared_ptr<GfxGui>& gui, const RenderTargetConfiguration& configuration) = 0;

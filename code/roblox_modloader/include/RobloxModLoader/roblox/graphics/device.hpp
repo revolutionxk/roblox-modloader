@@ -103,6 +103,7 @@ namespace RBX::Graphics
 		virtual void reset_pipeline_cache() = 0;
 		virtual std::size_t get_device_memory_alloc_size(std::size_t* out) const = 0;
 		virtual VideoMemoryInfo get_video_memory_info() const = 0;
+		virtual void reserved_42() = 0;
 		virtual void* get_physical_device_pointer() const = 0;
 		virtual void* get_main_window_handle() const = 0;
 		virtual void query_hardware_information(ClientSessionMapFieldContainer& out) = 0;
