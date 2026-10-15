@@ -1,0 +1,3 @@
+--!nocheck
+
+require("@self/recolor")()
