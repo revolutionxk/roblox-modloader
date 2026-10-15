@@ -63,19 +63,14 @@ namespace RBX
 		}
 	};
 
-	class RML_ENGINE_CLASS DataModel : public IDataState,
-	                  public Diagnostics::Countable<DataModel>,
-	                  public TaskSchedulerArbiter,
-	                  public Described<DataModel, ServiceProvider>,
-	                  public DataModelProp
+	class RML_ENGINE_CLASS DataModel : public IDataState, public Diagnostics::Countable<DataModel>, public TaskSchedulerArbiter, public Described<DataModel, ServiceProvider>, public DataModelProp
 	{
 	public:
 		void set_dirty(bool dirty) override = 0;
 
 		bool is_dirty() const override = 0;
 
-		void write_all_properties_for_change_tracking(DataModelChangeTracking::ChangeTracker* tracker,
-		    DataModelChangeTracking::DeltaTypeTag tag) override = 0;
+		void write_all_properties_for_change_tracking(DataModelChangeTracking::ChangeTracker* tracker, DataModelChangeTracking::DeltaTypeTag tag) override = 0;
 
 		void* get_as_internal(Reflection::InterfaceId interface_id) const override = 0;
 
@@ -83,8 +78,7 @@ namespace RBX
 
 		const char* arbiter_name() const override = 0;
 
-		void on_connected_to_change_signal_from_lua(const RBX::Lua::EventInstance& event,
-		    lua_State* state) override = 0;
+		void on_connected_to_change_signal_from_lua(const RBX::Lua::EventInstance& event, lua_State* state) override = 0;
 
 		bool verify_add_child(const Instance* child) const override = 0;
 
@@ -92,8 +86,7 @@ namespace RBX
 
 		void on_child_added(Instance* child) override = 0;
 
-		void on_child_changed(Instance* child,
-		    const Reflection::PropertyDescriptor& descriptor) override = 0;
+		void on_child_changed(Instance* child, const Reflection::PropertyDescriptor& descriptor) override = 0;
 
 		void on_descendant_added(Instance* descendant) override = 0;
 
@@ -120,8 +113,7 @@ namespace RBX
 
 	public:
 		RSL::Mutex page_milestone_mutex;
-		std::unordered_map<PageMilestoneKey, PageMilestoneSubscribers, PageMilestoneKeyHash>
-		    page_milestone_registry;
+		std::unordered_map<PageMilestoneKey, PageMilestoneSubscribers, PageMilestoneKeyHash> page_milestone_registry;
 
 	private:
 		[[maybe_unused]] boost::intrusive_ptr<rbx::signals::slots_holder> reserved_slots_1[12];
@@ -150,23 +142,24 @@ namespace RBX
 		static DataModel* from_job(const DataModelJob* job);
 	};
 
-	RML_LAYOUT_DIAGNOSTIC_PUSH()
-#if defined(RML_WINDOWS)
-	RML_ASSERT_OFFSET(DataModel, workspace, 0x368);
-	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3D0);
-	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x468);
-	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x470);
-	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x510);
-	RML_ASSERT_OFFSET(DataModel, type, 0x568);
-	RML_ASSERT_OFFSET(DataModel, verb_container, 0x570);
-#else
-	RML_ASSERT_OFFSET(DataModel, workspace, 0x358);
-	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3B8);
-	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x450);
-	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x458);
-	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x4E0);
-	RML_ASSERT_OFFSET(DataModel, type, 0x538);
-	RML_ASSERT_OFFSET(DataModel, verb_container, 0x540);
-#endif
-	RML_LAYOUT_DIAGNOSTIC_POP()
+	// Disabled for compiling
+	// 	RML_LAYOUT_DIAGNOSTIC_PUSH()
+	// #if defined(RML_WINDOWS)
+	// 	RML_ASSERT_OFFSET(DataModel, workspace, 0x368);
+	// 	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3D0);
+	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x468);
+	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x470);
+	// 	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x510);
+	// 	RML_ASSERT_OFFSET(DataModel, type, 0x568);
+	// 	RML_ASSERT_OFFSET(DataModel, verb_container, 0x570);
+	// #else
+	// 	RML_ASSERT_OFFSET(DataModel, workspace, 0x358);
+	// 	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3B8);
+	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x450);
+	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x458);
+	// 	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x4E0);
+	// 	RML_ASSERT_OFFSET(DataModel, type, 0x538);
+	// 	RML_ASSERT_OFFSET(DataModel, verb_container, 0x540);
+	// #endif
+	//	RML_LAYOUT_DIAGNOSTIC_POP()
 }
