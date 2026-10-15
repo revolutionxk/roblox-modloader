@@ -92,6 +92,9 @@ namespace rml::dotnet
 
 	void DotnetModLoader::notify_data_model_changed(uint64_t old_dm, uint64_t new_dm, int32_t dm_type) const
 	{
+		if (!m_initialized)
+			return;
+
 		if (auto r = m_bridge.notify_data_model_changed(old_dm, new_dm, dm_type); !r)
 		{
 			RML_WARN("notify_data_model_changed failed: {}", r.error());
