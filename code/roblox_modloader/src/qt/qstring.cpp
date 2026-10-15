@@ -45,6 +45,13 @@ namespace rml::qt
 
 namespace rml::qt
 {
+	QByteArray::QByteArray(const std::string_view bytes)
+	{
+		static const auto ctor = detail::core<void (*)(QByteArray*, const char*, int)>("QByteArray::QByteArray(char const*, int)");
+		if (ctor)
+			ctor(this, bytes.data(), static_cast<int>(bytes.size()));
+	}
+
 	QByteArray::~QByteArray()
 	{
 		detail::destroy_qbytearray(d);

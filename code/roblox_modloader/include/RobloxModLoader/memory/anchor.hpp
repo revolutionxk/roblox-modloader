@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RobloxModLoader/rml_export.hpp"
 #include "RobloxModLoader/util/compile_time.hpp"
 #include "handle.hpp"
 
@@ -87,7 +88,7 @@ namespace rml::memory
 		return path;
 	}
 
-	std::expected<void*, std::string> follow(const anchor_path& path, void* origin);
+	RML_EXPORT std::expected<void*, std::string> follow(const anchor_path& path, void* origin);
 
-	std::expected<void*, std::string> locate(const anchor_path& path);
+	RML_EXPORT std::expected<void*, std::string> locate(const anchor_path& path);
 }
