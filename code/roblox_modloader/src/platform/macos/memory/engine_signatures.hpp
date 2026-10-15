@@ -810,6 +810,13 @@ namespace rml
 				},
 			},
 			{
+				"RBX_THREAD_IDENTITY_CONTEXT",
+				memory::referencing("Current identity is %d").call(0),
+				[](const memory::handle ptr) {
+					g_pointers->m_roblox_pointers.rbx_thread_identity_context = ptr.as<functions::rbx_thread_identity_context>();
+				},
+			},
+			{
 				"LUA_ISCFUNCTION",
 				"FD 7B BF A9 FD 03 00 91 3F 04 00 71 ? ? ? ? 08 24 40 F9 08 51 21 8B 08 41 00 D1 09 2C 40 F9 ? ? ? ? ? ? ? ? 1F 01 09 EB 00 31 8A 9A ? ? ? ? C8 E1 84 12 3F 00 08 6B ? ? ? ? 08 2C 40 F9 00 D1 21 8B ? ? ? ? ? ? ? ? 08 0C 40 B9 1F 21 00 71 ? ? ? ? 08 00 40 F9 08 0D 40 39 1F 01 00 71 E0 07 9F 1A",
 				[](const memory::handle ptr) {
