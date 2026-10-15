@@ -35,6 +35,12 @@ namespace rml
 				continue;
 			}
 
+			if (!is_mod_enabled(mod_dir.path()))
+			{
+				RML_INFO("Skipping '{}': disabled in its mod.toml", mod_dir.path().filename().string());
+				continue;
+			}
+
 			for (const auto& folder : kModKindFolders)
 			{
 				auto result = load_directory(mod_dir.path() / folder.folder_name);

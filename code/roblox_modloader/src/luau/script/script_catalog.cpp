@@ -3,6 +3,7 @@
 #include "RobloxModLoader/config/config_serialization.hpp"
 #include "RobloxModLoader/config/config_types.hpp"
 #include "filesystem/file.hpp"
+#include "mod/mod_kind.hpp"
 #include "RobloxModLoader/roblox/data_model.hpp"
 
 RML_LOG_SCOPE("ScriptCatalog");
@@ -201,6 +202,12 @@ namespace rml::luau
 
 			if (!std::filesystem::exists(mod_directory / "mod.toml", entry_error) || entry_error)
 			{
+				continue;
+			}
+
+			if (!is_mod_enabled(mod_directory))
+			{
+				RML_INFO("Skipping '{}': disabled in its mod.toml", mod_directory.filename().string());
 				continue;
 			}
 
