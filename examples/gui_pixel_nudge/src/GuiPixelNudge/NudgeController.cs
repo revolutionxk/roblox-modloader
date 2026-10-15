@@ -7,15 +7,15 @@ namespace GuiPixelNudge;
 internal sealed class NudgeController : IDisposable
 {
     private readonly ILogger _logger;
-    private readonly KeyboardHook _hook;
+    private readonly NudgeInput _input;
 
     private Selection? _selection;
 
-    public NudgeController(KeyboardHook hook, ILogger logger)
+    public NudgeController(NudgeInput input, ILogger logger)
     {
-        _hook = hook;
+        _input = input;
         _logger = logger;
-        _hook.Handler = Nudge;
+        _input.Handler = Nudge;
     }
     
     public void UseDataModel(DataModel game) => _selection = game.GetService<Selection>();
@@ -54,8 +54,8 @@ internal sealed class NudgeController : IDisposable
 
     public void Dispose()
     {
-        if (_hook.Handler == Nudge)
-            _hook.Handler = null;
+        if (_input.Handler == Nudge)
+            _input.Handler = null;
 
         _selection = null;
     }
