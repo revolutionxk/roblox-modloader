@@ -1,0 +1,7 @@
+name = "Basic Mod"
+version = "1.0.0"
+author = "Your Name"
+description = "A basic mod example using RobloxModLoader"
+
+[runtime]
+enabled = true

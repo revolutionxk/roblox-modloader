@@ -3,5 +3,8 @@ version = "1.0.0"
 author = "RobloxModLoader"
 description = "Demonstrates the fluent mods-menu tree API: submenus, actions, separators, checkables and icons."
 
+[runtime]
+enabled = true
+
 [datamodel.context]
 edit = []

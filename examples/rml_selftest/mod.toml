@@ -3,6 +3,9 @@ version = "1.0.0"
 author = "Revolution"
 description = "Exercises the debug library the loader installs, including constant and upvalue hooking."
 
+[runtime]
+enabled = true
+
 [datamodel.context]
 standalone = ["selftest.luau", "yield.luau"]
 edit = ["selftest.luau", "yield.luau"]

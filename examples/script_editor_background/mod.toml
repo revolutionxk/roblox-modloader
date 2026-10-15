@@ -3,5 +3,8 @@ version = "1.0.0"
 author = "Revolution"
 description = ""
 
+[runtime]
+enabled = true
+
 [datamodel.context]
 edit = []

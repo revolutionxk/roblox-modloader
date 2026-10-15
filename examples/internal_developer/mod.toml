@@ -1,0 +1,7 @@
+name = "Internal Developer Mod"
+version = "2.0.0"
+author = "Revolution"
+description = "Enables Roblox Studio internal developer features."
+
+[runtime]
+enabled = true

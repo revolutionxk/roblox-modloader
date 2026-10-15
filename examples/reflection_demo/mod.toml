@@ -3,6 +3,9 @@ version = "0.1.0"
 author = "RML"
 description = "Exercises the classes registered by the native part of the mod."
 
+[runtime]
+enabled = true
+
 [datamodel.context]
 standalone = ["modthing.luau"]
 edit = ["modthing.luau"]

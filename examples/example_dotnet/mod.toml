@@ -1,0 +1,7 @@
+name = "Example .NET Mod"
+version = "1.0.0"
+author = "Revolution"
+description = "Example managed mod for RobloxModLoader"
+
+[runtime]
+enabled = true

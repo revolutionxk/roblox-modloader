@@ -1,0 +1,7 @@
+name = "GUI Pixel Nudge"
+version = "1.0.0"
+author = "Revolution"
+description = "Nudge selected GUI objects pixel-by-pixel with the arrow keys in Studio edit mode"
+
+[runtime]
+enabled = true

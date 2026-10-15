@@ -1,0 +1,7 @@
+name = "Discord RPC (.NET)"
+version = "1.0.0"
+author = "Revolution"
+description = "Discord Rich Presence for Roblox Studio"
+
+[runtime]
+enabled = true

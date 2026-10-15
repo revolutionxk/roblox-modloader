@@ -3,6 +3,9 @@ version = "1.0.0"
 author = "Revolution"
 description = "Discord integration using Game SDK for rich presence in Roblox Studio"
 
+[runtime]
+enabled = true
+
 [datamodel.context]
 standalone = ["standalone.luau"]
 edit = ["edit.luau"]

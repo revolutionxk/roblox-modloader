@@ -3,5 +3,8 @@ version = "0.1.0"
 author = "Revolution"
 description = "idk lol"
 
+[runtime]
+enabled = true
+
 [datamodel.context]
 standalone = ["main.luau"]
