@@ -80,6 +80,7 @@ namespace rml::qt
 
 		void setWindowTitle(const QString& title);
 		void setStyleSheet(const QString& style);
+		[[nodiscard]] QString styleSheet() const;
 		void show();
 
 		void resize(int width, int height);

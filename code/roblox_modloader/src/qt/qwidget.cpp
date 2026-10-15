@@ -1,5 +1,6 @@
 #include "RobloxModLoader/qt/qwidget.hpp"
 
+d#include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/qt/qpoint.hpp"
 #include "RobloxModLoader/qt/qrect.hpp"
 #include "RobloxModLoader/qt/qsize.hpp"
@@ -20,6 +21,15 @@ namespace rml::qt
 		static const auto fn = detail::widgets<void (*)(void*, const void*)>("QWidget::setStyleSheet(QString const&)");
 		if (fn)
 			fn(this, &style);
+	}
+
+	QString QWidget::styleSheet() const
+	{
+		static void* const fn = detail::widgets_export("QWidget::styleSheet() const");
+
+		QString style;
+		memory::call_returning_member(fn, style, this);
+		return style;
 	}
 
 	void QWidget::show()
