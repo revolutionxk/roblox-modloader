@@ -1,6 +1,6 @@
 #include "RobloxModLoader/qt/qwidget.hpp"
 
-d#include "RobloxModLoader/memory/foreign_call.hpp"
+#include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/qt/qpoint.hpp"
 #include "RobloxModLoader/qt/qrect.hpp"
 #include "RobloxModLoader/qt/qsize.hpp"
@@ -108,7 +108,7 @@ namespace rml::qt
 		if (fn && palette.valid())
 			fn(this, &palette);
 	}
-	
+
 	static int widget_metric(const QWidget* widget, const char* signature, const QPaintDevice::PaintDeviceMetric metric)
 	{
 		if (void* const fn = detail::widgets_export_optional(signature))
