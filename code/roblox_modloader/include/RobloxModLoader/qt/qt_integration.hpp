@@ -2,10 +2,9 @@
 
 #include "RobloxModLoader/qt/action_dispatcher.hpp"
 #include "RobloxModLoader/qt/mods_menu.hpp"
-#include "RobloxModLoader/qt/qt_owned.hpp"
-#include "RobloxModLoader/qt/qtimer.hpp"
 #include "RobloxModLoader/rml_export.hpp"
 
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <vector>
@@ -38,6 +37,7 @@ namespace rml::qt
 		[[nodiscard]] static QtIntegration* instance();
 
 	private:
+		void request_drain();
 		void drain_tasks();
 
 		ActionDispatcher m_dispatcher;
@@ -45,7 +45,8 @@ namespace rml::qt
 
 		std::mutex m_tasks_mutex;
 		std::vector<std::function<void()>> m_tasks;
-		QtOwned<QTimer> m_dispatch_timer;
+		std::atomic_bool m_gui_ready{};
+		std::atomic_bool m_drain_requested{};
 
 		static QtIntegration* s_instance;
 	};
