@@ -85,7 +85,7 @@ The quickest way to start is to copy one of the [examples](#examples) and adapt 
 | [`internal_developer`](examples/internal_developer) | C++        | Enables Studio's internal developer tools                         |
 | [`discord_rpc`](examples/discord_rpc)               | C++ / Luau | Discord Rich Presence, native + script bridge                     |
 | [`example_dotnet`](examples/example_dotnet)         | C#         | Services, instances, properties, and events through the typed API |
-| [`discord_rpc_dotnet`](examples/discord_rpc_dotnet) | C#         | A managed Discord Rich Presence integration                       |
+| [`discord_rpc_dotnet`](examples/discord_rpc_dotnet) | C#         | A managed Discord Rich Presence integration, desktop app or Discord Web |
 
 ## Building from source
 
