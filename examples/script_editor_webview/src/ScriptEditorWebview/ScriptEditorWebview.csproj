@@ -22,10 +22,17 @@
     <ProjectReference Include="..\..\..\..\code\dotnet\Runtime\src\RML.Interop\RML.Interop.csproj" Private="false" />
     <ProjectReference Include="..\..\..\..\code\dotnet\Runtime\src\RML.Logging\RML.Logging.csproj" Private="false" />
   </ItemGroup>
+  <!--
+    Runtime payloads live at the mod root, a sibling of the 'dotnet/' folder that holds this
+    assembly (docs/writing-dotnet-mods.md: "copy the resulting assembly into .../mods/<your-mod>/dotnet/").
+    ModContext.GetPath resolves against that mod root (ModContext.ResolveModRoot walks out of 'dotnet/'),
+    so Link="..\" places each payload one level above the assembly's output directory instead of beside it.
+  -->
   <ItemGroup>
-    <Content Include="web\**\*" Link="web\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="tools\bin\**\*" Link="tools\bin\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="tools\cache\**\*" Link="tools\cache\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\web\**\*" Link="..\web\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\luau\**\*.luau" Link="..\luau\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\bin\**\*" Link="..\tools\bin\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\cache\**\*" Link="..\tools\cache\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="FlattenWebView2Loader" AfterTargets="Build;Publish">
     <ItemGroup>
