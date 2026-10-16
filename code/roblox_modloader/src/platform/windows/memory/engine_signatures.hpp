@@ -421,7 +421,7 @@ namespace rml
 		        }
 		    },
 		    {"LUA_GETMETATABLE",
-		        "48 89 5C 24 ? 57 48 83 EC 20 F6 41 ? 04 48 8B D9 48 63 FA 74 ? 4C 8D 41 ? 48 8B D1 E8 ? ? ? ? 48 8B 53 ? 48 8B 43 ? 48 8D 4A ? 48 3B 08 76 ? 48 8B C2 48 2B 43 ? 48 C1 F8 04 48 FF C0 48 3D 40 1F 00 00 0F 8F ? ? ? ? 48 8B 43 ? 48 2B C2 48 83 F8 10 7F ? 4C 8D 44 24 ? C7 44 24 ? 01 00 00 00 48 8D 15 ? ? ? ? 48 8B CB E8 ? ? ? ? 85 C0 0F 85 ? ? ? ? 48 8B 4B ? 48 8B 43 ? 48 83 C0 10 48 39 01 73 ? 48 89 01 85 FF 7E ? 48 8B 53 ? 48 8D 05 ? ? ? ? 48 83 C2 F0 48 8B CF 48 C1 E1 04 48 03 D1 48 3B 53 ? 48 0F 42 C2 EB ? 81 FF F0 D8 FF FF 7E ? 48 8B C7 48 C1 E0 04",
+		        memory::referencing("cannot change a protected metatable").call(2).call(0),
 		        [](const memory::handle ptr) {
 			        g_pointers->m_roblox_pointers.lua_getmetatable = ptr.as<functions::lua_getmetatable>();
 		        }
