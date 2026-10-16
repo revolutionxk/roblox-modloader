@@ -95,14 +95,18 @@ namespace rml::luau
 
 		if (const auto it = m_hosts.find(type); it != m_hosts.end())
 		{
-			if (it->second->global_state() == global_state)
-			{
-				return;
-			}
+			// A bind only happens when a new DataModel appeared, so this host served the previous
+			// one and its Lua VM is gone or going. The lua_State address proves nothing: the new VM
+			// often lands on the very same address, and keeping the host would run its refs and
+			// threads against a VM that never issued them.
+			const bool reused_address = it->second->global_state() == global_state;
 
 			it->second->shutdown();
 			std::erase_if(m_by_global_state, [&](const auto& entry) { return entry.second == it->second.get(); });
 			m_hosts.erase(it);
+
+			RML_INFO("Retired the script host of the previous DataModel type {}{}", std::to_underlying(type),
+			         reused_address ? " (the new Lua state reuses its address)" : "");
 		}
 
 		auto host = std::make_unique<ScriptHost>(*this, type, global_state);
