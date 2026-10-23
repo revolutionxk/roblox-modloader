@@ -279,8 +279,8 @@ namespace rml::dumper::recover
 					continue;
 
 				const auto offset = static_cast<std::size_t>(load.displacement);
-				const auto shares_uprefs = uprefs != nullptr && offset == uprefs->offset;
-				if (offset == proto->offset || (layout.overlaps(offset, 8) && !shares_uprefs))
+				const auto shares_slot = offset == proto->offset || (uprefs != nullptr && offset == uprefs->offset);
+				if (layout.overlaps(offset, 8) && !shares_slot)
 					continue;
 
 				const auto header = query.stored_step(load, store);
