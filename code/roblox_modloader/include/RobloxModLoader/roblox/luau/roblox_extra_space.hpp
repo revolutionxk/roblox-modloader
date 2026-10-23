@@ -78,37 +78,38 @@ public:
 
 private:
     [[maybe_unused]] void *reserved_28;
-
-public:
-    RBX::Luau::ExtendedIdentity context;
-
-private:
-    std::byte padding_40[0x10];
-
     WeakRef reserved_weak_ref_0;
-    WeakRef reserved_weak_ref_1;
-    [[maybe_unused]] void *reserved_70;
-    std::byte reserved_78[0x18];
-    WeakRef reserved_weak_ref_2;
+    std::byte reserved_40[0x10];
 
 public:
     uint64_t capabilities;
 
 private:
+    [[maybe_unused]] void *reserved_58;
+
+public:
+    RBX::Luau::ExtendedIdentity context;
+
+private:
+    std::byte padding_70[0x10];
+    [[maybe_unused]] void *reserved_80;
+    WeakRef reserved_weak_ref_1;
+    WeakRef reserved_weak_ref_2;
     std::byte reserved_a8[0x10];
 
     RML_LAYOUT_GUARD_BEGIN()
     RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_28, 0x28);
-    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_0, 0x50);
-    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_1, 0x60);
-    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_70, 0x70);
-    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_2, 0x90);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_0, 0x30);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_58, 0x58);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_80, 0x80);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_1, 0x88);
+    RML_ASSERT_OFFSET(RobloxExtraSpace, reserved_weak_ref_2, 0x98);
     RML_LAYOUT_GUARD_END()
 };
 
 RML_LAYOUT_DIAGNOSTIC_PUSH()
 RML_ASSERT_OFFSET(RobloxExtraSpace, shared, 0x18);
-RML_ASSERT_OFFSET(RobloxExtraSpace, context, 0x30);
-RML_ASSERT_OFFSET(RobloxExtraSpace, capabilities, 0xA0);
+RML_ASSERT_OFFSET(RobloxExtraSpace, capabilities, 0x50);
+RML_ASSERT_OFFSET(RobloxExtraSpace, context, 0x60);
 RML_ASSERT_SIZE(RobloxExtraSpace, 0xB8);
 RML_LAYOUT_DIAGNOSTIC_POP()

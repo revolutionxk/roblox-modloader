@@ -40,10 +40,16 @@ namespace RBX
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_OFFSET(DataModelProp, place_id_string, 0x08);
-	// Commented for compiles on windows for now
-	// RML_ASSERT_OFFSET(DataModelProp, universe_id_string, 0x20);
-	// RML_ASSERT_OFFSET(DataModelProp, job_id, 0x38);
-	// RML_ASSERT_OFFSET(DataModelProp, workspace, 0x50);
-	// RML_ASSERT_SIZE(DataModelProp, 0xB0);
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(DataModelProp, universe_id_string, 0x28);
+	RML_ASSERT_OFFSET(DataModelProp, job_id, 0x48);
+	RML_ASSERT_OFFSET(DataModelProp, workspace, 0x68);
+	RML_ASSERT_SIZE(DataModelProp, 0xC8);
+#else
+	RML_ASSERT_OFFSET(DataModelProp, universe_id_string, 0x20);
+	RML_ASSERT_OFFSET(DataModelProp, job_id, 0x38);
+	RML_ASSERT_OFFSET(DataModelProp, workspace, 0x50);
+	RML_ASSERT_SIZE(DataModelProp, 0xB0);
+#endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

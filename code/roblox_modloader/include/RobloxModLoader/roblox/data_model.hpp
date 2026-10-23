@@ -106,6 +106,10 @@ namespace RBX
 
 		bool can_create_service() const override = 0;
 
+	private:
+		[[maybe_unused]] std::uint32_t reserved_3c0;
+
+	public:
 		std::unique_ptr<SerializedExternalRefs> serialized_external_refs;
 
 	private:
@@ -142,24 +146,23 @@ namespace RBX
 		static DataModel* from_job(const DataModelJob* job);
 	};
 
-	// Disabled for compiling
-	// 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	// #if defined(RML_WINDOWS)
-	// 	RML_ASSERT_OFFSET(DataModel, workspace, 0x368);
-	// 	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3D0);
-	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x468);
-	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x470);
-	// 	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x510);
-	// 	RML_ASSERT_OFFSET(DataModel, type, 0x568);
-	// 	RML_ASSERT_OFFSET(DataModel, verb_container, 0x570);
-	// #else
-	// 	RML_ASSERT_OFFSET(DataModel, workspace, 0x358);
-	// 	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3B8);
-	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x450);
-	// 	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x458);
-	// 	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x4E0);
-	// 	RML_ASSERT_OFFSET(DataModel, type, 0x538);
-	// 	RML_ASSERT_OFFSET(DataModel, verb_container, 0x540);
-	// #endif
-	//	RML_LAYOUT_DIAGNOSTIC_POP()
+	RML_LAYOUT_DIAGNOSTIC_PUSH()
+#if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(DataModel, workspace, 0x360);
+	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3C8);
+	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x460);
+	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x468);
+	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x508);
+	RML_ASSERT_OFFSET(DataModel, type, 0x560);
+	RML_ASSERT_OFFSET(DataModel, verb_container, 0x568);
+#else
+	RML_ASSERT_OFFSET(DataModel, workspace, 0x350);
+	RML_ASSERT_OFFSET(DataModel, serialized_external_refs, 0x3B0);
+	RML_ASSERT_OFFSET(DataModel, page_milestone_mutex, 0x448);
+	RML_ASSERT_OFFSET(DataModel, page_milestone_registry, 0x450);
+	RML_ASSERT_OFFSET(DataModel, data_model_serialize, 0x4D8);
+	RML_ASSERT_OFFSET(DataModel, type, 0x530);
+	RML_ASSERT_OFFSET(DataModel, verb_container, 0x538);
+#endif
+	RML_LAYOUT_DIAGNOSTIC_POP()
 }

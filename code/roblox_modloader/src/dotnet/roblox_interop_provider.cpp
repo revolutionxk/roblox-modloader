@@ -352,7 +352,7 @@ namespace rml::dotnet
 
 				auto holder = std::make_unique<ManagedEventConnection>();
 				holder->slot = slot;
-				holder->connection = event_descriptor->connect_generic(instance, slot);
+				holder->connection = event_descriptor->connect_generic(instance, slot, {});
 
 				return reinterpret_cast<uintptr_t>(holder.release());
 			}

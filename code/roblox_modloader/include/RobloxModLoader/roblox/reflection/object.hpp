@@ -1,5 +1,4 @@
 #pragma once
-#include "RobloxModLoader/memory/foreign_call.hpp"
 #include "RobloxModLoader/roblox/security/script_permissions.hpp"
 #include "RobloxModLoader/util/layout_assert.hpp"
 #include "callback_descriptor.hpp"
@@ -14,6 +13,7 @@
 
 #include <mutex>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <unordered_map>
 
@@ -245,20 +245,23 @@ namespace RBX::Reflection
 		T* find_descriptor(const char* name) const
 		{
 			const auto* pointers = get_roblox_pointers();
-			if (!pointers || !pointers->get_string_atom || !pointers->member_table_find)
+			if (!pointers || !pointers->get_string_atom)
 			{
 				return nullptr;
 			}
 
 			const auto* atom = pointers->get_string_atom(name);
-			if (!atom || !member_table.size)
+			if (!atom)
 			{
 				return nullptr;
 			}
 
-			const auto result = rml::memory::call_member<MemberTable::FindResult>(reinterpret_cast<void*>(pointers->member_table_find), &member_table, &atom, 0);
-			const auto* entry = member_table.item_at(result);
-			return entry && entry->descriptor ? static_cast<T*>(entry->descriptor) : nullptr;
+			for (const auto& entry : std::span(member_table.items, member_table.size))
+			{
+				if (entry.descriptor && &entry.descriptor->name == atom)
+					return static_cast<T*>(entry.descriptor);
+			}
+			return nullptr;
 		}
 
 		PropertyDescriptor* find_property(const char* name) const

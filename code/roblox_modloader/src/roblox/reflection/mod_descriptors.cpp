@@ -340,7 +340,7 @@ namespace rml::reflection
 
 		auto member = allocate_member<RBX::Reflection::EventDesc>();
 		auto* storage = member.storage.get();
-		static const RBX::Reflection::Descriptor::Attributes attributes;
+		static const RBX::Reflection::MemberDescriptor::Attributes attributes;
 		p.event_descriptor_ctor(storage, owner_storage, name.c_str(), RBX::Security::Protection{}, &attributes);
 		memory::set_vtable(storage, static_cast<void* const*>(vtable));
 

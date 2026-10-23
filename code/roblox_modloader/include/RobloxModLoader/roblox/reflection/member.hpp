@@ -170,6 +170,13 @@ namespace RBX::Reflection
 		class MemberDescriptor : public Descriptor
 	{
 	public:
+		struct Attributes : Descriptor::Attributes
+		{
+			std::uint8_t thread_safety{};
+			std::uint8_t aurora_access{};
+			bool simulation_access{false};
+		};
+
 		static void (*member_hiding_hook)(MemberDescriptor*, MemberDescriptor*);
 
 		const Name& category;
@@ -198,6 +205,15 @@ namespace RBX::Reflection
 		RML_ASSERT_OFFSET(MemberDescriptor, thread_safety, 0x40);
 		RML_ASSERT_OFFSET(MemberDescriptor, reserved_44, 0x44);
 		RML_ASSERT_OFFSET(MemberDescriptor, reserved_48, 0x48);
+#if defined(RML_WINDOWS)
+		RML_ASSERT_SIZE(Attributes, 0x18);
+		RML_ASSERT_OFFSET(Attributes, thread_safety, 0x10);
+		RML_ASSERT_OFFSET(Attributes, simulation_access, 0x12);
+#else
+		RML_ASSERT_SIZE(Attributes, 0x10);
+		RML_ASSERT_OFFSET(Attributes, thread_safety, 0x9);
+		RML_ASSERT_OFFSET(Attributes, simulation_access, 0xB);
+#endif
 		RML_LAYOUT_GUARD_END()
 	};
 }

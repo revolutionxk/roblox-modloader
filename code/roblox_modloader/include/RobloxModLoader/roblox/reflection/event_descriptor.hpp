@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace RBX::Reflection
@@ -72,7 +73,8 @@ namespace RBX::Reflection
 			return is_scriptable();
 		}
 
-		virtual rbx::signals::connection connect_generic(EventSource* source, std::shared_ptr<GenericSlotWrapper> wrapper) const = 0;
+		virtual rbx::signals::connection connect_generic(EventSource* source, std::shared_ptr<GenericSlotWrapper> wrapper, std::string label) const = 0;
+		virtual bool reserved_2() const = 0;
 		virtual bool is_scriptable() const = 0;
 		virtual bool is_broadcast() const = 0;
 		virtual int get_send_mode() const = 0;

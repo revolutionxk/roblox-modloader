@@ -2,6 +2,7 @@
 
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/platform/graphics/output_readback.hpp"
+#include "RobloxModLoader/render/render.hpp"
 #include "RobloxModLoader/roblox/graphics/device.hpp"
 #include "RobloxModLoader/roblox/graphics/device_context.hpp"
 #include "RobloxModLoader/roblox/graphics/global_shader_data.hpp"

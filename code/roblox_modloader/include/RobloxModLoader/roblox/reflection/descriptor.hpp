@@ -15,9 +15,6 @@ namespace RBX::Reflection
 		{
 			const Descriptor* preferred{nullptr};
 			bool is_deprecated{false};
-			std::uint8_t thread_safety{};
-			std::uint8_t aurora_access{};
-			bool simulation_access{false};
 
 			static Attributes deprecated()
 			{
@@ -47,8 +44,6 @@ namespace RBX::Reflection
 	RML_ASSERT_SIZE(Descriptor, 0x28);
 	RML_ASSERT_REFERENCE_OFFSET(Descriptor, name, 0x8);
 	RML_ASSERT_OFFSET(Descriptor::Attributes, is_deprecated, 0x8);
-	RML_ASSERT_OFFSET(Descriptor::Attributes, thread_safety, 0x9);
-	RML_ASSERT_OFFSET(Descriptor::Attributes, simulation_access, 0xB);
 	RML_ASSERT_OFFSET(Descriptor, preferred, 0x10);
 	RML_ASSERT_OFFSET(Descriptor, is_deprecated, 0x18);
 	RML_ASSERT_OFFSET(Descriptor, id, 0x1C);

@@ -30,11 +30,6 @@ namespace RBX
 		class Context;
 	}
 
-	namespace details
-	{
-		class AttributesAndTags;
-	}
-
 	class ObjectProp
 	{
 	};
@@ -141,10 +136,6 @@ namespace RBX
 		};
 		union
 		{
-			std::unique_ptr<details::AttributesAndTags> attributes_and_tags;
-		};
-		union
-		{
 			rbx::signal<void(std::shared_ptr<Instance>, std::shared_ptr<Instance>)> ancestry_changed_signal;
 		};
 		union
@@ -167,10 +158,9 @@ namespace RBX
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 	RML_ASSERT_OFFSET(Object, guid, 0x28);
 	RML_ASSERT_OFFSET(Object, components, 0x38);
-	RML_ASSERT_OFFSET(Object, attributes_and_tags, 0x40);
-	RML_ASSERT_OFFSET(Object, ancestry_changed_signal, 0x48);
-	RML_ASSERT_OFFSET(Object, property_changed_signal, 0x50);
-	RML_ASSERT_OFFSET(Object, engine_context, 0x58);
-	RML_ASSERT_SIZE(Object, 0x60);
+	RML_ASSERT_OFFSET(Object, ancestry_changed_signal, 0x40);
+	RML_ASSERT_OFFSET(Object, property_changed_signal, 0x48);
+	RML_ASSERT_OFFSET(Object, engine_context, 0x50);
+	RML_ASSERT_SIZE(Object, 0x58);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

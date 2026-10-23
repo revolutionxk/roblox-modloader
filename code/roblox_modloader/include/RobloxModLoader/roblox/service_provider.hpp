@@ -37,14 +37,14 @@ namespace RBX
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_OFFSET(ServiceProvider, services, 0xC8);
-	RML_ASSERT_OFFSET(ServiceProvider, service_by_name, 0xE0);
+	RML_ASSERT_OFFSET(ServiceProvider, services, 0xC0);
+	RML_ASSERT_OFFSET(ServiceProvider, service_by_name, 0xD8);
 #if defined(RML_WINDOWS)
+	RML_ASSERT_OFFSET(ServiceProvider, service_added_signal, 0xE8);
+	RML_ASSERT_SIZE(ServiceProvider, 0x108);
+#else
 	RML_ASSERT_OFFSET(ServiceProvider, service_added_signal, 0xF0);
 	RML_ASSERT_SIZE(ServiceProvider, 0x110);
-#else
-	RML_ASSERT_OFFSET(ServiceProvider, service_added_signal, 0xF8);
-	RML_ASSERT_SIZE(ServiceProvider, 0x118);
 #endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }

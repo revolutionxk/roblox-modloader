@@ -2,6 +2,7 @@
 
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/roblox/reflection/event.hpp"
+#include "RobloxModLoader/roblox/rsl/mutex.hpp"
 #include "pointers.hpp"
 
 #include <mutex>
@@ -14,8 +15,9 @@ namespace RBX::Reflection
 		if (!signal)
 			return;
 
-		auto* mutex = g_pointers && g_pointers->m_roblox_pointers.signal_mutex_get ? g_pointers->m_roblox_pointers.signal_mutex_get() : nullptr;
-		std::unique_lock lock = mutex ? std::unique_lock(*mutex) : std::unique_lock<std::mutex>();
+		const auto* p = g_pointers ? &g_pointers->m_roblox_pointers : nullptr;
+		auto* mutex = p && p->signal_mutex_get && p->rsl_mutex_lock && p->rsl_mutex_unlock ? p->signal_mutex_get() : nullptr;
+		std::unique_lock lock = mutex ? std::unique_lock(*mutex) : std::unique_lock<RSL::Mutex>();
 
 		for (auto* slot = signal->head; slot; slot = slot->next)
 		{

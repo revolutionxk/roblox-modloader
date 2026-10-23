@@ -2,6 +2,7 @@
 #include "RobloxModLoader/memory/module.hpp"
 #include "RobloxModLoader/memory/rtti_index.hpp"
 #include "RobloxModLoader/platform/memory/host_image.hpp"
+#include "utils/dbghelp_lock.hpp"
 
 #include <dbghelp.h>
 
@@ -100,7 +101,9 @@ namespace rml::memory
 			decorated += "@8";
 
 			char buffer[4096];
+			std::unique_lock lock(utils::dbghelp_mutex());
 			const auto written = UnDecorateSymbolName(decorated.c_str(), buffer, sizeof(buffer), UNDNAME_NAME_ONLY | UNDNAME_NO_MS_KEYWORDS);
+			lock.unlock();
 			if (written == 0)
 				return {};
 

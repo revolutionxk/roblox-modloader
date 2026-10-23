@@ -6,7 +6,7 @@ namespace rml::dumper::target
 	    {.id = Anchor::luaD_reallocstack, .text = "cannot resume non-suspended coroutine", .path = {{{Step::call_from_end, 1}}}},
 	    {.id = Anchor::luaD_reallocCI, .origin = Anchor::luau_precall, .path = {{{Step::call, 1}, {Step::call, 0}}}},
 	    {Anchor::luaE_newthread,
-	     "48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC ? 44 0F B6 41 ? 33 F6 48 8B F9 89 74 24 ? 44 8D 4E ? 41 8D 51 ? E8"},
+	     "48 89 5C 24 ? 57 48 83 EC ? 44 0F B6 41 ? 41 B9 0A 00 00 00 48 8B F9 C7 44 24 ? 00 00 00 00 41 8D 51 7E E8"},
 	    {.id = Anchor::lua_settop, .text = "randomseed", .path = {{{Step::call_from_end, 0}}}},
 	    {Anchor::lua_resume, "40 53 48 83 EC 20 41 B8 01 00 00 00 48 8B D9 E8 ? ? ? ? 85 C0"},
 	    {Anchor::luaM_free,
