@@ -1,15 +1,24 @@
+#include <RobloxModLoader/internal/platform.hpp>
 #include <RobloxModLoader/logger/logger.hpp>
 #include <RobloxModLoader/memory/foreign_call.hpp>
 #include <RobloxModLoader/qt/qapplication.hpp>
 #include <RobloxModLoader/qt/qstring.hpp>
 #include <RobloxModLoader/qt/qwidget.hpp>
 
+#if !defined(RML_WINDOWS)
 #include <dlfcn.h>
+#endif
 
 RML_LOG_SCOPE("StudioThemeDiag")
 
 namespace studio_theme
 {
+#if defined(RML_WINDOWS)
+	void dump_widgets()
+	{
+		RML_WARN("diag: widget dump is only available on macOS");
+	}
+#else
 	struct DiagPoint
 	{
 		int x;
@@ -72,4 +81,5 @@ namespace studio_theme
 			    sheet);
 		}
 	}
+#endif
 }
