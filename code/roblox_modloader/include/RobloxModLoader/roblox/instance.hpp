@@ -321,17 +321,17 @@ namespace RBX
 		std::uint32_t num_local_replicated_children;
 
 	private:
-		[[maybe_unused]] std::uint32_t reserved_8c;
-		[[maybe_unused]] std::uint32_t reserved_90;
-		[[maybe_unused]] std::uint16_t reserved_94;
-		[[maybe_unused]] std::uint8_t reserved_96;
-		[[maybe_unused]] std::uint8_t reserved_97[0x2B];
+		[[maybe_unused]] std::uint32_t reserved_84;
+		[[maybe_unused]] std::uint32_t reserved_88;
+		[[maybe_unused]] std::uint16_t reserved_8c;
+		[[maybe_unused]] std::uint8_t reserved_8e;
+		[[maybe_unused]] std::uint8_t reserved_8f[0x2B];
 
 	public:
 		std::uint16_t flags;
 
 	private:
-		[[maybe_unused]] std::uint8_t reserved_c4[4];
+		[[maybe_unused]] std::uint8_t reserved_bc[4];
 
 	public:
 		[[nodiscard]] bool is_archivable() const noexcept
@@ -387,11 +387,11 @@ namespace RBX
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_OFFSET(Instance, parent, 0x68);
-	RML_ASSERT_OFFSET(Instance, name, 0x70);
-	RML_ASSERT_OFFSET(Instance, children, 0x78);
-	RML_ASSERT_OFFSET(Instance, num_local_replicated_children, 0x88);
-	RML_ASSERT_OFFSET(Instance, flags, 0xC2);
-	RML_ASSERT_SIZE(Instance, 0xC8);
+	RML_ASSERT_OFFSET(Instance, parent, 0x60);
+	RML_ASSERT_OFFSET(Instance, name, 0x68);
+	RML_ASSERT_OFFSET(Instance, children, 0x70);
+	RML_ASSERT_OFFSET(Instance, num_local_replicated_children, 0x80);
+	RML_ASSERT_OFFSET(Instance, flags, 0xBA);
+	RML_ASSERT_SIZE(Instance, 0xC0);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 }
