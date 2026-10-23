@@ -52,9 +52,14 @@ namespace RBX::Reflection
 			PUBLIC_REPLICATE = 1 + 2 + 0 + 0 + 0,
 		};
 
-		struct Attributes : Descriptor::Attributes
+		struct Attributes : MemberDescriptor::Attributes
 		{
 			const PropertyDescriptor* shared_setter{};
+
+		private:
+			[[maybe_unused]] std::uint64_t reserved_20[2]{};
+
+		public:
 			std::uint16_t tracking_slot_id{0xFFFF};
 			std::uint16_t raw_property_id{};
 			std::uint8_t shared_type_id{};
@@ -73,6 +78,11 @@ namespace RBX::Reflection
 		PropertyDescriptor() = delete;
 
 		const PropertyDescriptor* shared_setter;
+
+	private:
+		[[maybe_unused]] std::uint64_t reserved_80[2];
+
+	public:
 		Security::Protection protection_set;
 		std::uint32_t ephemeral_id;
 		std::uint16_t tracking_slot_id;
@@ -80,15 +90,15 @@ namespace RBX::Reflection
 		std::uint8_t shared_type_id;
 		std::uint8_t storage_type;
 		bool is_enum;
-		std::uint8_t is_public : 1;
-		std::uint8_t is_editable : 1;
-		std::uint8_t can_replicate : 1;
-		std::uint8_t can_xml_read : 1;
-		std::uint8_t can_xml_write : 1;
-		std::uint8_t is_scriptable : 1;
-		std::uint8_t always_clone : 1;
-		std::uint8_t client_authority : 2;
-		std::uint8_t next_generation_replication : 2;
+		std::uint32_t is_public : 1;
+		std::uint32_t is_editable : 1;
+		std::uint32_t can_replicate : 1;
+		std::uint32_t can_xml_read : 1;
+		std::uint32_t can_xml_write : 1;
+		std::uint32_t is_scriptable : 1;
+		std::uint32_t always_clone : 1;
+		std::uint32_t client_authority : 2;
+		std::uint32_t next_generation_replication : 2;
 
 		bool operator==(const PropertyDescriptor& other) const
 		{
@@ -133,15 +143,21 @@ namespace RBX::Reflection
 
 	private:
 		RML_LAYOUT_GUARD_BEGIN()
-		RML_ASSERT_SIZE(PropertyDescriptor, 0x98);
+		RML_ASSERT_SIZE(PropertyDescriptor, 0xA8);
 		RML_ASSERT_OFFSET(PropertyDescriptor, reserved_50, 0x50);
 		RML_ASSERT_REFERENCE_OFFSET(PropertyDescriptor, type, 0x70);
 		RML_ASSERT_OFFSET(PropertyDescriptor, shared_setter, 0x78);
-		RML_ASSERT_OFFSET(PropertyDescriptor, protection_set, 0x80);
-		RML_ASSERT_OFFSET(PropertyDescriptor, ephemeral_id, 0x88);
-		RML_ASSERT_OFFSET(PropertyDescriptor, tracking_slot_id, 0x8C);
-		RML_ASSERT_OFFSET(PropertyDescriptor, shared_type_id, 0x90);
-		RML_ASSERT_OFFSET(PropertyDescriptor, is_enum, 0x92);
+		RML_ASSERT_OFFSET(PropertyDescriptor, reserved_80, 0x80);
+		RML_ASSERT_OFFSET(PropertyDescriptor, protection_set, 0x90);
+		RML_ASSERT_OFFSET(PropertyDescriptor, ephemeral_id, 0x98);
+		RML_ASSERT_OFFSET(PropertyDescriptor, tracking_slot_id, 0x9C);
+		RML_ASSERT_OFFSET(PropertyDescriptor, shared_type_id, 0xA0);
+		RML_ASSERT_OFFSET(PropertyDescriptor, is_enum, 0xA2);
+#if defined(RML_WINDOWS)
+		RML_ASSERT_OFFSET(Attributes, shared_setter, 0x18);
+		RML_ASSERT_OFFSET(Attributes, tracking_slot_id, 0x30);
+		RML_ASSERT_OFFSET(Attributes, client_authority, 0x38);
+#endif
 		RML_LAYOUT_GUARD_END()
 	};
 
@@ -190,8 +206,8 @@ namespace RBX::Reflection
 	};
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
-	RML_ASSERT_SIZE(TypedPropertyDescriptor<float>, 0xB0);
-	RML_ASSERT_OFFSET(TypedPropertyDescriptor<float>, get_set, 0x98);
+	RML_ASSERT_SIZE(TypedPropertyDescriptor<float>, 0xC0);
+	RML_ASSERT_OFFSET(TypedPropertyDescriptor<float>, get_set, 0xA8);
 	RML_LAYOUT_DIAGNOSTIC_POP()
 
 	class EnumPropertyDescriptor : public PropertyDescriptor
@@ -216,11 +232,11 @@ namespace RBX::Reflection
 
 	RML_LAYOUT_DIAGNOSTIC_PUSH()
 #if !defined(RML_WINDOWS)
-	RML_ASSERT_OFFSET(EnumPropertyDescriptor, enum_descriptor, 0x98);
-	RML_ASSERT_SIZE(EnumPropDescriptor<int>, 0xB8);
-	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, get_set, 0xA0);
-	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, style_get_set, 0xA8);
-	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, value_enum_descriptor, 0xB0);
+	RML_ASSERT_OFFSET(EnumPropertyDescriptor, enum_descriptor, 0xA8);
+	RML_ASSERT_SIZE(EnumPropDescriptor<int>, 0xC8);
+	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, get_set, 0xB0);
+	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, style_get_set, 0xB8);
+	RML_ASSERT_OFFSET(EnumPropDescriptor<int>, value_enum_descriptor, 0xC0);
 #endif
 	RML_LAYOUT_DIAGNOSTIC_POP()
 

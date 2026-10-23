@@ -8,6 +8,9 @@ namespace RSL
 	{
 	public:
 		void* handle;
+
+		void lock();
+		void unlock();
 	};
 
 	RML_ASSERT_SIZE(Mutex, sizeof(void*));

@@ -29,7 +29,7 @@ namespace RBX::Reflection
 		typedef Function ConstMember;
 		typedef Function Member;
 
-		struct Attributes : Descriptor::Attributes
+		struct Attributes : MemberDescriptor::Attributes
 		{
 			bool is_no_mutation{false};
 		};
@@ -83,7 +83,8 @@ namespace RBX::Reflection
 		RML_LAYOUT_GUARD_BEGIN()
 #if defined(RML_WINDOWS)
 		RML_ASSERT_SIZE(FunctionDescriptor, 0x90);
-		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0x10);
+		RML_ASSERT_SIZE(Attributes, 0x20);
+		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0x18);
 		RML_ASSERT_OFFSET(FunctionDescriptor, is_no_mutation, 0x50);
 		RML_ASSERT_OFFSET(FunctionDescriptor, signature, 0x58);
 		RML_ASSERT_OFFSET(FunctionDescriptor, kind, 0x88);

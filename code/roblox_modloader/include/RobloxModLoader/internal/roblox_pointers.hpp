@@ -35,7 +35,6 @@ struct RobloxPointers
 
 	functions::get_string_atom get_string_atom;
 	functions::name_declare name_declare;
-	functions::member_table_find member_table_find;
 
 	// Lua Functions
 	functions::luau_execute luau_execute;
@@ -137,6 +136,8 @@ struct RobloxPointers
 	functions::connection_disconnect connection_disconnect;
 	functions::signal_slot_free signal_slot_free;
 	functions::signal_mutex_get signal_mutex_get;
+	functions::rsl_mutex_lock rsl_mutex_lock;
+	functions::rsl_mutex_unlock rsl_mutex_unlock;
 	functions::slots_holder_release slots_holder_release;
 
 	functions::global_init global_init;

@@ -21,7 +21,7 @@ namespace RBX::Reflection
 		typedef YieldFunction ConstMember;
 		typedef YieldFunction Member;
 
-		struct Attributes : Descriptor::Attributes
+		struct Attributes : MemberDescriptor::Attributes
 		{
 			bool is_no_mutation{false};
 		};
@@ -43,7 +43,7 @@ namespace RBX::Reflection
 		RML_LAYOUT_GUARD_BEGIN()
 #if defined(RML_WINDOWS)
 		RML_ASSERT_SIZE(YieldFunctionDescriptor, 0x88);
-		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0x10);
+		RML_ASSERT_OFFSET(Attributes, is_no_mutation, 0x18);
 		RML_ASSERT_OFFSET(YieldFunctionDescriptor, is_no_mutation, 0x50);
 		RML_ASSERT_OFFSET(YieldFunctionDescriptor, signature, 0x58);
 #else
