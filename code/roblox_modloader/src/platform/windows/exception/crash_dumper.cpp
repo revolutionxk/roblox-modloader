@@ -4,6 +4,7 @@
 #include "RobloxModLoader/internal/platform.hpp"
 
 #include "RobloxModLoader/memory/module_utils.hpp"
+#include "utils/dbghelp_lock.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -193,6 +194,7 @@ namespace rml::exception_filter
 			const int additional_flags = m_full_memory_dump ? MiniDumpWithFullMemory | MiniDumpIgnoreInaccessibleMemory : 0;
 			const auto dump_type = static_cast<MINIDUMP_TYPE>(DEFAULT_DUMP_TYPE | additional_flags);
 
+			std::scoped_lock lock(utils::dbghelp_mutex());
 			const BOOL result = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, dump_type, &exception_info, nullptr, nullptr);
 
 			CloseHandle(file);
@@ -214,11 +216,33 @@ namespace rml::exception_filter
 		}
 	}
 
+	HMODULE CrashDumper::module_at(const void* address)
+	{
+		HMODULE module = nullptr;
+		GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, static_cast<LPCWSTR>(address), &module);
+		return module;
+	}
+
+	bool CrashDumper::raised_in_owned_code(const void* address)
+	{
+		const auto module = module_at(address);
+		if (!module)
+			return false;
+		if (module == GetModuleHandleW(nullptr) || module == module_at(reinterpret_cast<const void*>(&vectored_exception_handler)))
+			return true;
+
+		wchar_t path[MAX_PATH]{};
+		return GetModuleFileNameW(module, path, MAX_PATH) && std::wstring_view(path).find(L"\\mods\\") != std::wstring_view::npos;
+	}
+
 	LONG WINAPI CrashDumper::vectored_exception_handler(PEXCEPTION_POINTERS exception_pointers)
 	{
 		const DWORD code = exception_pointers->ExceptionRecord->ExceptionCode;
 		constexpr DWORD NON_FATAL_CODES[] = {0xE06D7363, 0xE0434352, 0x04242420, EXCEPTION_BREAKPOINT, EXCEPTION_SINGLE_STEP, DBG_PRINTEXCEPTION_C, DBG_PRINTEXCEPTION_WIDE_C, 0x406D1388, 0x000006BA, 0xC0000135, 0xC0000138, 0xC0000139};
 		if (std::ranges::contains(NON_FATAL_CODES, code))
+			return EXCEPTION_CONTINUE_SEARCH;
+
+		if (!raised_in_owned_code(exception_pointers->ExceptionRecord->ExceptionAddress))
 			return EXCEPTION_CONTINUE_SEARCH;
 
 		thread_local bool in_veh = false;

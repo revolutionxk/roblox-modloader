@@ -13,4 +13,7 @@ CPMAddPackage(
 )
 
 target_compile_definitions(TracyClient PUBLIC TRACY_DELAYED_INIT)
+if (WIN32)
+    target_compile_definitions(TracyClient PRIVATE TRACY_DBGHELP_LOCK=RmlDbgHelp)
+endif ()
 set_target_properties(TracyClient PROPERTIES POSITION_INDEPENDENT_CODE ON FOLDER "ThirdParty")

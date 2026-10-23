@@ -3,6 +3,8 @@
 #include "RobloxModLoader/internal/platform.hpp"
 
 #if defined(RML_WINDOWS)
+	#include "utils/dbghelp_lock.hpp"
+
 	#include <windows.h>
 
 	#include <dbghelp.h>
@@ -129,7 +131,9 @@ namespace rml::memory
 
 		char buffer[2048];
 		constexpr DWORD flags = UNDNAME_NAME_ONLY | UNDNAME_NO_ARGUMENTS | UNDNAME_NO_MS_KEYWORDS | UNDNAME_NO_LEADING_UNDERSCORES;
+		std::unique_lock lock(utils::dbghelp_mutex());
 		const DWORD written = UnDecorateSymbolName(mangled, buffer, sizeof(buffer), flags);
+		lock.unlock();
 		return written != 0 ? std::string{buffer, written} : std::string{};
 #else
 		if (!is_itanium_mangled(mangled))
@@ -169,7 +173,9 @@ namespace rml::memory
 		constexpr DWORD flags = UNDNAME_NO_FUNCTION_RETURNS | UNDNAME_NO_ACCESS_SPECIFIERS
 		                      | UNDNAME_NO_MS_KEYWORDS | UNDNAME_NO_MEMBER_TYPE
 		                      | UNDNAME_NO_LEADING_UNDERSCORES | UNDNAME_NO_THROW_SIGNATURES;
+		std::unique_lock lock(utils::dbghelp_mutex());
 		const DWORD written = UnDecorateSymbolName(mangled, buffer, sizeof(buffer), flags);
+		lock.unlock();
 
 		if (written != 0)
 		{

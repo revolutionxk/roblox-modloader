@@ -3,6 +3,7 @@
 #include "RobloxModLoader/internal/common.hpp"
 #include "RobloxModLoader/memory/module_utils.hpp"
 #include "RobloxModLoader/util/string.hpp"
+#include "utils/dbghelp_lock.hpp"
 
 #include <array>
 #include <format>
@@ -56,6 +57,7 @@ namespace rml::exception_filter
 		{
 			RML_ERROR("=== {} ===", labels.heading);
 
+			std::scoped_lock lock(utils::dbghelp_mutex());
 			HANDLE process = nullptr;
 			if (!DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &process, PROCESS_ALL_ACCESS, FALSE, 0))
 			{
